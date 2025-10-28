@@ -1,0 +1,24 @@
+[versions]
+
+# general
+lombok = "1.18.42"
+jackson = "2.20.0"
+junit = "6.0.0"
+
+[libraries]
+
+# general
+lombok = { group = "org.projectlombok", name = "lombok", version.ref = "lombok" }
+
+# jackson
+jackson = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
+jackson-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
+jackson-jsr310 = { group = "com.fasterxml.jackson.datatype", name = "jackson-datatype-jsr310", version.ref = "jackson" }
+
+# junit
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit" }
+
+[bundles]
+
+jackson = ["jackson", "jackson-yaml", "jackson-jsr310"]
