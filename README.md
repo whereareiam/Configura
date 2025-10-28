@@ -5,9 +5,9 @@ helpers, and pluggable formats (YAML/JSON).
 
 ### Table of contents
 
-- **Getting Started**: see `docs/GETTING_STARTED.md`
-- **Templating guide**: coming soon (`docs/TEMPLATING.md`)
-- **Type adapters**: coming soon (`docs/TYPE_ADAPTERS.md`)
+- [Getting Started](docs/GETTING_STARTED.md)
+- [Templating guide](docs/TEMPLATING.md)
+- [Type adapters](docs/TYPE_ADAPTERS.md)
 
 ### Features
 
