@@ -128,6 +128,6 @@ public class DbConfig {
 }
 ```
 
-See `docs/GETTING_STARTED.md` for more details and examples.
+See [Getting Started](docs/GETTING_STARTED.md) for more details and examples.
 
 
