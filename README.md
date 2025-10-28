@@ -18,35 +18,19 @@ helpers, and pluggable formats (YAML/JSON).
 
 ### Installation
 
-Currently distributed via local Maven.
-
-<details>
-  <summary>Publish to local Maven (one‑time)</summary>
-
-  ```bash
-  # 1) Clone the repository
-  git clone https://github.com/whereareiam/Configura.git
-  cd Configura
-
-  # 2) Publish artifacts to your local Maven repository
-  ./gradlew publishToMavenLocal   # on Linux/macOS
-  # or
-  gradlew.bat publishToMavenLocal # on Windows
-  ```
-
-</details>
+Distributed via JitPack.
 
 <details>
   <summary>Add dependency (Gradle)</summary>
 
-  ```kotlin
-  repositories {
-    mavenLocal()
-    mavenCentral()
+```kotlin
+repositories {
+    maven(url = uri("https://jitpack.io"))
 }
 
 dependencies {
-    implementation("me.whereareiam:configura:dev")
+    // Use a release tag (e.g. 1.0.0) or a branch snapshot (e.g. dev-SNAPSHOT)
+    implementation("com.github.whereareiam:Configura:dev-SNAPSHOT")
 }
   ```
 
@@ -55,27 +39,23 @@ dependencies {
 <details>
   <summary>Add dependency (Maven)</summary>
 
-  ```xml
-
+```xml
 <repositories>
     <repository>
-        <id>local-maven</id>
-        <url>file://${user.home}/.m2/repository</url>
-    </repository>
-    <repository>
-        <id>central</id>
-        <url>https://repo1.maven.org/maven2/</url>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
     </repository>
 </repositories>
 
 <dependencies>
-<dependency>
-    <groupId>me.whereareiam</groupId>
-    <artifactId>configura</artifactId>
-    <version>dev</version>
-</dependency>
+    <!-- Use a release tag (e.g. 1.0.0) or a branch snapshot (e.g. dev-SNAPSHOT) -->
+    <dependency>
+        <groupId>com.github.whereareiam</groupId>
+        <artifactId>Configura</artifactId>
+        <version>dev-SNAPSHOT</version>
+    </dependency>
 </dependencies>
-  ```
+```
 
 </details>
 
@@ -100,14 +80,10 @@ import me.whereareiam.configura.Config;
 
 HelloConfig cfg = new HelloConfig();
 // Writes defaults if needed and then re‑reads from disk
-cfg =Config.
-
-updateRead("config/hello",cfg);
+cfg = Config.updateRead("config/hello", cfg);
 
 // Use it in your code
-System.out.
-
-println("Hello, "+cfg.name +"!");
+System.out.println("Hello, " + cfg.name + "!");
 ```
 
 3) Want object‑like defaults? Use `@Template(properties=...)`:

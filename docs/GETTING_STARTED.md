@@ -7,7 +7,7 @@ This guide walks beginners through the basics: prerequisites, adding the depende
 - **Gradle or Maven**
 
 ### Install the library
-See Installation in the project `README.md`. In short, publish locally and add the dependency.
+Use JitPack as described below or see Installation in the project `README.md`.
 
 <details>
   <summary>Gradle (Kotlin DSL)</summary>
@@ -15,12 +15,11 @@ See Installation in the project `README.md`. In short, publish locally and add t
   
   ```kotlin
   repositories {
-      mavenLocal()
-      mavenCentral()
+      maven(url = uri("https://jitpack.io"))
   }
 
   dependencies {
-      implementation("me.whereareiam:configura:dev")
+      implementation("com.github.whereareiam:Configura:dev-SNAPSHOT")
       compileOnly("org.projectlombok:lombok:1.18.32")
       annotationProcessor("org.projectlombok:lombok:1.18.32")
   }
@@ -35,20 +34,16 @@ See Installation in the project `README.md`. In short, publish locally and add t
   ```xml
   <repositories>
     <repository>
-      <id>local-maven</id>
-      <url>file://${user.home}/.m2/repository</url>
-    </repository>
-    <repository>
-      <id>central</id>
-      <url>https://repo1.maven.org/maven2/</url>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
     </repository>
   </repositories>
 
   <dependencies>
     <dependency>
-      <groupId>me.whereareiam</groupId>
-      <artifactId>configura</artifactId>
-      <version>dev</version>
+      <groupId>com.github.whereareiam</groupId>
+      <artifactId>Configura</artifactId>
+      <version>dev-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
