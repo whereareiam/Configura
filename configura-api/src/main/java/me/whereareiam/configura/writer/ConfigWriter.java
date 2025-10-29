@@ -2,9 +2,8 @@ package me.whereareiam.configura.writer;
 
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
+// Factory intentionally not present in API; see bootstrap module
 import me.whereareiam.configura.type.Format;
-
-import java.util.ServiceLoader;
 
 /**
  * Writes configuration to files.
@@ -13,20 +12,6 @@ import java.util.ServiceLoader;
  * Configure once and reuse for multiple files.
  */
 public interface ConfigWriter {
-	/**
-	 * Creates a new ConfigWriter.
-	 * Implementation provided by configura-common.
-	 *
-	 * @return a new ConfigWriter instance
-	 */
-	static ConfigWriter create() {
-		ServiceLoader<ConfigWriterProvider> loader = ServiceLoader.load(ConfigWriterProvider.class);
-		for (ConfigWriterProvider p : loader)
-			return p.create();
-
-		throw new UnsupportedOperationException("No ConfigWriterProvider found. Add configura-common to the classpath.");
-	}
-
 	/**
 	 * Configure the file format to use.
 	 *

@@ -2,9 +2,8 @@ package me.whereareiam.configura.reader;
 
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
+// Factory intentionally not present in API; see bootstrap module
 import me.whereareiam.configura.type.Format;
-
-import java.util.ServiceLoader;
 
 /**
  * Reads configuration from files.
@@ -13,20 +12,6 @@ import java.util.ServiceLoader;
  * Configure once and reuse for multiple files.
  */
 public interface ConfigReader {
-	/**
-	 * Creates a new ConfigReader.
-	 * Implementation provided by configura-common.
-	 *
-	 * @return a new ConfigReader instance
-	 */
-	static ConfigReader create() {
-		ServiceLoader<ConfigReaderProvider> loader = ServiceLoader.load(ConfigReaderProvider.class);
-		for (ConfigReaderProvider p : loader)
-			return p.create();
-
-		throw new UnsupportedOperationException("No ConfigReaderProvider found. Add configura-common to the classpath.");
-	}
-
 	/**
 	 * Configure the file format to use.
 	 *
@@ -74,4 +59,3 @@ public interface ConfigReader {
 	 */
 	boolean exists(String filePath);
 }
-

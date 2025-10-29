@@ -14,6 +14,7 @@ import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.common.util.PathNavigator;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.reader.ConfigReader;
+import me.whereareiam.configura.reader.ConfigReaderProvider;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.ServiceLoader;
 
 public class DefaultConfigWriter implements ConfigWriter {
 	private final Format format;
@@ -147,7 +149,7 @@ public class DefaultConfigWriter implements ConfigWriter {
 
 	@SuppressWarnings("unchecked")
 	private ConfigReader buildReaderWithAdapters() {
-		ConfigReader reader = ConfigReader.create().withFormat(format);
+		ConfigReader reader = createReader().withFormat(format);
 		for (Map.Entry<Class<?>, Class<? extends TypeAdapter<?>>> e : registry.asClassMap().entrySet()) {
 			Class<Object> cls = (Class<Object>) e.getKey();
 			Class<? extends TypeAdapter<Object>> adapterCls = (Class<? extends TypeAdapter<Object>>) e.getValue();
@@ -156,6 +158,11 @@ public class DefaultConfigWriter implements ConfigWriter {
 
 		return reader;
 	}
+
+	private static ConfigReader createReader() {
+		for (ConfigReaderProvider p : ServiceLoader.load(ConfigReaderProvider.class)) {
+			return p.create();
+		}
+		throw new UnsupportedOperationException("No ConfigReaderProvider found. Add configura-common to the classpath.");
+	}
 }
-
-

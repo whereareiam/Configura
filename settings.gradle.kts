@@ -1,4 +1,5 @@
 rootProject.name = "Configura"
 
-include("configura-api")
 include("configura-common")
+include("configura-api")
+include("configura")
