@@ -1,8 +1,3 @@
-dependencies {
-    runtimeOnly(project(":configura-common"))
-    testImplementation(libs.junit.jupiter)
-}
-
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
