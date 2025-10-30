@@ -17,6 +17,9 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v3
 
+      - name: Compute VERSION
+        run: echo "version=${GITHUB_REF_NAME}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -27,7 +30,7 @@ jobs:
         env:
           PUBLISH_USER: ${{ secrets.PUBLISH_USER }}
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          VERSION: ${GITHUB_REF##*/}-${GITHUB_SHA::7}
+          VERSION: ${{ env.VERSION }}
           PUBLISH_REALM: development
         run: ./gradlew --no-daemon publish
 
