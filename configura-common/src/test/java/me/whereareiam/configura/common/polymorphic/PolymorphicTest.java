@@ -93,7 +93,7 @@ public class PolymorphicTest {
 				strip: true
 				radius: 10
 				""";
-		TriggerBase t = new DefaultConfigReader().fromBytes(yaml.getBytes(), TriggerBase.class);
+		TriggerBase t = new DefaultConfigReader().load(yaml.getBytes(), TriggerBase.class);
 		assertInstanceOf(SymbolTrigger.class, t);
 		assertEquals("#", ((SymbolTrigger) t).getSymbol());
 	}
@@ -107,7 +107,7 @@ public class PolymorphicTest {
 				.radius(null)
 				.build();
 
-		byte[] out = new DefaultConfigWriter().toBytes(t);
+		byte[] out = new DefaultConfigWriter().save(t);
 		String text = new String(out);
 
 		assertTrue(text.contains("type"));
@@ -133,7 +133,7 @@ public class PolymorphicTest {
 				radius: 0
 				""";
 
-		BuilderBase t = new DefaultConfigReader().fromBytes(yaml.getBytes(), BuilderBase.class);
+		BuilderBase t = new DefaultConfigReader().load(yaml.getBytes(), BuilderBase.class);
 		assertInstanceOf(BuilderCommand.class, t);
 		assertEquals("reply", ((BuilderCommand) t).command);
 	}
@@ -148,7 +148,7 @@ public class PolymorphicTest {
 		String yaml = """
 				servers: ["s1", "s2"]
 				""";
-		InferBase v = new DefaultConfigReader().fromBytes(yaml.getBytes(), InferBase.class);
+		InferBase v = new DefaultConfigReader().load(yaml.getBytes(), InferBase.class);
 		assertInstanceOf(InferServers.class, v);
 	}
 }

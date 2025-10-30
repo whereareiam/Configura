@@ -11,6 +11,7 @@ import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 
+import java.io.InputStream;
 import java.nio.file.Path;
 
 @SuppressWarnings("unused")
@@ -90,19 +91,63 @@ public final class Config {
 		return getDefaultReader().load(path, configClass);
 	}
 
-	public static <T> void save(String filePath, T config) {
-		getDefaultWriter().save(filePath, config);
+	public static <T> T load(byte[] bytes, Class<T> configClass) {
+		return getDefaultReader().load(bytes, configClass);
 	}
 
-	public static <T> T merge(String filePath, T config) {
-		return getDefaultWriter().merge(filePath, config);
+	public static <T> T load(InputStream inputStream, Class<T> configClass) {
+		return getDefaultReader().load(inputStream, configClass);
 	}
 
-	public static <T> byte[] toBytes(T config) {
-		return getDefaultWriter().toBytes(config);
+	public static <T> void save(String file, T config) {
+		getDefaultWriter().save(file, config);
 	}
 
-	public static <T> T fromBytes(byte[] bytes, Class<T> configClass) {
-		return getDefaultReader().fromBytes(bytes, configClass);
+	public static <T> void save(Path path, T config) {
+		getDefaultWriter().save(path, config);
+	}
+
+	public static <T> byte[] save(T config) {
+		return getDefaultWriter().save(config);
+	}
+
+	public static <T> T merge(String file, T config) {
+		return getDefaultWriter().merge(file, config);
+	}
+
+	public static <T> T merge(Path path, T config) {
+		return getDefaultWriter().merge(path, config);
+	}
+
+	/**
+	 * Creates a default instance of the config class, saves it to file, then reloads it.
+	 * <p>
+	 * Useful for ensuring configuration files exist with default values.
+	 *
+	 * @param file        name of file (without extension if format is configured)
+	 * @param configClass the configuration class
+	 * @param <T>         the configuration type
+	 * @return the loaded configuration
+	 */
+	public static <T> T update(String file, Class<T> configClass) {
+		T defaultInstance = getDefaultReader().createDefault(configClass);
+		getDefaultWriter().save(file, defaultInstance);
+		return getDefaultReader().load(file, configClass);
+	}
+
+	/**
+	 * Creates a default instance of the config class, saves it to file, then reloads it.
+	 * <p>
+	 * Useful for ensuring configuration files exist with default values.
+	 *
+	 * @param path        full path to the config file (directory + filename)
+	 * @param configClass the configuration class
+	 * @param <T>         the configuration type
+	 * @return the loaded configuration
+	 */
+	public static <T> T update(Path path, Class<T> configClass) {
+		T defaultInstance = getDefaultReader().createDefault(configClass);
+		getDefaultWriter().save(path, defaultInstance);
+		return getDefaultReader().load(path, configClass);
 	}
 }

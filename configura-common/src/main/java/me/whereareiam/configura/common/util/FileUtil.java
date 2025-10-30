@@ -3,16 +3,14 @@ package me.whereareiam.configura.common.util;
 import me.whereareiam.configura.type.Format;
 
 public final class FileUtil {
-	public static String resolvePathWithFormat(String filePath, Format format) {
-		String lower = filePath.toLowerCase();
+	public static String resolvePathWithFormat(String file, Format format) {
+		String lower = file.toLowerCase();
 		if (lower.endsWith(".yaml") || lower.endsWith(".yml") || lower.endsWith(".json"))
-			return filePath;
+			return file;
 
 		return switch (format) {
-			case YAML -> filePath + ".yaml";
-			case JSON -> filePath + ".json";
+			case YAML -> file + ".yml";
+			case JSON -> file + ".json";
 		};
 	}
 }
-
-

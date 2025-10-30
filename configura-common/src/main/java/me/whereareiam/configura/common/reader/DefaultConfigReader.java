@@ -13,6 +13,7 @@ import me.whereareiam.configura.type.Format;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -79,7 +80,7 @@ public class DefaultConfigReader implements ConfigReader {
 	}
 
 	@Override
-	public <T> T fromBytes(byte[] bytes, Class<T> configClass) {
+	public <T> T load(byte[] bytes, Class<T> configClass) {
 		if (bytes == null || bytes.length == 0) {
 			try {
 				return mapper.treeToValue(mapper.createObjectNode(), configClass);
@@ -92,6 +93,34 @@ public class DefaultConfigReader implements ConfigReader {
 			return mapper.readValue(bytes, configClass);
 		} catch (IOException e) {
 			throw new ConfigException("Failed to deserialize config bytes", e);
+		}
+	}
+
+	@Override
+	public <T> T load(InputStream inputStream, Class<T> configClass) {
+		if (configClass == null) throw new ConfigException("configClass must not be null");
+		if (inputStream == null) {
+			try {
+				return mapper.treeToValue(mapper.createObjectNode(), configClass);
+			} catch (Exception e) {
+				throw new ConfigException("Failed to bind empty stream to " + configClass.getName(), e);
+			}
+		}
+
+		try {
+			return mapper.readValue(inputStream, configClass);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to deserialize config stream", e);
+		}
+	}
+
+	@Override
+	public <T> T createDefault(Class<T> configClass) {
+		if (configClass == null) throw new ConfigException("configClass must not be null");
+		try {
+			return mapper.treeToValue(mapper.createObjectNode(), configClass);
+		} catch (Exception e) {
+			throw new ConfigException("Failed to create default instance of " + configClass.getName(), e);
 		}
 	}
 

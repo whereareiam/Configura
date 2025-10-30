@@ -4,6 +4,8 @@ import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.type.Format;
 
+import java.nio.file.Path;
+
 /**
  * Writes configuration to files.
  * <p>
@@ -40,24 +42,53 @@ public interface ConfigWriter {
 	 * Save configuration to a file.
 	 * Creates the file if it doesn't exist.
 	 *
-	 * @param filePath path to the config file (without extension if format is configured)
-	 * @param config   the configuration to save
-	 * @param <T>      the configuration type
+	 * @param file   path to the config file (without extension if format is configured)
+	 * @param config the configuration to save
+	 * @param <T>    the configuration type
 	 * @throws ConfigException if saving fails
 	 */
-	<T> void save(String filePath, T config);
+	<T> void save(String file, T config);
+
+	/**
+	 * Save configuration to an explicit file path.
+	 * Creates the file if it doesn't exist.
+	 * <p>
+	 * If the provided path does not include an extension, an extension matching the configured
+	 * {@link Format} will be appended.
+	 *
+	 * @param path   full path to the config file (directory + filename)
+	 * @param config the configuration to save
+	 * @param <T>    the configuration type
+	 * @throws ConfigException if saving fails
+	 */
+	<T> void save(Path path, T config);
 
 	/**
 	 * Merge existing file content (if present) with the provided model, honoring
 	 * {@code @Policy(mergeOnUpdate = false)} on fields to preserve existing values.
 	 * Does not write the file.
 	 *
-	 * @param filePath path to the config file (without extension if format is configured)
-	 * @param config   the incoming model to merge
-	 * @param <T>      the configuration type
+	 * @param file   path to the config file (without extension if format is configured)
+	 * @param config the incoming model to merge
+	 * @param <T>    the configuration type
 	 * @return merged configuration instance
 	 */
-	<T> T merge(String filePath, T config);
+	<T> T merge(String file, T config);
+
+	/**
+	 * Merge existing file content (if present) with the provided model, honoring
+	 * {@code @Policy(mergeOnUpdate = false)} on fields to preserve existing values.
+	 * Does not write the file.
+	 * <p>
+	 * If the provided path does not include an extension, an extension matching the configured
+	 * {@link Format} will be considered when resolving the path.
+	 *
+	 * @param path   full path to the config file (directory + filename)
+	 * @param config the incoming model to merge
+	 * @param <T>    the configuration type
+	 * @return merged configuration instance
+	 */
+	<T> T merge(Path path, T config);
 
 	/**
 	 * Serialize configuration to raw bytes using the configured format.
@@ -67,6 +98,6 @@ public interface ConfigWriter {
 	 * @return serialized bytes
 	 * @throws ConfigException if serialization fails
 	 */
-	<T> byte[] toBytes(T config);
+	<T> byte[] save(T config);
 }
 

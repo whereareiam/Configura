@@ -27,7 +27,7 @@ public class DefaultConfigWriter implements ConfigWriter {
 	}
 
 	@Override
-	public <T> byte[] toBytes(T config) {
+	public <T> byte[] save(T config) {
 		try {
 			return mapper.writeValueAsBytes(config);
 		} catch (IOException e) {
@@ -52,14 +52,13 @@ public class DefaultConfigWriter implements ConfigWriter {
 	}
 
 	@Override
-	public <T> void save(String filePath, T config) {
-		String resolved = FileUtil.resolvePathWithFormat(filePath, format);
+	public <T> void save(String file, T config) {
+		String resolved = FileUtil.resolvePathWithFormat(file, format);
 		try {
 			Path path = Path.of(resolved);
 			Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
 
-			T toWrite = config;
-			if (Files.exists(path)) toWrite = mergePreservingPolicy(path, config);
+			T toWrite = mergePreservingPolicy(path, config);
 
 			mapper.writeValue(path.toFile(), toWrite);
 		} catch (IOException e) {
@@ -68,11 +67,36 @@ public class DefaultConfigWriter implements ConfigWriter {
 	}
 
 	@Override
-	public <T> T merge(String filePath, T config) {
-		String resolved = FileUtil.resolvePathWithFormat(filePath, format);
+	public <T> void save(Path path, T config) {
+		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
+		try {
+			Path target = Path.of(resolved);
+			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
+
+			T toWrite = mergePreservingPolicy(target, config);
+
+			mapper.writeValue(target.toFile(), toWrite);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to save config file: " + resolved, e);
+		}
+	}
+
+	@Override
+	public <T> T merge(String file, T config) {
+		String resolved = FileUtil.resolvePathWithFormat(file, format);
 		Path path = Path.of(resolved);
 
 		if (Files.exists(path)) return mergePreservingPolicy(path, config);
+
+		return config;
+	}
+
+	@Override
+	public <T> T merge(Path path, T config) {
+		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
+		Path target = Path.of(resolved);
+
+		if (Files.exists(target)) return mergePreservingPolicy(target, config);
 
 		return config;
 	}
