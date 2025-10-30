@@ -138,7 +138,7 @@ Populate a field from a classpath resource, URL, or file.
 ```java
 @Data
 public class FromResourceConfig {
-	@Template(source = @Template.Source("classpath:/defaults/app.yaml"))
+	@Template(source = @Template.Source("classpath:/defaults/app.yml"))
 	private Map<String, Object> defaults;
 }
 ```

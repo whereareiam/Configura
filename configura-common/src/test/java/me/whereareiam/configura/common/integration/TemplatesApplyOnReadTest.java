@@ -32,7 +32,7 @@ public class TemplatesApplyOnReadTest {
 		String base = dir.resolve("t").toString();
 
 		DefaultConfigReader reader = new DefaultConfigReader();
-		Cfg cfg = reader.load(base + ".yaml", Cfg.class);
+		Cfg cfg = reader.load(base + ".yml", Cfg.class);
 
 		assertEquals("svc", cfg.name);
 		assertNotNull(cfg.policy);

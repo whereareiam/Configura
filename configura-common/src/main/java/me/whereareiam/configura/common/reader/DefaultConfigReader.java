@@ -9,6 +9,7 @@ import me.whereareiam.configura.common.adapter.AdapterRegistry;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.reader.ConfigReader;
+import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 
 import java.io.BufferedReader;
@@ -20,23 +21,29 @@ import java.nio.file.Path;
 public class DefaultConfigReader implements ConfigReader {
 	private final Format format;
 	private final AdapterRegistry registry;
+	private final TemplateRegistry templateRegistry;
 	private final ObjectMapper mapper;
 
 	public DefaultConfigReader() {
+		this(null);
+	}
+
+	public DefaultConfigReader(TemplateRegistry templateRegistry) {
 		this.format = Format.YAML;
 		this.registry = AdapterRegistry.empty();
-		this.mapper = MapperFactory.buildMapper(this.format, this.registry);
+		this.templateRegistry = templateRegistry;
+		this.mapper = MapperFactory.buildMapper(this.format, this.registry, this.templateRegistry);
 	}
 
 	@Override
 	public ConfigReader withFormat(Format format) {
-		return new DefaultConfigReader(format, this.registry);
+		return new DefaultConfigReader(format, this.registry, this.templateRegistry);
 	}
 
 	@Override
 	public <T> ConfigReader registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass) {
 		AdapterRegistry nextRegistry = this.registry.withAdapter(type, adapterClass);
-		return new DefaultConfigReader(this.format, nextRegistry);
+		return new DefaultConfigReader(this.format, nextRegistry, this.templateRegistry);
 	}
 
 	@Override
@@ -124,10 +131,15 @@ public class DefaultConfigReader implements ConfigReader {
 		}
 	}
 
-	private DefaultConfigReader(Format format, AdapterRegistry registry) {
+	public ConfigReader withTemplateRegistry(TemplateRegistry templateRegistry) {
+		return new DefaultConfigReader(this.format, this.registry, templateRegistry);
+	}
+
+	private DefaultConfigReader(Format format, AdapterRegistry registry, TemplateRegistry templateRegistry) {
 		this.format = format;
 		this.registry = registry;
-		this.mapper = MapperFactory.buildMapper(this.format, this.registry);
+		this.templateRegistry = templateRegistry;
+		this.mapper = MapperFactory.buildMapper(this.format, this.registry, this.templateRegistry);
 	}
 }
 

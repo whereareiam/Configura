@@ -24,7 +24,7 @@ public class ConfigRoundtripTest {
 		cfg.name = "svc";
 		cfg.port = 8080;
 
-		String yaml = dir.resolve("app.yaml").toString();
+		String yaml = dir.resolve("app.yml").toString();
 		String json = dir.resolve("app.json").toString();
 
 		ConfigWriter yamlWriter = new DefaultConfigWriter().withFormat(Format.YAML);

@@ -1,9 +1,9 @@
 package me.whereareiam.configura.common.integration;
 
-import me.whereareiam.configura.common.writer.DefaultConfigWriter;
-import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.annotation.Field;
 import me.whereareiam.configura.annotation.Policy;
+import me.whereareiam.configura.common.reader.DefaultConfigReader;
+import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.Test;
@@ -51,7 +51,7 @@ public class MergePolicyUpdateReadTest {
 		writer.save(base, existing);
 
 		// Read file and manually edit (robust to quoted/unquoted rendering)
-		Path yaml = Path.of(base + ".yaml");
+		Path yaml = Path.of(base + ".yml");
 		String content = Files.readString(yaml);
 		content = content.replace("keepAsIs: original", "keepAsIs: preserved");
 		content = content.replace("keepAsIs: \"original\"", "keepAsIs: preserved");
@@ -62,8 +62,8 @@ public class MergePolicyUpdateReadTest {
 		model.safeToMerge = "newValue";
 		model.keepAsIs = "shouldNotAppear";
 
-        writer.save(base, model);
-        PerFieldPolicy result = new DefaultConfigReader().withFormat(Format.YAML).load(base, PerFieldPolicy.class);
+		writer.save(base, model);
+		PerFieldPolicy result = new DefaultConfigReader().withFormat(Format.YAML).load(base, PerFieldPolicy.class);
 
 		assertEquals("newValue", result.safeToMerge); // merged
 		assertEquals("preserved", result.keepAsIs); // kept as-is
@@ -98,17 +98,17 @@ public class MergePolicyUpdateReadTest {
 		o.port = 9000;
 
 		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.save(base + ".yaml", o);
+		writer.save(base + ".yml", o);
 
-		Path yaml = Path.of(base + ".yaml");
+		Path yaml = Path.of(base + ".yml");
 		Files.writeString(yaml, Files.readString(yaml) + "\nunknown: 1\n", StandardCharsets.UTF_8);
 
 		New n = new New();
 		n.host = "0.0.0.0";
 		n.port = 9000;
 
-        writer.save(base + ".yaml", n);
-        New after = new DefaultConfigReader().withFormat(Format.YAML).load(base + ".yaml", New.class);
+		writer.save(base + ".yml", n);
+		New after = new DefaultConfigReader().withFormat(Format.YAML).load(base + ".yml", New.class);
 
 		String updated = Files.readString(yaml);
 		assertFalse(updated.contains("unknown:"));

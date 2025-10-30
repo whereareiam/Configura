@@ -208,9 +208,9 @@ AppConfig cfg = new AppConfig();
 cfg.setName("world");
 
 // YAML
-Config.save("app-config.yaml", cfg);
+Config.save("app-config.yml", cfg);
 
-AppConfig fromYaml = Config.load("app-config.yaml", AppConfig.class);
+AppConfig fromYaml = Config.load("app-config.yml", AppConfig.class);
 
 // JSON
 Config.save("app-config.json", cfg);

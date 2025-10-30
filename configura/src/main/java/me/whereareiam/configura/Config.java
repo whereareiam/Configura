@@ -17,38 +17,38 @@ import java.nio.file.Path;
 @SuppressWarnings("unused")
 public final class Config {
 	@Getter
-	private static ConfigReader defaultReader = new DefaultConfigReader().withFormat(Format.YAML);
-	@Getter
-	private static ConfigWriter defaultWriter = new DefaultConfigWriter().withFormat(Format.YAML);
-	@Getter
 	private static TemplateRegistry defaultTemplateRegistry = new DefaultTemplateRegistry();
+	@Getter
+	private static ConfigReader defaultReader = new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(Format.YAML);
+	@Getter
+	private static ConfigWriter defaultWriter = new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(Format.YAML);
 
 	/**
 	 * Create a new independent reader instance with default settings.
 	 */
 	public static ConfigReader reader() {
-		return new DefaultConfigReader().withFormat(Format.YAML);
+		return new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(Format.YAML);
 	}
 
 	/**
 	 * Create a new independent reader instance with the given format.
 	 */
 	public static ConfigReader reader(Format format) {
-		return new DefaultConfigReader().withFormat(format);
+		return new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(format);
 	}
 
 	/**
 	 * Create a new independent writer instance with default settings.
 	 */
 	public static ConfigWriter writer() {
-		return new DefaultConfigWriter().withFormat(Format.YAML);
+		return new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(Format.YAML);
 	}
 
 	/**
 	 * Create a new independent writer instance with the given format.
 	 */
 	public static ConfigWriter writer(Format format) {
-		return new DefaultConfigWriter().withFormat(format);
+		return new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(format);
 	}
 
 	/**
@@ -68,6 +68,8 @@ public final class Config {
 
 	public static void setTemplateRegistry(TemplateRegistry registry) {
 		Config.defaultTemplateRegistry = registry;
+        Config.defaultReader = new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(Config.defaultReader.getFormat());
+        Config.defaultWriter = new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(Config.defaultWriter.getFormat());
 	}
 
 	public static <T> void registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass) {
@@ -119,32 +121,12 @@ public final class Config {
 		return getDefaultWriter().merge(path, config);
 	}
 
-	/**
-	 * Creates a default instance of the config class, saves it to file, then reloads it.
-	 * <p>
-	 * Useful for ensuring configuration files exist with default values.
-	 *
-	 * @param file        name of file (without extension if format is configured)
-	 * @param configClass the configuration class
-	 * @param <T>         the configuration type
-	 * @return the loaded configuration
-	 */
 	public static <T> T update(String file, Class<T> configClass) {
 		T defaultInstance = getDefaultReader().createDefault(configClass);
 		getDefaultWriter().save(file, defaultInstance);
 		return getDefaultReader().load(file, configClass);
 	}
 
-	/**
-	 * Creates a default instance of the config class, saves it to file, then reloads it.
-	 * <p>
-	 * Useful for ensuring configuration files exist with default values.
-	 *
-	 * @param path        full path to the config file (directory + filename)
-	 * @param configClass the configuration class
-	 * @param <T>         the configuration type
-	 * @return the loaded configuration
-	 */
 	public static <T> T update(Path path, Class<T> configClass) {
 		T defaultInstance = getDefaultReader().createDefault(configClass);
 		getDefaultWriter().save(path, defaultInstance);

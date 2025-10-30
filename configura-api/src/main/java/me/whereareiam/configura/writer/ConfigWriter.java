@@ -3,6 +3,7 @@ package me.whereareiam.configura.writer;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.type.Format;
+import me.whereareiam.configura.template.TemplateRegistry;
 
 import java.nio.file.Path;
 
@@ -20,6 +21,11 @@ public interface ConfigWriter {
 	 * @return this writer for chaining
 	 */
 	ConfigWriter withFormat(Format format);
+
+    /**
+     * Configure the template registry to use for default seeding.
+     */
+    ConfigWriter withTemplateRegistry(TemplateRegistry templateRegistry);
 
 	/**
 	 * Register a custom type adapter.

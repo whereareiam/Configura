@@ -3,6 +3,7 @@ package me.whereareiam.configura.reader;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.type.Format;
+import me.whereareiam.configura.template.TemplateRegistry;
 
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -21,6 +22,11 @@ public interface ConfigReader {
 	 * @return this reader for chaining
 	 */
 	ConfigReader withFormat(Format format);
+
+    /**
+     * Configure the template registry to use for default seeding.
+     */
+    ConfigReader withTemplateRegistry(TemplateRegistry templateRegistry);
 
 	/**
 	 * Register a custom type adapter.

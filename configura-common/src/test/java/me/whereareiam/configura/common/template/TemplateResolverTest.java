@@ -35,7 +35,7 @@ public class TemplateResolverTest {
 	void supplierPrecedenceOverOthers() throws Exception {
 		ObjectMapper mapper = new ObjectMapper();
 		Field f = Holder.class.getDeclaredField("foo");
-		Object o = TemplateResolver.resolveFieldTemplate(mapper, Foo.class, f);
+		Object o = TemplateResolver.resolveFieldTemplate(mapper, null, Foo.class, f);
 		assertNotNull(o);
 		assertInstanceOf(Foo.class, o);
 	}
@@ -44,7 +44,7 @@ public class TemplateResolverTest {
 	void literalLiteralApplies() throws Exception {
 		ObjectMapper mapper = new ObjectMapper();
 		Field f = Holder.class.getDeclaredField("s");
-		Object o = TemplateResolver.resolveFieldTemplate(mapper, String.class, f);
+		Object o = TemplateResolver.resolveFieldTemplate(mapper, null, String.class, f);
 		assertEquals("hello", o);
 	}
 
@@ -52,7 +52,7 @@ public class TemplateResolverTest {
 	void missingResourceIgnored() throws Exception {
 		ObjectMapper mapper = new ObjectMapper();
 		Field f = Holder.class.getDeclaredField("src");
-		Object o = TemplateResolver.resolveFieldTemplate(mapper, String.class, f);
+		Object o = TemplateResolver.resolveFieldTemplate(mapper, null, String.class, f);
 		assertNull(o);
 	}
 }

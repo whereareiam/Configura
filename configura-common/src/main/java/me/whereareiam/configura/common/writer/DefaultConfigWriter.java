@@ -7,6 +7,7 @@ import me.whereareiam.configura.common.MapperFactory;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
+import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 
@@ -18,12 +19,18 @@ import java.nio.file.Path;
 public class DefaultConfigWriter implements ConfigWriter {
 	private final Format format;
 	private final AdapterRegistry registry;
+	private final TemplateRegistry templateRegistry;
 	private final ObjectMapper mapper;
 
 	public DefaultConfigWriter() {
+		this(null);
+	}
+
+	public DefaultConfigWriter(TemplateRegistry templateRegistry) {
 		this.format = Format.YAML;
 		this.registry = AdapterRegistry.empty();
-		this.mapper = MapperFactory.buildMapper(this.format, this.registry);
+		this.templateRegistry = templateRegistry;
+		this.mapper = MapperFactory.buildMapper(this.format, this.registry, this.templateRegistry);
 	}
 
 	@Override
@@ -37,13 +44,17 @@ public class DefaultConfigWriter implements ConfigWriter {
 
 	@Override
 	public ConfigWriter withFormat(Format format) {
-		return new DefaultConfigWriter(format, this.registry);
+		return new DefaultConfigWriter(format, this.registry, this.templateRegistry);
 	}
 
 	@Override
 	public <T> ConfigWriter registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass) {
 		AdapterRegistry next = this.registry.withAdapter(type, adapterClass);
-		return new DefaultConfigWriter(this.format, next);
+		return new DefaultConfigWriter(this.format, next, this.templateRegistry);
+	}
+
+	public ConfigWriter withTemplateRegistry(TemplateRegistry templateRegistry) {
+		return new DefaultConfigWriter(this.format, this.registry, templateRegistry);
 	}
 
 	@Override
@@ -128,9 +139,10 @@ public class DefaultConfigWriter implements ConfigWriter {
 		}
 	}
 
-	private DefaultConfigWriter(Format format, AdapterRegistry registry) {
+	private DefaultConfigWriter(Format format, AdapterRegistry registry, TemplateRegistry templateRegistry) {
 		this.format = format;
 		this.registry = registry;
-		this.mapper = MapperFactory.buildMapper(this.format, this.registry);
+		this.templateRegistry = templateRegistry;
+		this.mapper = MapperFactory.buildMapper(this.format, this.registry, this.templateRegistry);
 	}
 }

@@ -34,7 +34,7 @@ public class SupplierIntegrationTest {
 	@Test
 	void supplierPopulatesFieldWhenMissing(@TempDir Path dir) {
 		DefaultConfigReader reader = new DefaultConfigReader();
-		Configuration config = reader.load(dir.resolve("c.yaml").toString(), Configuration.class);
+		Configuration config = reader.load(dir.resolve("c.yml").toString(), Configuration.class);
 
 		assertNotNull(config.cors);
 		assertTrue(config.cors.enabled);

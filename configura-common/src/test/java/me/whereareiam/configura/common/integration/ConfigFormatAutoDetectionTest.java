@@ -22,7 +22,7 @@ public class ConfigFormatAutoDetectionTest {
 		CounterConfig counter = new CounterConfig();
 		counter.value = 1;
 
-		String y = dir.resolve("x.yaml").toString();
+		String y = dir.resolve("x.yml").toString();
 		String j = dir.resolve("x.json").toString();
 
 		ConfigWriter yamlWriter = new DefaultConfigWriter().withFormat(Format.YAML);

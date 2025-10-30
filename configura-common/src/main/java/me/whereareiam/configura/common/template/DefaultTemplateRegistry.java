@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultTemplateRegistry implements TemplateRegistry {
-	private static final Map<Class<?>, TemplateProvider<?>> TEMPLATE_SUPPLIERS = new ConcurrentHashMap<>();
+	private final Map<Class<?>, TemplateProvider<?>> providers = new ConcurrentHashMap<>();
 
 	@Override
 	public <T, P extends TemplateProvider<T>> void registerTemplate(Class<P> providerClass) {
@@ -21,16 +21,16 @@ public class DefaultTemplateRegistry implements TemplateRegistry {
 		}
 
 		Class<?> modelType = resolveModelType(provider);
-		if (modelType == null) {
+		if (modelType == null)
 			throw new IllegalArgumentException("Unable to resolve model type for provider: " + providerClass.getName());
-		}
-		TEMPLATE_SUPPLIERS.put(modelType, provider);
+
+		providers.put(modelType, provider);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> TemplateProvider<T> getTemplateProvider(Class<T> modelType) {
-		return (TemplateProvider<T>) TEMPLATE_SUPPLIERS.get(modelType);
+		return (TemplateProvider<T>) providers.get(modelType);
 	}
 
 	private static Class<?> resolveModelType(TemplateProvider<?> provider) {

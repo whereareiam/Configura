@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.annotation.Field;
 import me.whereareiam.configura.common.util.PathNavigator;
+import me.whereareiam.configura.template.TemplateRegistry;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -26,14 +27,16 @@ import java.util.Set;
  */
 public final class TemplateModule extends SimpleModule {
 	private final Map<Class<?>, TypeAdapter<?>> adapters;
+	private final TemplateRegistry templateRegistry;
 
 	public TemplateModule() {
-		this(null);
+		this(null, null);
 	}
 
-	public TemplateModule(Map<Class<?>, TypeAdapter<?>> adapters) {
+	public TemplateModule(Map<Class<?>, TypeAdapter<?>> adapters, TemplateRegistry templateRegistry) {
 		super("configura-template-module", Version.unknownVersion());
 		this.adapters = adapters;
+		this.templateRegistry = templateRegistry;
 	}
 
 	@Override
@@ -41,14 +44,16 @@ public final class TemplateModule extends SimpleModule {
 		super.setupModule(context);
 		final Set<Class<?>> adaptedTypes = adapters == null ? Collections.emptySet() : Set.copyOf(adapters.keySet());
 
-		context.addBeanDeserializerModifier(new InjectionModifier(adaptedTypes));
+		context.addBeanDeserializerModifier(new InjectionModifier(adaptedTypes, templateRegistry));
 	}
 
 	private static final class InjectionModifier extends BeanDeserializerModifier {
 		private final Set<Class<?>> adaptedTypes;
+		private final TemplateRegistry templateRegistry;
 
-		InjectionModifier(Set<Class<?>> adaptedTypes) {
+		InjectionModifier(Set<Class<?>> adaptedTypes, TemplateRegistry templateRegistry) {
 			this.adaptedTypes = adaptedTypes;
+			this.templateRegistry = templateRegistry;
 		}
 
 		@Override
@@ -58,26 +63,28 @@ public final class TemplateModule extends SimpleModule {
 			List<BeanPropertyDefinition> properties = beanDesc.findProperties();
 			if (properties == null || properties.isEmpty()) return deserializer;
 
-			return new TemplateAwareDeserializer(deserializer, properties);
+			return new TemplateAwareDeserializer(deserializer, properties, templateRegistry);
 		}
 	}
 
 	private static final class TemplateAwareDeserializer extends DelegatingDeserializer {
 		private final List<BeanPropertyDefinition> properties;
+		private final TemplateRegistry templateRegistry;
 
-		TemplateAwareDeserializer(JsonDeserializer<?> delegate, List<BeanPropertyDefinition> properties) {
+		TemplateAwareDeserializer(JsonDeserializer<?> delegate, List<BeanPropertyDefinition> properties, TemplateRegistry templateRegistry) {
 			super(delegate);
 			this.properties = properties;
+			this.templateRegistry = templateRegistry;
 		}
 
 		@Override
 		protected JsonDeserializer<?> newDelegatingInstance(JsonDeserializer<?> newDelegatee) {
-			return new TemplateAwareDeserializer(newDelegatee, properties);
+			return new TemplateAwareDeserializer(newDelegatee, properties, templateRegistry);
 		}
 
 		@Override
 		public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-			return injectAndDeserialize(p, ctxt, properties, _delegatee);
+			return injectAndDeserialize(p, ctxt, properties, _delegatee, templateRegistry);
 		}
 	}
 
@@ -96,7 +103,7 @@ public final class TemplateModule extends SimpleModule {
 	}
 
 	private static void injectDefaults(
-			ObjectNode obj, List<BeanPropertyDefinition> properties, ObjectMapper mapper
+			ObjectNode obj, List<BeanPropertyDefinition> properties, ObjectMapper mapper, TemplateRegistry templateRegistry
 	) {
 		for (BeanPropertyDefinition prop : properties) {
 			AnnotatedMember member = prop.getPrimaryMember();
@@ -109,7 +116,7 @@ public final class TemplateModule extends SimpleModule {
 				java.lang.reflect.Field f = member.getMember() instanceof java.lang.reflect.Field ? (java.lang.reflect.Field) member.getMember() : null;
 				if (f == null) continue;
 
-				Object tpl = TemplateResolver.resolveFieldTemplate(mapper, member.getRawType(), f);
+				Object tpl = TemplateResolver.resolveFieldTemplate(mapper, templateRegistry, member.getRawType(), f);
 				if (tpl == null) continue;
 
 				JsonNode nodeVal = mapper.valueToTree(tpl);
@@ -120,7 +127,7 @@ public final class TemplateModule extends SimpleModule {
 	}
 
 	private static Object injectAndDeserialize(
-			JsonParser p, DeserializationContext ctxt, List<BeanPropertyDefinition> properties, JsonDeserializer<?> delegate
+			JsonParser p, DeserializationContext ctxt, List<BeanPropertyDefinition> properties, JsonDeserializer<?> delegate, TemplateRegistry templateRegistry
 	) throws IOException {
 		ObjectCodec codec = p.getCodec();
 
@@ -128,7 +135,7 @@ public final class TemplateModule extends SimpleModule {
 
 		JsonNode node = codec.readTree(p);
 		ObjectNode obj = node != null && node.isObject() ? (ObjectNode) node : JsonNodeFactory.instance.objectNode();
-		injectDefaults(obj, properties, mapper);
+		injectDefaults(obj, properties, mapper, templateRegistry);
 		JsonParser reparsed = obj.traverse(codec);
 		reparsed.nextToken();
 

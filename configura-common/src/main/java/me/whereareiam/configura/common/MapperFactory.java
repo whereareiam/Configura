@@ -13,6 +13,7 @@ import me.whereareiam.configura.common.adapter.AdapterModule;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
 import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
 import me.whereareiam.configura.common.template.TemplateModule;
+import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 
 import java.util.Map;
@@ -22,16 +23,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class MapperFactory {
 	private static final ConcurrentHashMap<Key, ObjectMapper> CACHE = new ConcurrentHashMap<>();
 
-	public static ObjectMapper buildMapper(Format format, AdapterRegistry registry) {
-		Key key = new Key(format, registry);
-		return CACHE.computeIfAbsent(key, k -> create(format, registry.instantiate()));
+	public static ObjectMapper buildMapper(Format format, AdapterRegistry registry, TemplateRegistry templateRegistry) {
+		Key key = new Key(format, registry, templateRegistry);
+		return CACHE.computeIfAbsent(key, k -> create(format, registry.instantiate(), templateRegistry));
 	}
 
-	private static ObjectMapper create(Format format, Map<Class<?>, TypeAdapter<?>> adapters) {
+	private static ObjectMapper create(Format format, Map<Class<?>, TypeAdapter<?>> adapters, TemplateRegistry templateRegistry) {
 		ObjectMapper mapper = format == Format.YAML ? new ObjectMapper(new YAMLFactory()) : new ObjectMapper();
 		mapper.registerModule(new JavaTimeModule());
 		mapper.registerModule(new AdapterModule(adapters));
-		mapper.registerModule(new TemplateModule(adapters));
+		mapper.registerModule(new TemplateModule(adapters, templateRegistry));
 		mapper.registerModule(new PolymorphicModule());
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -43,15 +44,15 @@ public final class MapperFactory {
 		return mapper;
 	}
 
-	private record Key(Format format, AdapterRegistry registry) {
+	private record Key(Format format, AdapterRegistry registry, TemplateRegistry templateRegistry) {
 		@Override
 		public boolean equals(Object o) {
-			return o instanceof Key k && format == k.format && Objects.equals(registry, k.registry);
+			return o instanceof Key k && format == k.format && Objects.equals(registry, k.registry) && Objects.equals(templateRegistry, k.templateRegistry);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(format, registry);
+			return Objects.hash(format, registry, templateRegistry);
 		}
 	}
 }
