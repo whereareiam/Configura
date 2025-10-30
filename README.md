@@ -18,21 +18,36 @@ helpers, and pluggable formats (YAML/JSON).
 
 ### Installation
 
-Distributed via JitPack.
+<a href="https://github.com/whereareiam/Configura/releases">
+    <img src="https://maven.whereareiam.me/api/badge/latest/release/me/whereareiam/configura?color=40c14a&name=Latest dev" />
+</a>
+<a href="https://github.com/whereareiam/Configura/actions/workflows/publish-dev.yml">
+    <img src="https://maven.whereareiam.me/api/badge/latest/development/me/whereareiam/configura?color=c15340&name=Latest dev" />
+</a>
+
+Artifacts are published to our repository. Use the release realm for stable versions and the development realm for dev
+builds (`dev` or `dev-<HASH>`).
 
 <details>
   <summary>Add dependency (Gradle)</summary>
 
 ```kotlin
 repositories {
-    maven(url = uri("https://jitpack.io"))
+    // release builds
+    maven("https://maven.whereareiam.me/release")
+    // development builds (optional)
+    maven("https://maven.whereareiam.me/development")
 }
 
 dependencies {
-    // Use a release tag (e.g. 1.0.0) or a branch snapshot (e.g. dev-SNAPSHOT)
-    implementation("com.github.whereareiam:Configura:dev-SNAPSHOT")
+    // Release example
+    implementation("me.whereareiam:configura:0.0.1")
+
+    // Development example (optional)
+    // implementation("me.whereareiam:configura:dev")
+    // implementation("me.whereareiam:configura:dev-<GIT_HASH>")
 }
-  ```
+```
 
 </details>
 
@@ -40,20 +55,35 @@ dependencies {
   <summary>Add dependency (Maven)</summary>
 
 ```xml
+
 <repositories>
+    <!-- release builds -->
     <repository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
+        <id>release</id>
+        <url>https://maven.whereareiam.me/release</url>
     </repository>
+    <!-- development builds (optional) -->
+    <repository>
+        <id>development</id>
+        <url>https://maven.whereareiam.me/development</url>
+    </repository>
+    <!-- If your Maven requires, enable releases/snapshots flags accordingly -->
 </repositories>
 
 <dependencies>
-    <!-- Use a release tag (e.g. 1.0.0) or a branch snapshot (e.g. dev-SNAPSHOT) -->
-    <dependency>
-        <groupId>com.github.whereareiam</groupId>
-        <artifactId>Configura</artifactId>
-        <version>dev-SNAPSHOT</version>
-    </dependency>
+<!-- Release example -->
+<dependency>
+    <groupId>me.whereareiam</groupId>
+    <artifactId>configura</artifactId>
+    <version>0.0.1</version>
+</dependency>
+
+<!-- Development example (optional) -->
+<!-- <dependency>
+  <groupId>me.whereareiam</groupId>
+  <artifactId>configura</artifactId>
+  <version>dev</version>
+</dependency> -->
 </dependencies>
 ```
 
@@ -80,10 +110,14 @@ import me.whereareiam.configura.Config;
 
 HelloConfig cfg = new HelloConfig();
 // Writes defaults if needed and then re‑reads from disk
-cfg = Config.updateRead("config/hello", cfg);
+cfg =Config.
+
+updateRead("config/hello",cfg);
 
 // Use it in your code
-System.out.println("Hello, " + cfg.name + "!");
+System.out.
+
+println("Hello, "+cfg.name +"!");
 ```
 
 3) Want object‑like defaults? Use `@Template(properties=...)`:
