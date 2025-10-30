@@ -192,13 +192,9 @@ update-and-read. YAML is used by default when no extension is provided.
 import me.whereareiam.configura.Config;
 
 AppConfig config = new AppConfig();
-config =Config.
+config = Config.updateRead("app-config", config); // no extension → YAML
 
-updateRead("app-config",config); // no extension → YAML
-
-System.out.
-
-println("Hello, "+config.getName() +"!");
+System.out.println("Hello, " + config.getName() + "!");
 ```
 
 ### Alternatives: explicit load/save
@@ -209,21 +205,15 @@ You can also save and load explicitly. Use `.yml`/`.yaml` or `.json` to control 
 import me.whereareiam.configura.Config;
 
 AppConfig cfg = new AppConfig();
-cfg.
-
-setName("world");
+cfg.setName("world");
 
 // YAML
-Config.
-
-save("app-config.yaml",cfg);
+Config.save("app-config.yaml", cfg);
 
 AppConfig fromYaml = Config.load("app-config.yaml", AppConfig.class);
 
 // JSON
-Config.
-
-save("app-config.json",cfg);
+Config.save("app-config.json", cfg);
 
 AppConfig fromJson = Config.load("app-config.json", AppConfig.class);
 ```

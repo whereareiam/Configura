@@ -110,14 +110,10 @@ import me.whereareiam.configura.Config;
 
 HelloConfig cfg = new HelloConfig();
 // Writes defaults if needed and then re‑reads from disk
-cfg =Config.
-
-updateRead("config/hello",cfg);
+cfg = Config.updateRead("config/hello", cfg);
 
 // Use it in your code
-System.out.
-
-println("Hello, "+cfg.name +"!");
+System.out.println("Hello, " + cfg.name + "!");
 ```
 
 3) Want object‑like defaults? Use `@Template(properties=...)`:
