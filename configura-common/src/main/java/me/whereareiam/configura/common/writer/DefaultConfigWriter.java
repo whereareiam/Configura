@@ -2,18 +2,18 @@ package me.whereareiam.configura.common.writer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.TypeAdapter;
-import me.whereareiam.configura.common.AdapterRegistry;
-import me.whereareiam.configura.common.serialization.MapperFactory;
+import me.whereareiam.configura.annotation.Policy;
+import me.whereareiam.configura.common.MapperFactory;
+import me.whereareiam.configura.common.adapter.AdapterRegistry;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.lang.reflect.Field;
 
 public class DefaultConfigWriter implements ConfigWriter {
 	private final Format format;
@@ -71,9 +71,9 @@ public class DefaultConfigWriter implements ConfigWriter {
 	public <T> T merge(String filePath, T config) {
 		String resolved = FileUtil.resolvePathWithFormat(filePath, format);
 		Path path = Path.of(resolved);
-		
+
 		if (Files.exists(path)) return mergePreservingPolicy(path, config);
-	
+
 		return config;
 	}
 
@@ -86,16 +86,15 @@ public class DefaultConfigWriter implements ConfigWriter {
 				return incoming;
 			}
 
-			for (Field f : configClass.getDeclaredFields()) {
-				Policy policy = f.getAnnotation(Policy.class);
+			for (Field field : configClass.getDeclaredFields()) {
+				Policy policy = field.getAnnotation(Policy.class);
 				if (policy != null && !policy.mergeOnUpdate()) {
-					boolean accessible = f.canAccess(incoming);
-					f.setAccessible(true);
-					Object existingValue = f.get(existing);
-					if (existingValue != null) {
-						f.set(incoming, existingValue);
-					}
-					f.setAccessible(accessible);
+					boolean accessible = field.canAccess(incoming);
+					field.setAccessible(true);
+					Object existingValue = field.get(existing);
+					if (existingValue != null) field.set(incoming, existingValue);
+
+					field.setAccessible(accessible);
 				}
 			}
 			return incoming;

@@ -112,7 +112,7 @@ We recommend a simple POJO model using Lombok for brevity.
 
 ```java
 import lombok.Data;
-import me.whereareiam.configura.annotation.template.Template;
+import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
 
 @Data
@@ -227,7 +227,7 @@ Templates let you declare default values for simple values, lists, and object-li
 
   ```java
   import lombok.Data;
-import me.whereareiam.configura.annotation.template.Template;
+import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
 
 @Data
@@ -247,7 +247,7 @@ public class GreetingConfig {
 
 import java.util.List;
 
-import me.whereareiam.configura.annotation.template.Template;
+import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
 
 @Data
@@ -268,7 +268,7 @@ public class RolesConfig {
 import java.util.List;
 import java.util.Map;
 
-import me.whereareiam.configura.annotation.template.Template;
+import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
 import me.whereareiam.configura.annotation.template.type.Property;
 

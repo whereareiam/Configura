@@ -1,4 +1,4 @@
-package me.whereareiam.configura.common;
+package me.whereareiam.configura.common.adapter;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -6,21 +6,21 @@ import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import me.whereareiam.configura.TypeAdapter;
-import me.whereareiam.configura.common.serialization.FieldDefaultsModifier;
 
 import java.io.IOException;
 import java.util.Map;
 
 /**
- * Composer that registers adapters and focused modifiers (kept small).
+ * Jackson module that wires Configura TypeAdapter serializers/deserializers.
  */
-public final class ConfiguraModule extends SimpleModule {
-	private final Map<Class<?>, TypeAdapter<?>> adapters;
+public final class AdapterModule extends SimpleModule {
+	public AdapterModule() {
+		this(null);
+	}
 
 	@SuppressWarnings("unchecked")
-	public ConfiguraModule(Map<Class<?>, TypeAdapter<?>> adapters) {
-		super("configura-module", Version.unknownVersion());
-		this.adapters = adapters;
+	public AdapterModule(Map<Class<?>, TypeAdapter<?>> adapters) {
+		super("configura-adapter-module", Version.unknownVersion());
 		if (adapters == null || adapters.isEmpty()) return;
 		for (Map.Entry<Class<?>, TypeAdapter<?>> entry : adapters.entrySet()) {
 			Class<Object> targetType = (Class<Object>) entry.getKey();
@@ -32,7 +32,6 @@ public final class ConfiguraModule extends SimpleModule {
 	@Override
 	public void setupModule(SetupContext context) {
 		super.setupModule(context);
-		context.addBeanDeserializerModifier(new FieldDefaultsModifier(this.adapters));
 	}
 
 	private void registerAdapterHandlers(Class<Object> type, TypeAdapter<Object> adapter) {
@@ -77,6 +76,3 @@ public final class ConfiguraModule extends SimpleModule {
 		return t;
 	}
 }
-
-
-

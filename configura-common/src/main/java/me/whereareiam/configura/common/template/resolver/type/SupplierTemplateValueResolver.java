@@ -1,9 +1,9 @@
-package me.whereareiam.configura.common.template.resolvers;
+package me.whereareiam.configura.common.template.resolver.type;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.TemplateProvider;
-import me.whereareiam.configura.annotation.template.Supplier;
-import me.whereareiam.configura.common.template.TemplateValueResolver;
+import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.common.template.resolver.TemplateValueResolver;
 
 import java.lang.reflect.Field;
 
@@ -11,10 +11,16 @@ public final class SupplierTemplateValueResolver implements TemplateValueResolve
 	@Override
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	public Object resolve(ObjectMapper mapper, Class<?> targetType, Field field) {
-		Supplier supplierAnn = field.getAnnotation(Supplier.class);
-		if (supplierAnn == null) return null;
 
-		TemplateProvider<?> provider = instantiate(supplierAnn.value());
+		Template t = field.getAnnotation(Template.class);
+		if (t == null || t.supplier() == null || t.supplier().value() == null
+				|| t.supplier().value() == Template.Supplier.None.class) {
+			return null;
+		}
+
+		Class<? extends TemplateProvider<?>> providerClass = t.supplier().value();
+
+		TemplateProvider<?> provider = instantiate(providerClass);
 
 		Object instance = newInstance(targetType);
 		return ((TemplateProvider) provider).supply(instance);

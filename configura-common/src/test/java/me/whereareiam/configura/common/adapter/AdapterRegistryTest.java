@@ -1,14 +1,12 @@
-package me.whereareiam.configura.common.util;
+package me.whereareiam.configura.common.adapter;
 
 import me.whereareiam.configura.TypeAdapter;
-import me.whereareiam.configura.common.AdapterRegistry;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AdapterRegistryTest {
-
 	static class T {
 	}
 

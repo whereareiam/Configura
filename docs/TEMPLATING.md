@@ -11,36 +11,24 @@ update-and-read.
 
 Note: YAML is the default format when no extension is provided; JSON is also supported via `.json`.
 
-### Annotations
+### Annotation
 
-- `@Template` — placed on a field to describe inline defaults.
-- `@Source` — populate a field from an external template (classpath/URL/file).
-- `@Supplier` — use a `TemplateProvider` to fill a provided instance.
-- `@Literal` — simple value item for defaults.
-- `@TemplateList` — list of `@Literal` items.
-- `@TemplateObject` — object-like value composed of named `@Property` entries.
-- `@Property` — a named entry used inside `@TemplateObject` or `@Template(properties=...)`.
+- `@Template` — single entrypoint; contains nested types: `Template.Literal`, `Template.Property`, `Template.List`, `Template.Object`, `Template.Source`, `Template.Supplier`.
 
 Imports used in the examples:
 
 ```java
 import lombok.Data;
-import me.whereareiam.configura.annotation.template.Template;
-import me.whereareiam.configura.annotation.template.Source;
-import me.whereareiam.configura.annotation.template.Supplier;
-import me.whereareiam.configura.annotation.template.type.Literal;
-import me.whereareiam.configura.annotation.template.type.Property;
-import me.whereareiam.configura.annotation.template.type.TemplateList;
-import me.whereareiam.configura.annotation.template.type.TemplateObject;
+import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.TemplateProvider;
 ```
 
 ### Simple value default
 
 ```java
-
 @Data
 public class GreetingConfig {
-	@Template(literal = @Literal(text = "world"))
+	@Template(text = "world")
 	private String name;
 }
 ```
@@ -52,27 +40,23 @@ import java.util.List;
 
 @Data
 public class RolesConfig {
-	@Template(items = {@Literal(text = "user"), @Literal(text = "admin")})
+	@Template(stringItems = {"user", "admin"})
 	private List<String> roles;
 }
 ```
 
 <details>
-  <summary>Using @TemplateList directly</summary>
+  <summary>Using the namespaced list</summary>
 
   ```java
-  import lombok.Data;
-
-import java.util.List;
-
-import me.whereareiam.configura.annotation.template.type.TemplateList;
-import me.whereareiam.configura.annotation.template.type.Literal;
-
-@Data
-public class FeaturesConfig {
-	@TemplateList(items = {@Literal(text = "chat"), @Literal(text = "metrics")})
-	private List<String> enabled;
-}
+  @Data
+  public class FeaturesConfig {
+	  @Template(list = @Template.List(items = {
+		  @Template.Literal(text = "chat"),
+		  @Template.Literal(text = "metrics")
+	  }))
+	  private List<String> enabled;
+  }
   ```
 
 </details>
@@ -85,33 +69,25 @@ import java.util.Map;
 @Data
 public class DbConfig {
 	@Template(properties = {
-			@Property(name = "host", value = @Literal(text = "localhost")),
-			@Property(name = "port", value = @Literal(number = "5432"))
+			@Template.Property(name = "host", text = "localhost"),
+			@Template.Property(name = "port", number = "5432")
 	})
 	private Map<String, Object> defaults;
 }
 ```
 
 <details>
-  <summary>Using @TemplateObject directly</summary>
+  <summary>Using the namespaced object</summary>
 
   ```java
-  import lombok.Data;
-
-import java.util.Map;
-
-import me.whereareiam.configura.annotation.template.type.TemplateObject;
-import me.whereareiam.configura.annotation.template.type.Property;
-import me.whereareiam.configura.annotation.template.type.Literal;
-
-@Data
-public class ApiConfig {
-	@TemplateObject(properties = {
-			@Property(name = "baseUrl", value = @Literal(text = "https://api.example.com")),
-			@Property(name = "timeoutSeconds", value = @Literal(number = "10"))
-	})
-	private Map<String, Object> http;
-}
+  @Data
+  public class ApiConfig {
+	  @Template(object = @Template.Object(properties = {
+			  @Template.Property(name = "baseUrl", text = "https://api.example.com"),
+			  @Template.Property(name = "timeoutSeconds", number = "10")
+	  }))
+	  private Map<String, Object> http;
+  }
   ```
 
 </details>
@@ -130,16 +106,16 @@ import java.util.List;
 
 @Data
 public class AppConfig {
-	@Template(literal = @Literal(text = "MyApp"))
+	@Template(text = "MyApp")
 	private String appName;
 
 	@Template(properties = {
-			@Property(name = "host", value = @Literal(text = "127.0.0.1")),
-			@Property(name = "port", value = @Literal(number = "8080"))
+			@Template.Property(name = "host", text = "127.0.0.1"),
+			@Template.Property(name = "port", number = "8080")
 	})
 	private Map<String, Object> server;
 
-	@Template(items = {@Literal(text = "user"), @Literal(text = "admin")})
+	@Template(stringItems = {"user", "admin"})
 	private List<String> roles;
 }
   ```
@@ -152,25 +128,22 @@ public class AppConfig {
 import me.whereareiam.configura.Config;
 
 AppConfig cfg = new AppConfig();
-cfg =Config.
-
-updateRead("app-config",cfg); // seeds missing values from templates
+cfg = Config.updateRead("app-config", cfg); // seeds missing values from templates
 ```
 
-### External templates with @Source
+### External templates with Template.Source
 
 Populate a field from a classpath resource, URL, or file.
 
 ```java
-
 @Data
 public class FromResourceConfig {
-	@Source("classpath:/defaults/app.yaml")
+	@Template(source = @Template.Source("classpath:/defaults/app.yaml"))
 	private Map<String, Object> defaults;
 }
 ```
 
-### Programmatic templates with @Supplier
+### Programmatic templates with Template.Supplier
 
 Provide defaults via a `TemplateProvider` implementation.
 
@@ -185,7 +158,7 @@ public class AppDefaultsProvider implements TemplateProvider<AppConfig> {
 
 @Data
 public class AppConfig {
-	@Supplier(AppDefaultsProvider.class)
+	@Template(supplier = @Template.Supplier(AppDefaultsProvider.class))
 	private AppConfig defaults;
 }
 ```

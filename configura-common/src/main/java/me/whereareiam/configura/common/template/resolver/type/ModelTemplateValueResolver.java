@@ -1,9 +1,9 @@
-package me.whereareiam.configura.common.template.resolvers;
+package me.whereareiam.configura.common.template.resolver.type;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.TemplateProvider;
-import me.whereareiam.configura.common.template.TemplateValueResolver;
 import me.whereareiam.configura.common.template.DefaultTemplateRegistry;
+import me.whereareiam.configura.common.template.resolver.TemplateValueResolver;
 
 import java.lang.reflect.Field;
 
@@ -14,7 +14,7 @@ public final class ModelTemplateValueResolver implements TemplateValueResolver {
 		TemplateProvider<?> modelProvider = new DefaultTemplateRegistry().getTemplateProvider((Class) targetType);
 		if (modelProvider == null) return null;
 
-		Object instance = newInstance((Class) targetType);
+		Object instance = newInstance(targetType);
 		return ((TemplateProvider) modelProvider).supply(instance);
 	}
 

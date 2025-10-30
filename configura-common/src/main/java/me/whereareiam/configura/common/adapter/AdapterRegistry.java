@@ -1,4 +1,4 @@
-package me.whereareiam.configura.common;
+package me.whereareiam.configura.common.adapter;
 
 import me.whereareiam.configura.TypeAdapter;
 

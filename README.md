@@ -8,6 +8,7 @@ helpers, and pluggable formats (YAML/JSON).
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Templating guide](docs/TEMPLATING.md)
 - [Type adapters](docs/TYPE_ADAPTERS.md)
+- [Polymorphic models](docs/POLYMORPHIC.md)
 
 ### Features
 
@@ -94,7 +95,7 @@ dependencies {
 1) Define a simple model with an inline template (defaults are materialized/merged as needed):
 
 ```java
-import me.whereareiam.configura.annotation.template.Template;
+import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
 
 public class HelloConfig {
@@ -119,7 +120,7 @@ System.out.println("Hello, " + cfg.name + "!");
 3) Want object‑like defaults? Use `@Template(properties=...)`:
 
 ```java
-import me.whereareiam.configura.annotation.template.Template;
+import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
 import me.whereareiam.configura.annotation.template.type.Property;
 

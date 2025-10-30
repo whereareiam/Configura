@@ -1,8 +1,8 @@
-package me.whereareiam.configura.common.template.resolvers;
+package me.whereareiam.configura.common.template.resolver.type;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import me.whereareiam.configura.annotation.template.Source;
-import me.whereareiam.configura.common.template.TemplateValueResolver;
+import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.common.template.resolver.TemplateValueResolver;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -14,10 +14,9 @@ import java.nio.file.Path;
 public final class SourceTemplateValueResolver implements TemplateValueResolver {
 	@Override
 	public Object resolve(ObjectMapper mapper, Class<?> targetType, Field field) {
-		Source src = field.getAnnotation(Source.class);
-		if (src == null || src.value().isEmpty()) return null;
-
-		return loadResource(mapper, src.value());
+		Template t = field.getAnnotation(Template.class);
+		if (t == null || t.source() == null || t.source().value().isEmpty()) return null;
+		return loadResource(mapper, t.source().value());
 	}
 
 	private static Object loadResource(ObjectMapper mapper, String ref) {

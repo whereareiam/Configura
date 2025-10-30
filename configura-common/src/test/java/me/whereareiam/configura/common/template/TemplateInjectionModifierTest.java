@@ -1,31 +1,32 @@
-package me.whereareiam.configura.common.jackson;
+package me.whereareiam.configura.common.template;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Field;
-import me.whereareiam.configura.annotation.template.Template;
-import me.whereareiam.configura.annotation.template.type.Literal;
-import me.whereareiam.configura.common.ConfiguraModule;
+import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.common.adapter.AdapterModule;
+import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class FieldDefaultsModifierTest {
+class TemplateInjectionModifierTest {
 	static class A {
 		@Field
-		@Template(literal = @Literal(text = "x"))
+		@Template(text = "x")
 		public String v;
 	}
 
 	@Test
 	void appliesTemplateWhenMissing() {
 		ObjectMapper mapper = new ObjectMapper();
-		mapper.registerModule(new ConfiguraModule(Collections.emptyMap()));
+		mapper.registerModule(new TemplateModule());
+		mapper.registerModule(new AdapterModule());
+		mapper.registerModule(new PolymorphicModule());
+
 		A a = mapper.convertValue(new HashMap<>(), A.class);
+
 		assertEquals("x", a.v);
 	}
 }
-
-

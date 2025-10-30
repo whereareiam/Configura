@@ -1,6 +1,8 @@
 package me.whereareiam.configura;
 
 import lombok.Getter;
+import me.whereareiam.configura.builder.PolymorphicBuilder;
+import me.whereareiam.configura.common.polymorphic.PolymorphicRegistry;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.template.DefaultTemplateRegistry;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
@@ -49,7 +51,7 @@ public final class Config {
 	}
 
 	/**
-	 * Create a new template registry instance with default resolvers.
+	 * Create a new template registry instance with default resolver.
 	 */
 	public static TemplateRegistry templateRegistry() {
 		return new DefaultTemplateRegistry();
@@ -71,7 +73,11 @@ public final class Config {
 		defaultReader = defaultReader.registerAdapter(type, adapterClass);
 		defaultWriter = defaultWriter.registerAdapter(type, adapterClass);
 	}
-	
+
+	public static <T> PolymorphicBuilder<T> registerPolymorphic(Class<T> baseType) {
+		return PolymorphicRegistry.register(baseType);
+	}
+
 	public static <T, P extends TemplateProvider<T>> void registerTemplate(Class<P> providerClass) {
 		defaultTemplateRegistry.registerTemplate(providerClass);
 	}

@@ -1,7 +1,8 @@
 package me.whereareiam.configura.common.template;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import me.whereareiam.configura.common.template.resolvers.*;
+import me.whereareiam.configura.common.template.resolver.TemplateValueResolver;
+import me.whereareiam.configura.common.template.resolver.type.*;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -24,7 +25,4 @@ public final class TemplateResolver {
 
 		return null;
 	}
-
 }
-
-

@@ -2,10 +2,7 @@ package me.whereareiam.configura.common.template;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.TemplateProvider;
-import me.whereareiam.configura.annotation.template.Source;
-import me.whereareiam.configura.annotation.template.Supplier;
-import me.whereareiam.configura.annotation.template.Template;
-import me.whereareiam.configura.annotation.template.type.Literal;
+import me.whereareiam.configura.annotation.Template;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -24,13 +21,13 @@ public class TemplateResolverTest {
 	}
 
 	static class Holder {
-		@Template(literal = @Literal(text = "hello"))
+		@Template(text = "hello")
 		public String s;
 
-		@Source("classpath:/nonexistent.json")
+		@Template(source = @Template.Source("classpath:/nonexistent.json"))
 		public String src;
 
-		@Supplier(FooSupplier.class)
+		@Template(supplier = @Template.Supplier(FooSupplier.class))
 		public Foo foo;
 	}
 

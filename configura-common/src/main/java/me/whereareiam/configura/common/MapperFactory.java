@@ -1,4 +1,4 @@
-package me.whereareiam.configura.common.serialization;
+package me.whereareiam.configura.common;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.core.JsonParser;
@@ -9,8 +9,10 @@ import com.fasterxml.jackson.databind.introspect.VisibilityChecker;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import me.whereareiam.configura.TypeAdapter;
-import me.whereareiam.configura.common.AdapterRegistry;
-import me.whereareiam.configura.common.ConfiguraModule;
+import me.whereareiam.configura.common.adapter.AdapterModule;
+import me.whereareiam.configura.common.adapter.AdapterRegistry;
+import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
+import me.whereareiam.configura.common.template.TemplateModule;
 import me.whereareiam.configura.type.Format;
 
 import java.util.Map;
@@ -28,7 +30,9 @@ public final class MapperFactory {
 	private static ObjectMapper create(Format format, Map<Class<?>, TypeAdapter<?>> adapters) {
 		ObjectMapper mapper = format == Format.YAML ? new ObjectMapper(new YAMLFactory()) : new ObjectMapper();
 		mapper.registerModule(new JavaTimeModule());
-		mapper.registerModule(new ConfiguraModule(adapters));
+		mapper.registerModule(new AdapterModule(adapters));
+		mapper.registerModule(new TemplateModule(adapters));
+		mapper.registerModule(new PolymorphicModule());
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);

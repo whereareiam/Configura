@@ -1,9 +1,8 @@
-package me.whereareiam.configura.common.util;
+package me.whereareiam.configura.common;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.TypeAdapter;
-import me.whereareiam.configura.common.AdapterRegistry;
-import me.whereareiam.configura.common.serialization.MapperFactory;
+import me.whereareiam.configura.common.adapter.AdapterRegistry;
 import me.whereareiam.configura.type.Format;
 import org.junit.jupiter.api.Test;
 

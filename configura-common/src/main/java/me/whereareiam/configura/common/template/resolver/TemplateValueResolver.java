@@ -1,4 +1,4 @@
-package me.whereareiam.configura.common.template;
+package me.whereareiam.configura.common.template.resolver;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -10,6 +10,3 @@ import java.lang.reflect.Field;
 public interface TemplateValueResolver {
 	Object resolve(ObjectMapper mapper, Class<?> targetType, Field field);
 }
-
-
-

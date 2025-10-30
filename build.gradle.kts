@@ -20,6 +20,8 @@ subprojects {
         // lombok
         "compileOnly"(rootProject.libs.lombok)
         "annotationProcessor"(rootProject.libs.lombok)
+        "testCompileOnly"(rootProject.libs.lombok)
+        "testAnnotationProcessor"(rootProject.libs.lombok)
 
         // junit
         "testImplementation"(rootProject.libs.junit.jupiter)
