@@ -15,7 +15,7 @@ Note: YAML is the default format when no extension is provided; JSON is also sup
 
 - `@Template` — placed on a field to describe inline defaults.
 - `@Source` — populate a field from an external template (classpath/URL/file).
-- `@Supplier` — use a `TemplateProvider` to generate a default instance.
+- `@Supplier` — use a `TemplateProvider` to fill a provided instance.
 - `@Literal` — simple value item for defaults.
 - `@TemplateList` — list of `@Literal` items.
 - `@TemplateObject` — object-like value composed of named `@Property` entries.
@@ -177,8 +177,7 @@ Provide defaults via a `TemplateProvider` implementation.
 ```java
 public class AppDefaultsProvider implements TemplateProvider<AppConfig> {
 	@Override
-	public AppConfig get() {
-		AppConfig cfg = new AppConfig();
+	public AppConfig supply(AppConfig cfg) {
 		cfg.setAppName("MyApp");
 		return cfg;
 	}

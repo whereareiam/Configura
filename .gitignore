@@ -2,4 +2,5 @@ build/
 bin/
 
 .idea
+.vscode
 .gradle

@@ -1,10 +1,12 @@
 package me.whereareiam.configura.common.integration;
 
-import me.whereareiam.configura.Config;
+import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.annotation.Field;
 import me.whereareiam.configura.annotation.template.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
 import me.whereareiam.configura.annotation.template.type.Property;
+import me.whereareiam.configura.reader.ConfigReader;
+import me.whereareiam.configura.type.Format;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -31,7 +33,8 @@ public class TemplatesApplyOnReadTest {
 	void templatesFillMissingOnLoad(@TempDir Path dir) {
 		String base = dir.resolve("t").toString();
 
-		Cfg cfg = Config.load(base + ".yaml", Cfg.class);
+		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
+		Cfg cfg = reader.load(base + ".yaml", Cfg.class);
 
 		assertEquals("svc", cfg.name);
 		assertNotNull(cfg.policy);

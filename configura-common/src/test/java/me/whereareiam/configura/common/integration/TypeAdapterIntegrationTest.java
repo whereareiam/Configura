@@ -1,8 +1,12 @@
 package me.whereareiam.configura.common.integration;
 
-import me.whereareiam.configura.Config;
+import me.whereareiam.configura.common.reader.DefaultConfigReader;
+import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.annotation.Field;
+import me.whereareiam.configura.reader.ConfigReader;
+import me.whereareiam.configura.type.Format;
+import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -39,16 +43,17 @@ public class TypeAdapterIntegrationTest {
 
 	@Test
 	void adapterRoundtripWithConfig(@TempDir Path dir) {
-		Config.registerAdapter(Dur.class, DurAdapter.class);
+		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML).registerAdapter(Dur.class, DurAdapter.class);
+		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML).registerAdapter(Dur.class, DurAdapter.class);
 
 		Job job = new Job();
 		job.timeout = new Dur();
 		job.timeout.seconds = 45;
 
 		String file = dir.resolve("job.yaml").toString();
-		Config.save(file, job);
+		writer.save(file, job);
 
-		Job read = Config.load(file, Job.class);
+		Job read = reader.load(file, Job.class);
 		assertEquals(45, read.timeout.seconds);
 	}
 }

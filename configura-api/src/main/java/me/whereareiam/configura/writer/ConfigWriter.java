@@ -2,7 +2,6 @@ package me.whereareiam.configura.writer;
 
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
-// Factory intentionally not present in API; see bootstrap module
 import me.whereareiam.configura.type.Format;
 
 /**
@@ -31,6 +30,13 @@ public interface ConfigWriter {
 	<T> ConfigWriter registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass);
 
 	/**
+	 * Get the configured format.
+	 *
+	 * @return the format
+	 */
+	Format getFormat();
+
+	/**
 	 * Save configuration to a file.
 	 * Creates the file if it doesn't exist.
 	 *
@@ -42,22 +48,25 @@ public interface ConfigWriter {
 	<T> void save(String filePath, T config);
 
 	/**
-	 * Save and immediately read back the configuration.
-	 * Ensures the configuration matches what's on disk.
+	 * Merge existing file content (if present) with the provided model, honoring
+	 * {@code @Policy(mergeOnUpdate = false)} on fields to preserve existing values.
+	 * Does not write the file.
 	 *
-	 * @param filePath path to the config file
-	 * @param config   the configuration to save
+	 * @param filePath path to the config file (without extension if format is configured)
+	 * @param config   the incoming model to merge
 	 * @param <T>      the configuration type
-	 * @return the configuration read back from disk
-	 * @throws ConfigException if saving or reading fails
+	 * @return merged configuration instance
 	 */
-	<T> T updateRead(String filePath, T config);
+	<T> T merge(String filePath, T config);
 
 	/**
-	 * Get the configured format.
+	 * Serialize configuration to raw bytes using the configured format.
 	 *
-	 * @return the format
+	 * @param config the configuration to serialize
+	 * @param <T>    the configuration type
+	 * @return serialized bytes
+	 * @throws ConfigException if serialization fails
 	 */
-	Format getFormat();
+	<T> byte[] toBytes(T config);
 }
 

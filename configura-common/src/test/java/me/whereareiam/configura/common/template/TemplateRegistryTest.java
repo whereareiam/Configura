@@ -1,6 +1,7 @@
 package me.whereareiam.configura.common.template;
 
 import me.whereareiam.configura.TemplateProvider;
+import me.whereareiam.configura.template.TemplateRegistry;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,21 +14,21 @@ public class TemplateRegistryTest {
 
 	public static class RootProvider implements TemplateProvider<Root> {
 		@Override
-		public Root supply(Class<Root> targetType) {
-			Root r = new Root();
-			r.name = "x";
-			return r;
+		public Root supply(Root instance) {
+			instance.name = "x";
+			return instance;
 		}
 	}
 
 	@Test
 	void registerAndFetchInstance() {
-		TemplateRegistry.registerModel(Root.class, new RootProvider());
+		TemplateRegistry registry = new DefaultTemplateRegistry();
+		registry.registerTemplate(RootProvider.class);
 
-		TemplateProvider<Root> provider = TemplateRegistry.getModelProvider(Root.class);
+		TemplateProvider<Root> provider = registry.getTemplateProvider(Root.class);
 		assertNotNull(provider);
 
-		Root root = provider.supply(Root.class);
+		Root root = provider.supply(new Root());
 		assertEquals("x", root.name);
 	}
 }

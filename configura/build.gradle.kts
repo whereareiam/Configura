@@ -5,7 +5,7 @@ plugins {
 
 dependencies {
     api(project(":configura-api"))
-    runtimeOnly(project(":configura-common"))
+    implementation(project(":configura-common"))
 }
 
 publishing {

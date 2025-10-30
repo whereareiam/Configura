@@ -1,108 +1,102 @@
 package me.whereareiam.configura;
 
-import me.whereareiam.configura.internal.ProviderResolver;
+import lombok.Getter;
+import me.whereareiam.configura.common.reader.DefaultConfigReader;
+import me.whereareiam.configura.common.template.DefaultTemplateRegistry;
+import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.reader.ConfigReader;
+import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 
-import java.util.Objects;
+import java.nio.file.Path;
 
 @SuppressWarnings("unused")
 public final class Config {
-	private static ConfigReader defaultReader;
-	private static ConfigWriter defaultWriter;
-	private static volatile ConfigService service;
+	@Getter
+	private static ConfigReader defaultReader = new DefaultConfigReader().withFormat(Format.YAML);
+	@Getter
+	private static ConfigWriter defaultWriter = new DefaultConfigWriter().withFormat(Format.YAML);
+	@Getter
+	private static TemplateRegistry defaultTemplateRegistry = new DefaultTemplateRegistry();
 
-	public static void setDefaultReader(ConfigReader reader) {
+	/**
+	 * Create a new independent reader instance with default settings.
+	 */
+	public static ConfigReader reader() {
+		return new DefaultConfigReader().withFormat(Format.YAML);
+	}
+
+	/**
+	 * Create a new independent reader instance with the given format.
+	 */
+	public static ConfigReader reader(Format format) {
+		return new DefaultConfigReader().withFormat(format);
+	}
+
+	/**
+	 * Create a new independent writer instance with default settings.
+	 */
+	public static ConfigWriter writer() {
+		return new DefaultConfigWriter().withFormat(Format.YAML);
+	}
+
+	/**
+	 * Create a new independent writer instance with the given format.
+	 */
+	public static ConfigWriter writer(Format format) {
+		return new DefaultConfigWriter().withFormat(format);
+	}
+
+	/**
+	 * Create a new template registry instance with default resolvers.
+	 */
+	public static TemplateRegistry templateRegistry() {
+		return new DefaultTemplateRegistry();
+	}
+
+	public static void setReader(ConfigReader reader) {
 		Config.defaultReader = reader;
 	}
 
-	public static void setDefaultWriter(ConfigWriter writer) {
+	public static void setWriter(ConfigWriter writer) {
 		Config.defaultWriter = writer;
 	}
 
-	public static void init(ConfigService svc) {
-		service = Objects.requireNonNull(svc);
+	public static void setTemplateRegistry(TemplateRegistry registry) {
+		Config.defaultTemplateRegistry = registry;
 	}
 
 	public static <T> void registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass) {
-		ConfigService s = getServiceOrNull();
-		if (s != null) {
-			service = s.withAdapter(type, adapterClass);
-			return;
-		}
-
-		getDefaultReader().registerAdapter(type, adapterClass);
-		getDefaultWriter().registerAdapter(type, adapterClass);
+		defaultReader = defaultReader.registerAdapter(type, adapterClass);
+		defaultWriter = defaultWriter.registerAdapter(type, adapterClass);
+	}
+	
+	public static <T, P extends TemplateProvider<T>> void registerTemplate(Class<P> providerClass) {
+		defaultTemplateRegistry.registerTemplate(providerClass);
 	}
 
-	public static <T> T load(String filePath, Class<T> configClass) {
-		ConfigService s = getServiceOrNull();
-		if (s != null) return s.load(filePath, configClass);
+	public static <T> T load(String file, Class<T> configClass) {
+		return getDefaultReader().load(file, configClass);
+	}
 
-		return getReaderForFile(filePath).load(filePath, configClass);
+	public static <T> T load(Path path, Class<T> configClass) {
+		return getDefaultReader().load(path, configClass);
 	}
 
 	public static <T> void save(String filePath, T config) {
-		ConfigService s = getServiceOrNull();
-		if (s != null) {
-			s.save(filePath, config);
-			return;
-		}
-
-		getWriterForFile(filePath).save(filePath, config);
+		getDefaultWriter().save(filePath, config);
 	}
 
-	public static <T> T updateRead(String filePath, T config) {
-		ConfigService s = getServiceOrNull();
-		if (s != null) return s.updateRead(filePath, config);
-
-		return getWriterForFile(filePath).updateRead(filePath, config);
+	public static <T> T merge(String filePath, T config) {
+		return getDefaultWriter().merge(filePath, config);
 	}
 
-	public static ConfigReader getDefaultReader() {
-		if (defaultReader == null) defaultReader = ConfigReaders.create().withFormat(Format.YAML);
-		return defaultReader;
+	public static <T> byte[] toBytes(T config) {
+		return getDefaultWriter().toBytes(config);
 	}
 
-	private static ConfigWriter getDefaultWriter() {
-		if (defaultWriter == null) defaultWriter = ConfigWriters.create().withFormat(Format.YAML);
-		return defaultWriter;
-	}
-
-	private static ConfigService getServiceOrNull() {
-		ConfigService s = service;
-		if (s != null) return s;
-
-		ConfigService impl = ProviderResolver.loadFirst(ConfigService.class);
-		if (impl != null) {
-			service = impl;
-			return impl;
-		}
-
-		return null;
-	}
-
-	private static ConfigReader getReaderForFile(String filePath) {
-		Format detectedFormat = detectFormat(filePath);
-		if (defaultReader != null && defaultReader.getFormat() == detectedFormat)
-			return defaultReader;
-
-		return ConfigReaders.create().withFormat(detectedFormat);
-	}
-
-	private static ConfigWriter getWriterForFile(String filePath) {
-		Format detectedFormat = detectFormat(filePath);
-		if (defaultWriter != null && defaultWriter.getFormat() == detectedFormat)
-			return defaultWriter;
-
-		return ConfigWriters.create().withFormat(detectedFormat);
-	}
-
-	private static Format detectFormat(String filePath) {
-		String lower = filePath.toLowerCase();
-		if (lower.endsWith(".yaml") || lower.endsWith(".yml")) return Format.YAML;
-		if (lower.endsWith(".json")) return Format.JSON;
-		return Format.YAML;
+	public static <T> T fromBytes(byte[] bytes, Class<T> configClass) {
+		return getDefaultReader().fromBytes(bytes, configClass);
 	}
 }

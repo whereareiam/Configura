@@ -1,9 +1,9 @@
 package me.whereareiam.configura.common.template.resolvers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import me.whereareiam.configura.TemplateProvider;
 import me.whereareiam.configura.annotation.template.Supplier;
 import me.whereareiam.configura.common.template.TemplateValueResolver;
-import me.whereareiam.configura.TemplateProvider;
 
 import java.lang.reflect.Field;
 
@@ -16,7 +16,8 @@ public final class SupplierTemplateValueResolver implements TemplateValueResolve
 
 		TemplateProvider<?> provider = instantiate(supplierAnn.value());
 
-		return provider.supply((Class) targetType);
+		Object instance = newInstance(targetType);
+		return ((TemplateProvider) provider).supply(instance);
 	}
 
 	private static TemplateProvider<?> instantiate(Class<? extends TemplateProvider<?>> cls) {
@@ -24,6 +25,15 @@ public final class SupplierTemplateValueResolver implements TemplateValueResolve
 			return cls.getDeclaredConstructor().newInstance();
 		} catch (Exception e) {
 			throw new IllegalStateException("Cannot instantiate template provider: " + cls.getName(), e);
+		}
+	}
+
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	private static Object newInstance(Class targetType) {
+		try {
+			return targetType.getDeclaredConstructor().newInstance();
+		} catch (Exception e) {
+			throw new IllegalStateException("Cannot instantiate template target: " + targetType.getName(), e);
 		}
 	}
 }

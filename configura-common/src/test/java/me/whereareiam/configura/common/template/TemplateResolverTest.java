@@ -1,11 +1,11 @@
 package me.whereareiam.configura.common.template;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import me.whereareiam.configura.TemplateProvider;
 import me.whereareiam.configura.annotation.template.Source;
 import me.whereareiam.configura.annotation.template.Supplier;
 import me.whereareiam.configura.annotation.template.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
-import me.whereareiam.configura.TemplateProvider;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -13,13 +13,13 @@ import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TemplateResolverTest {
-	static class Foo {
+	public static class Foo {
 	}
 
 	public static class FooSupplier implements TemplateProvider<Foo> {
 		@Override
-		public Foo supply(Class<Foo> targetType) {
-			return new Foo();
+		public Foo supply(Foo foo) {
+			return foo;
 		}
 	}
 

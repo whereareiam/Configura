@@ -1,7 +1,7 @@
 package me.whereareiam.configura;
 
 /**
- * Supplies default template instances for a given configuration type.
+ * Supplies default values into a provided instance of the configuration type.
  * <p>
  * Implementations are referenced from {@code @Supplier} and are used to
  * provide a base instance when generating or enriching configuration files.
@@ -10,8 +10,7 @@ package me.whereareiam.configura;
  * <pre>{@code
  * public final class AppConfigProvider implements TemplateProvider<AppConfig> {
  * 	@Override
- * 	public AppConfig supply(Class<AppConfig> targetType) {
- * 		AppConfig cfg = new AppConfig();
+ * 	public AppConfig supply(AppConfig cfg) {
  * 		cfg.port = 8080;
  * 		return cfg;
  * 	}
@@ -21,7 +20,7 @@ package me.whereareiam.configura;
  * @param <T> target configuration type
  */
 public interface TemplateProvider<T> {
-    T supply(Class<T> targetType);
+    T supply(T instance);
 }
 
 

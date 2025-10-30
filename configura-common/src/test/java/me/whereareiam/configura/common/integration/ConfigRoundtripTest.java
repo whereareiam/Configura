@@ -1,6 +1,10 @@
 package me.whereareiam.configura.common.integration;
 
-import me.whereareiam.configura.Config;
+import me.whereareiam.configura.common.reader.DefaultConfigReader;
+import me.whereareiam.configura.common.writer.DefaultConfigWriter;
+import me.whereareiam.configura.reader.ConfigReader;
+import me.whereareiam.configura.type.Format;
+import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -23,11 +27,15 @@ public class ConfigRoundtripTest {
 		String yaml = dir.resolve("app.yaml").toString();
 		String json = dir.resolve("app.json").toString();
 
-		Config.save(yaml, cfg);
-		Config.save(json, cfg);
+		ConfigWriter yamlWriter = new DefaultConfigWriter().withFormat(Format.YAML);
+		ConfigWriter jsonWriter = new DefaultConfigWriter().withFormat(Format.JSON);
+		yamlWriter.save(yaml, cfg);
+		jsonWriter.save(json, cfg);
 
-		AppConfig y = Config.load(yaml, AppConfig.class);
-		AppConfig j = Config.load(json, AppConfig.class);
+		ConfigReader yamlReader = new DefaultConfigReader().withFormat(Format.YAML);
+		ConfigReader jsonReader = new DefaultConfigReader().withFormat(Format.JSON);
+		AppConfig y = yamlReader.load(yaml, AppConfig.class);
+		AppConfig j = jsonReader.load(json, AppConfig.class);
 
 		assertEquals("svc", y.name);
 		assertEquals(8080, y.port);

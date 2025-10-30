@@ -1,6 +1,10 @@
 package me.whereareiam.configura.common.integration;
 
-import me.whereareiam.configura.Config;
+import me.whereareiam.configura.common.reader.DefaultConfigReader;
+import me.whereareiam.configura.common.writer.DefaultConfigWriter;
+import me.whereareiam.configura.reader.ConfigReader;
+import me.whereareiam.configura.type.Format;
+import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -21,11 +25,15 @@ public class ConfigFormatAutoDetectionTest {
 		String y = dir.resolve("x.yaml").toString();
 		String j = dir.resolve("x.json").toString();
 
-		Config.save(y, counter);
-		Config.save(j, counter);
+		ConfigWriter yamlWriter = new DefaultConfigWriter().withFormat(Format.YAML);
+		ConfigWriter jsonWriter = new DefaultConfigWriter().withFormat(Format.JSON);
+		yamlWriter.save(y, counter);
+		jsonWriter.save(j, counter);
 
-		assertEquals(1, Config.load(y, CounterConfig.class).value);
-		assertEquals(1, Config.load(j, CounterConfig.class).value);
+		ConfigReader yamlReader = new DefaultConfigReader().withFormat(Format.YAML);
+		ConfigReader jsonReader = new DefaultConfigReader().withFormat(Format.JSON);
+		assertEquals(1, yamlReader.load(y, CounterConfig.class).value);
+		assertEquals(1, jsonReader.load(j, CounterConfig.class).value);
 	}
 }
 

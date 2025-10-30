@@ -11,6 +11,7 @@ import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,36 +43,56 @@ public class DefaultConfigReader implements ConfigReader {
 		return format;
 	}
 
-	@Override
-	public <T> T load(String filePath, Class<T> configClass) {
-		String resolved = FileUtil.resolvePathWithFormat(filePath, format);
+	public <T> T load(String fileName, Class<T> configClass) {
+		if (fileName == null) throw new ConfigException("fileName must not be null");
+		if (configClass == null) throw new ConfigException("configClass must not be null");
+
+		String resolved = FileUtil.resolvePathWithFormat(fileName, format);
+
+		return load(Path.of(resolved), configClass);
+	}
+
+	/**
+	 * Load config using an explicit path (directory + filename).
+	 */
+	public <T> T load(Path path, Class<T> configClass) {
+		if (path == null) throw new ConfigException("path must not be null");
+		if (configClass == null) throw new ConfigException("configClass must not be null");
+
 		ObjectNode sourceNode = mapper.createObjectNode();
-		Path path = Path.of(resolved);
+
 		if (Files.exists(path)) {
-			try {
-				JsonNode node = mapper.readTree(Files.newBufferedReader(path));
-				if (node != null && node.isObject()) {
+			try (BufferedReader reader = Files.newBufferedReader(path)) {
+				JsonNode node = mapper.readTree(reader);
+				if (node != null && node.isObject())
 					sourceNode = (ObjectNode) node;
-				}
 			} catch (IOException e) {
-				throw new ConfigException("Failed to read config file: " + resolved, e);
+				throw new ConfigException("Failed to read config file: " + path, e);
 			}
 		}
 
-		T instance;
 		try {
-			instance = mapper.treeToValue(sourceNode, configClass);
+			return mapper.treeToValue(sourceNode, configClass);
 		} catch (Exception e) {
 			throw new ConfigException("Failed to bind config to " + configClass.getName(), e);
 		}
-
-		return instance;
 	}
 
 	@Override
-	public boolean exists(String filePath) {
-		String resolved = FileUtil.resolvePathWithFormat(filePath, format);
-		return Files.exists(Path.of(resolved));
+	public <T> T fromBytes(byte[] bytes, Class<T> configClass) {
+		if (bytes == null || bytes.length == 0) {
+			try {
+				return mapper.treeToValue(mapper.createObjectNode(), configClass);
+			} catch (Exception e) {
+				throw new ConfigException("Failed to bind empty bytes to " + configClass.getName(), e);
+			}
+		}
+
+		try {
+			return mapper.readValue(bytes, configClass);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to deserialize config bytes", e);
+		}
 	}
 
 	private DefaultConfigReader(Format format, AdapterRegistry registry) {

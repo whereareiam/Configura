@@ -2,8 +2,9 @@ package me.whereareiam.configura.reader;
 
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
-// Factory intentionally not present in API; see bootstrap module
 import me.whereareiam.configura.type.Format;
+
+import java.nio.file.Path;
 
 /**
  * Reads configuration from files.
@@ -43,19 +44,39 @@ public interface ConfigReader {
 	 * If the file doesn't exist, creates a new instance with default values
 	 * from {@code @Field} annotations.
 	 *
-	 * @param filePath    path to the config file (without extension if format is configured)
+	 * @param file        name of file (without extension if format is configured)
 	 * @param configClass the configuration class
 	 * @param <T>         the configuration type
 	 * @return the loaded configuration
 	 * @throws ConfigException if loading fails
 	 */
-	<T> T load(String filePath, Class<T> configClass);
+	<T> T load(String file, Class<T> configClass);
 
 	/**
-	 * Checks if a configuration file exists.
+	 * Load configuration from a file path.
+	 * <p>
+	 * If the file doesn't exist, creates a new instance with default values
+	 * from {@code @Field} annotations.
 	 *
-	 * @param filePath the file path
-	 * @return true if the file exists
+	 * @param path        the file path to load from
+	 * @param configClass the configuration class
+	 * @param <T>         the configuration type
+	 * @return the loaded configuration
+	 * @throws ConfigException if loading fails
 	 */
-	boolean exists(String filePath);
+	<T> T load(Path path, Class<T> configClass);
+
+	/**
+	 * Deserialize configuration from raw bytes.
+	 * <p>
+	 * If bytes are null/empty, returns a new instance with default values
+	 * from {@code @Field} annotations.
+	 *
+	 * @param bytes       input data
+	 * @param configClass the configuration class
+	 * @param <T>         the configuration type
+	 * @return the deserialized configuration
+	 * @throws ConfigException if deserialization fails
+	 */
+	<T> T fromBytes(byte[] bytes, Class<T> configClass);
 }
