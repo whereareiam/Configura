@@ -27,7 +27,7 @@ jobs:
         env:
           PUBLISH_USER: ${{ secrets.PUBLISH_USER }}
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          VERSION: dev-${{ github.sha }}
+          VERSION: ${GITHUB_REF##*/}-${GITHUB_SHA::7}
           PUBLISH_REALM: development
         run: ./gradlew --no-daemon publish
 
