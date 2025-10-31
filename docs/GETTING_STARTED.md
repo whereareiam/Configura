@@ -185,21 +185,21 @@ If any field sets `@Policy(mergeOnUpdate = false)`, the update step will skip re
 
 ### Read or create with defaults
 
-Use the static helper. If the file does not exist, defaults from templates help seed the file when using
-update-and-read. YAML is used by default when no extension is provided.
+Use the static helper. YAML is used by default. Templates are applied on save.
 
 ```java
 import me.whereareiam.configura.Config;
 
 AppConfig config = new AppConfig();
-config = Config.updateRead("app-config", config); // no extension → YAML
+Config.save("app-config", config);
+config = Config.read("app-config", AppConfig.class);
 
 System.out.println("Hello, " + config.getName() + "!");
 ```
 
-### Alternatives: explicit load/save
+### Alternatives: explicit read/write
 
-You can also save and load explicitly. Use `.yml`/`.yaml` or `.json` to control the format.
+You can also read and write explicitly. Omit extensions; the configured format determines the output.
 
 ```java
 import me.whereareiam.configura.Config;
@@ -207,15 +207,11 @@ import me.whereareiam.configura.Config;
 AppConfig cfg = new AppConfig();
 cfg.setName("world");
 
-// YAML
-Config.save("app-config.yml", cfg);
+Config.save("app-config", cfg);
+AppConfig fromYaml = Config.read("app-config", AppConfig.class);
 
-AppConfig fromYaml = Config.load("app-config.yml", AppConfig.class);
-
-// JSON
-Config.save("app-config.json", cfg);
-
-AppConfig fromJson = Config.load("app-config.json", AppConfig.class);
+Config.writer(Format.JSON).write("app-config", cfg);
+AppConfig fromJson = Config.reader(Format.JSON).read("app-config", AppConfig.class);
 ```
 
 ### Templating examples

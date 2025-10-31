@@ -50,27 +50,46 @@ public class DefaultConfigReader implements ConfigReader {
 		return format;
 	}
 
-	public <T> T load(String fileName, Class<T> configClass) {
-		if (fileName == null) throw new ConfigException("fileName must not be null");
-		if (configClass == null) throw new ConfigException("configClass must not be null");
+	@Override
+	public <T> T decode(byte[] bytes, Class<T> configClass) {
+		if (bytes == null || bytes.length == 0) {
+			try {
+				return mapper.treeToValue(mapper.createObjectNode(), configClass);
+			} catch (Exception e) {
+				throw new ConfigException("Failed to bind empty bytes to " + configClass.getName(), e);
+			}
+		}
 
-		String resolved = FileUtil.resolvePathWithFormat(fileName, format);
-
-		return read(Path.of(resolved), configClass);
+		try {
+			return mapper.readValue(bytes, configClass);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to deserialize config bytes", e);
+		}
 	}
 
-	/**
-	 * Load config using an explicit path (directory + filename).
-	 */
-	public <T> T load(Path path, Class<T> configClass) {
-		return read(path, configClass);
+	@Override
+	public <T> T decode(InputStream inputStream, Class<T> configClass) {
+		if (configClass == null) throw new ConfigException("configClass must not be null");
+		if (inputStream == null) {
+			try {
+				return mapper.treeToValue(mapper.createObjectNode(), configClass);
+			} catch (Exception e) {
+				throw new ConfigException("Failed to bind empty stream to " + configClass.getName(), e);
+			}
+		}
+
+		try {
+			return mapper.readValue(inputStream, configClass);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to deserialize config stream", e);
+		}
 	}
 
 	@Override
 	public <T> T read(String fileName, Class<T> configClass) {
 		if (fileName == null) throw new ConfigException("fileName must not be null");
 		String resolved = FileUtil.resolvePathWithFormat(fileName, format);
-		return read(Path.of(resolved), configClass);
+		return read(Path.of(resolved), configClass, mapper);
 	}
 
 	@Override
@@ -92,51 +111,41 @@ public class DefaultConfigReader implements ConfigReader {
 		}
 	}
 
+	private <T> T read(Path path, Class<T> configClass, ObjectMapper om) {
+		if (!Files.exists(path)) throw new ConfigException("Config file does not exist: " + path);
+		try (BufferedReader reader = Files.newBufferedReader(path)) {
+			JsonNode node = om.readTree(reader);
+			if (node == null) throw new ConfigException("Config file is empty or invalid: " + path);
+			return om.treeToValue(node, configClass);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to read config file: " + path, e);
+		} catch (Exception e) {
+			throw new ConfigException("Failed to bind config to " + configClass.getName(), e);
+		}
+	}
+
+	public <T> T load(String fileName, Class<T> configClass) {
+		if (fileName == null) throw new ConfigException("fileName must not be null");
+		if (configClass == null) throw new ConfigException("configClass must not be null");
+
+		String resolved = FileUtil.resolvePathWithFormat(fileName, format);
+
+		return read(Path.of(resolved), configClass);
+	}
+
+	public <T> T load(Path path, Class<T> configClass) {
+		return read(path, configClass);
+	}
+
 	@Override
 	public <T> T load(byte[] bytes, Class<T> configClass) {
 		return decode(bytes, configClass);
 	}
 
 	@Override
-	public <T> T decode(byte[] bytes, Class<T> configClass) {
-		if (bytes == null || bytes.length == 0) {
-			try {
-				return mapper.treeToValue(mapper.createObjectNode(), configClass);
-			} catch (Exception e) {
-				throw new ConfigException("Failed to bind empty bytes to " + configClass.getName(), e);
-			}
-		}
-
-		try {
-			return mapper.readValue(bytes, configClass);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to deserialize config bytes", e);
-		}
-	}
-
-	@Override
 	public <T> T load(InputStream inputStream, Class<T> configClass) {
 		return decode(inputStream, configClass);
 	}
-
-	@Override
-	public <T> T decode(InputStream inputStream, Class<T> configClass) {
-		if (configClass == null) throw new ConfigException("configClass must not be null");
-		if (inputStream == null) {
-			try {
-				return mapper.treeToValue(mapper.createObjectNode(), configClass);
-			} catch (Exception e) {
-				throw new ConfigException("Failed to bind empty stream to " + configClass.getName(), e);
-			}
-		}
-
-		try {
-			return mapper.readValue(inputStream, configClass);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to deserialize config stream", e);
-		}
-	}
-
 
 	public ConfigReader withTemplateRegistry(TemplateRegistry templateRegistry) {
 		return new DefaultConfigReader(this.format, this.registry, templateRegistry);

@@ -29,10 +29,10 @@ class RegexTrigger extends TriggerBase  { public String pattern; }
 class CommandTrigger extends TriggerBase { public String command; }
 ```
 
-Read/write usage is unchanged:
+Read/write usage:
 
 ```java
-TriggerBase cfg = Config.load("trigger", TriggerBase.class);
+TriggerBase cfg = Config.read("trigger", TriggerBase.class);
 Config.save("trigger", cfg);
 ```
 

@@ -37,16 +37,6 @@ public class DefaultConfigWriter implements ConfigWriter {
 	}
 
 	@Override
-	public <T> byte[] encode(T config) {
-		try {
-			return mapper.writeValueAsBytes(config);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to serialize config to bytes", e);
-		}
-	}
-
-
-	@Override
 	public ConfigWriter withFormat(Format format) {
 		return new DefaultConfigWriter(format, this.registry, this.templateRegistry);
 	}
@@ -74,11 +64,36 @@ public class DefaultConfigWriter implements ConfigWriter {
 			Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
 
 			T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
-			ObjectNode toWrite = buildMergedNodePreservingPolicy(path, seeded);
+			ObjectNode toWrite = buildMergedNodePreservingPolicy(path, seeded, mapper);
 
 			mapper.writeValue(path.toFile(), toWrite);
 		} catch (IOException e) {
 			throw new ConfigException("Failed to save config file: " + resolved, e);
+		}
+	}
+
+	@Override
+	public <T> void encode(Path path, T config) {
+		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
+		try {
+			Path target = Path.of(resolved);
+			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
+
+			T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
+			ObjectNode toWrite = buildMergedNodePreservingPolicy(target, seeded, mapper);
+
+			mapper.writeValue(target.toFile(), toWrite);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to save config file: " + resolved, e);
+		}
+	}
+
+	@Override
+	public <T> byte[] encode(T config) {
+		try {
+			return mapper.writeValueAsBytes(config);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to serialize config to bytes", e);
 		}
 	}
 
@@ -91,22 +106,6 @@ public class DefaultConfigWriter implements ConfigWriter {
 			mapper.writeValue(path.toFile(), config);
 		} catch (IOException e) {
 			throw new ConfigException("Failed to write config file: " + resolved, e);
-		}
-	}
-
-	@Override
-	public <T> void encode(Path path, T config) {
-		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
-		try {
-			Path target = Path.of(resolved);
-			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
-
-			T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
-			ObjectNode toWrite = buildMergedNodePreservingPolicy(target, seeded);
-
-			mapper.writeValue(target.toFile(), toWrite);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to save config file: " + resolved, e);
 		}
 	}
 
@@ -128,7 +127,7 @@ public class DefaultConfigWriter implements ConfigWriter {
 		Path path = Path.of(resolved);
 
 		T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
-		ObjectNode merged = buildMergedNodePreservingPolicy(path, seeded);
+		ObjectNode merged = buildMergedNodePreservingPolicy(path, seeded, mapper);
 		return bindNode(merged, (Class<T>) seeded.getClass());
 	}
 
@@ -139,17 +138,16 @@ public class DefaultConfigWriter implements ConfigWriter {
 		Path target = Path.of(resolved);
 
 		T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
-		ObjectNode merged = buildMergedNodePreservingPolicy(target, seeded);
+		ObjectNode merged = buildMergedNodePreservingPolicy(target, seeded, mapper);
 		return bindNode(merged, (Class<T>) seeded.getClass());
 	}
 
-
-	private <T> ObjectNode buildMergedNodePreservingPolicy(Path path, T model) {
-		ObjectNode modelNode = toObjectNode(model);
+	private <T> ObjectNode buildMergedNodePreservingPolicy(Path path, T model, ObjectMapper om) {
+		ObjectNode modelNode = om.valueToTree(model);
 		if (!Files.exists(path)) return modelNode;
 
 		try {
-			JsonNode existing = mapper.readTree(path.toFile());
+			JsonNode existing = om.readTree(path.toFile());
 			if (existing != null && existing.isObject()) {
 				ObjectNode existingNode = (ObjectNode) existing;
 				// Preserve fields marked with @Policy(mergeOnUpdate=false)
@@ -172,10 +170,6 @@ public class DefaultConfigWriter implements ConfigWriter {
 				}
 			}
 		}
-	}
-
-	private ObjectNode toObjectNode(Object model) {
-		return mapper.valueToTree(model);
 	}
 
 	private <T> T bindNode(ObjectNode node, Class<T> type) {

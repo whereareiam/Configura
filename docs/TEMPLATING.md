@@ -1,13 +1,12 @@
 ## Templating Guide
 
 Templates let you declare default values directly on fields of your config classes or source them from external
-providers/resources. These defaults can be materialized into configuration files or used during merges when you
-update-and-read.
+providers/resources. These defaults are materialized into configuration files during smart writes (save/apply).
 
 ### When templates are used
 
-- During update-and-read, e.g. `Config.updateRead("app-config", new AppConfig())`, templates help seed missing values.
-- During writes followed by reads, if your policy merges on update.
+- During smart writes, e.g. `Config.save("app-config", new AppConfig())`, templates help seed missing values.
+- Reading does not apply templates; it strictly deserializes the file.
 
 Note: YAML is the default format when no extension is provided; JSON is also supported via `.json`.
 
@@ -128,7 +127,8 @@ public class AppConfig {
 import me.whereareiam.configura.Config;
 
 AppConfig cfg = new AppConfig();
-cfg = Config.updateRead("app-config", cfg); // seeds missing values from templates
+Config.save("app-config", cfg);
+cfg = Config.read("app-config", AppConfig.class);
 ```
 
 ### External templates with Template.Source

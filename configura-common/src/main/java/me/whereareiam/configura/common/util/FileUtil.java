@@ -5,7 +5,7 @@ import me.whereareiam.configura.type.Format;
 public final class FileUtil {
 	public static String resolvePathWithFormat(String file, Format format) {
 		String lower = file.toLowerCase();
-		if (lower.endsWith(".yaml") || lower.endsWith(".yml") || lower.endsWith(".json"))
+		if (lower.endsWith(".yml") || lower.endsWith(".json"))
 			return file;
 
 		return switch (format) {
