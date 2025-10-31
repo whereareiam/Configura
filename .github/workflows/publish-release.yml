@@ -1,9 +1,6 @@
-name: Publish Release to Reposilite
+name: Publish Release
 
 on:
-  push:
-    tags:
-      - '*'
   release:
     types: [ published ]
 
