@@ -8,9 +8,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Polymorphic {
-	String discriminator();
+    String discriminator() default "";
 
-	Type[] mappings();
+    Type[] mappings() default {};
 
 	String defaultValue() default "";
 
