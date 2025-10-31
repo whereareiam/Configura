@@ -42,6 +42,7 @@ public final class MapperFactory {
 	private static ObjectMapper createYamlMapper(Map<Class<?>, TypeAdapter<?>> adapters) {
 		YAMLFactory factory = new YAMLFactory();
 		factory.disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER);
+		factory.disable(YAMLGenerator.Feature.SPLIT_LINES);
 
 		ObjectMapper mapper = new ObjectMapper(factory);
 
