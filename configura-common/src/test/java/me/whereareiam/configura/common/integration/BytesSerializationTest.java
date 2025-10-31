@@ -26,7 +26,7 @@ public class BytesSerializationTest {
 		m.port = 8080;
 
 		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		byte[] bytes = writer.save(m);
+		byte[] bytes = writer.encode(m);
 		assertNotNull(bytes);
 		assertTrue(bytes.length > 0);
 

@@ -29,8 +29,8 @@ public class ConfigRoundtripTest {
 
 		ConfigWriter yamlWriter = new DefaultConfigWriter().withFormat(Format.YAML);
 		ConfigWriter jsonWriter = new DefaultConfigWriter().withFormat(Format.JSON);
-		yamlWriter.save(yaml, cfg);
-		jsonWriter.save(json, cfg);
+		yamlWriter.encode(yaml, cfg);
+		jsonWriter.encode(json, cfg);
 
 		ConfigReader yamlReader = new DefaultConfigReader().withFormat(Format.YAML);
 		ConfigReader jsonReader = new DefaultConfigReader().withFormat(Format.JSON);

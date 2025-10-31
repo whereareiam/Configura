@@ -68,8 +68,8 @@ public final class Config {
 
 	public static void setTemplateRegistry(TemplateRegistry registry) {
 		Config.defaultTemplateRegistry = registry;
-        Config.defaultReader = new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(Config.defaultReader.getFormat());
-        Config.defaultWriter = new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(Config.defaultWriter.getFormat());
+		Config.defaultReader = new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(Config.defaultReader.getFormat());
+		Config.defaultWriter = new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(Config.defaultWriter.getFormat());
 	}
 
 	public static <T> void registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass) {
@@ -102,15 +102,15 @@ public final class Config {
 	}
 
 	public static <T> void save(String file, T config) {
-		getDefaultWriter().save(file, config);
+		getDefaultWriter().encode(file, config);
 	}
 
 	public static <T> void save(Path path, T config) {
-		getDefaultWriter().save(path, config);
+		getDefaultWriter().encode(path, config);
 	}
 
 	public static <T> byte[] save(T config) {
-		return getDefaultWriter().save(config);
+		return getDefaultWriter().encode(config);
 	}
 
 	public static <T> T merge(String file, T config) {
@@ -122,14 +122,14 @@ public final class Config {
 	}
 
 	public static <T> T update(String file, Class<T> configClass) {
-		T defaultInstance = getDefaultReader().createDefault(configClass);
-		getDefaultWriter().save(file, defaultInstance);
+		T defaultInstance = getDefaultReader().load(new byte[0], configClass);
+		getDefaultWriter().encode(file, defaultInstance);
 		return getDefaultReader().load(file, configClass);
 	}
 
 	public static <T> T update(Path path, Class<T> configClass) {
-		T defaultInstance = getDefaultReader().createDefault(configClass);
-		getDefaultWriter().save(path, defaultInstance);
+		T defaultInstance = getDefaultReader().load(new byte[0], configClass);
+		getDefaultWriter().encode(path, defaultInstance);
 		return getDefaultReader().load(path, configClass);
 	}
 }

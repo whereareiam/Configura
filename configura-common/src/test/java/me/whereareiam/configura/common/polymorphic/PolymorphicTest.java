@@ -107,7 +107,7 @@ public class PolymorphicTest {
 				.radius(null)
 				.build();
 
-		byte[] out = new DefaultConfigWriter().save(t);
+		byte[] out = new DefaultConfigWriter().encode(t);
 		String text = new String(out);
 
 		assertTrue(text.contains("type"));

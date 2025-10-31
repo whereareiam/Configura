@@ -4,6 +4,7 @@ import me.whereareiam.configura.TemplateProvider;
 import me.whereareiam.configura.annotation.Field;
 import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
+import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -33,8 +34,11 @@ public class SupplierIntegrationTest {
 
 	@Test
 	void supplierPopulatesFieldWhenMissing(@TempDir Path dir) {
+		Path file = dir.resolve("c.yml");
+		new DefaultConfigWriter().encode(file, new Configuration());
+
 		DefaultConfigReader reader = new DefaultConfigReader();
-		Configuration config = reader.load(dir.resolve("c.yml").toString(), Configuration.class);
+		Configuration config = reader.load(file.toString(), Configuration.class);
 
 		assertNotNull(config.cors);
 		assertTrue(config.cors.enabled);

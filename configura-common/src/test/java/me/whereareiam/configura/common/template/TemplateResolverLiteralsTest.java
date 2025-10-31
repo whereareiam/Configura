@@ -3,11 +3,8 @@ package me.whereareiam.configura.common.template;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Field;
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.common.adapter.AdapterModule;
-import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -36,31 +33,23 @@ public class TemplateResolverLiteralsTest {
 	}
 
 	@Test
-	void listLiteralBindsViaModifier() {
+	void listLiteralBindsViaSeeder() {
 		ObjectMapper mapper = new ObjectMapper();
-		mapper.registerModule(new TemplateModule());
-		mapper.registerModule(new AdapterModule());
-		mapper.registerModule(new PolymorphicModule());
-
-		Holder holder = mapper.convertValue(new HashMap<>(), Holder.class);
-
+		Holder holder = new Holder();
+		holder.names = null;
+		new TemplateSeeder(mapper, null).seed(holder);
 		assertNotNull(holder.names);
 		assertEquals(List.of("a", "b"), holder.names);
 	}
 
 	@Test
-	void objectLiteralBindsPartialViaModifier() {
+	void objectLiteralBindsPartialViaSeeder() {
 		ObjectMapper mapper = new ObjectMapper();
-		mapper.registerModule(new TemplateModule());
-		mapper.registerModule(new AdapterModule());
-		mapper.registerModule(new PolymorphicModule());
-
-		Holder holder = mapper.convertValue(new HashMap<>(), Holder.class);
-
+		Holder holder = new Holder();
+		holder.policy = null;
+		new TemplateSeeder(mapper, null).seed(holder);
 		assertNotNull(holder.policy);
 		assertEquals(3, holder.policy.retries);
 		assertNull(holder.policy.backoff);
 	}
 }
-
-

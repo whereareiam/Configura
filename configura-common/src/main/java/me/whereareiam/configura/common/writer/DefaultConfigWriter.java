@@ -1,10 +1,13 @@
 package me.whereareiam.configura.common.writer;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.common.MapperFactory;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
+import me.whereareiam.configura.common.template.TemplateSeeder;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.template.TemplateRegistry;
@@ -30,17 +33,18 @@ public class DefaultConfigWriter implements ConfigWriter {
 		this.format = Format.YAML;
 		this.registry = AdapterRegistry.empty();
 		this.templateRegistry = templateRegistry;
-		this.mapper = MapperFactory.buildMapper(this.format, this.registry, this.templateRegistry);
+		this.mapper = MapperFactory.buildWriterMapper(this.format, this.registry);
 	}
 
 	@Override
-	public <T> byte[] save(T config) {
+	public <T> byte[] encode(T config) {
 		try {
 			return mapper.writeValueAsBytes(config);
 		} catch (IOException e) {
 			throw new ConfigException("Failed to serialize config to bytes", e);
 		}
 	}
+
 
 	@Override
 	public ConfigWriter withFormat(Format format) {
@@ -63,13 +67,14 @@ public class DefaultConfigWriter implements ConfigWriter {
 	}
 
 	@Override
-	public <T> void save(String file, T config) {
+	public <T> void encode(String file, T config) {
 		String resolved = FileUtil.resolvePathWithFormat(file, format);
 		try {
 			Path path = Path.of(resolved);
 			Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
 
-			T toWrite = mergePreservingPolicy(path, config);
+			T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
+			ObjectNode toWrite = buildMergedNodePreservingPolicy(path, seeded);
 
 			mapper.writeValue(path.toFile(), toWrite);
 		} catch (IOException e) {
@@ -78,13 +83,26 @@ public class DefaultConfigWriter implements ConfigWriter {
 	}
 
 	@Override
-	public <T> void save(Path path, T config) {
+	public <T> void write(String file, T config) {
+		String resolved = FileUtil.resolvePathWithFormat(file, format);
+		try {
+			Path path = Path.of(resolved);
+			Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
+			mapper.writeValue(path.toFile(), config);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to write config file: " + resolved, e);
+		}
+	}
+
+	@Override
+	public <T> void encode(Path path, T config) {
 		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
 		try {
 			Path target = Path.of(resolved);
 			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
 
-			T toWrite = mergePreservingPolicy(target, config);
+			T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
+			ObjectNode toWrite = buildMergedNodePreservingPolicy(target, seeded);
 
 			mapper.writeValue(target.toFile(), toWrite);
 		} catch (IOException e) {
@@ -93,49 +111,78 @@ public class DefaultConfigWriter implements ConfigWriter {
 	}
 
 	@Override
+	public <T> void write(Path path, T config) {
+		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
+		try {
+			Path target = Path.of(resolved);
+			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
+			mapper.writeValue(target.toFile(), config);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to write config file: " + resolved, e);
+		}
+	}
+
+	@Override
 	public <T> T merge(String file, T config) {
 		String resolved = FileUtil.resolvePathWithFormat(file, format);
 		Path path = Path.of(resolved);
 
-		if (Files.exists(path)) return mergePreservingPolicy(path, config);
-
-		return config;
+		T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
+		ObjectNode merged = buildMergedNodePreservingPolicy(path, seeded);
+		return bindNode(merged, (Class<T>) seeded.getClass());
 	}
+
 
 	@Override
 	public <T> T merge(Path path, T config) {
 		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
 		Path target = Path.of(resolved);
 
-		if (Files.exists(target)) return mergePreservingPolicy(target, config);
-
-		return config;
+		T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
+		ObjectNode merged = buildMergedNodePreservingPolicy(target, seeded);
+		return bindNode(merged, (Class<T>) seeded.getClass());
 	}
 
-	@SuppressWarnings("unchecked")
-	private <T> T mergePreservingPolicy(Path path, T incoming) {
-		Class<?> configClass = incoming.getClass();
+
+	private <T> ObjectNode buildMergedNodePreservingPolicy(Path path, T model) {
+		ObjectNode modelNode = toObjectNode(model);
+		if (!Files.exists(path)) return modelNode;
+
 		try {
-			Object existing = mapper.readValue(path.toFile(), (Class<Object>) configClass);
-			if (existing == null) {
-				return incoming;
+			JsonNode existing = mapper.readTree(path.toFile());
+			if (existing != null && existing.isObject()) {
+				ObjectNode existingNode = (ObjectNode) existing;
+				// Preserve fields marked with @Policy(mergeOnUpdate=false)
+				preservePolicyFields(existingNode, modelNode, model.getClass());
 			}
+		} catch (Exception ignored) {
+		}
 
-			for (Field field : configClass.getDeclaredFields()) {
-				Policy policy = field.getAnnotation(Policy.class);
-				if (policy != null && !policy.mergeOnUpdate()) {
-					boolean accessible = field.canAccess(incoming);
-					field.setAccessible(true);
-					Object existingValue = field.get(existing);
-					if (existingValue != null) field.set(incoming, existingValue);
+		return modelNode;
+	}
 
-					field.setAccessible(accessible);
+	private static void preservePolicyFields(ObjectNode existingNode, ObjectNode modelNode, Class<?> modelClass) {
+		for (Field field : modelClass.getDeclaredFields()) {
+			Policy policy = field.getAnnotation(Policy.class);
+			if (policy != null && !policy.mergeOnUpdate()) {
+				String key = field.getName();
+				JsonNode existingVal = existingNode.get(key);
+				if (existingVal != null && !existingVal.isNull()) {
+					modelNode.set(key, existingVal);
 				}
 			}
-			return incoming;
+		}
+	}
+
+	private ObjectNode toObjectNode(Object model) {
+		return mapper.valueToTree(model);
+	}
+
+	private <T> T bindNode(ObjectNode node, Class<T> type) {
+		try {
+			return mapper.treeToValue(node, type);
 		} catch (Exception e) {
-			// If anything goes wrong, fall back to writing the incoming model
-			return incoming;
+			throw new ConfigException("Failed to bind merged node to type: " + type.getName(), e);
 		}
 	}
 
@@ -143,6 +190,6 @@ public class DefaultConfigWriter implements ConfigWriter {
 		this.format = format;
 		this.registry = registry;
 		this.templateRegistry = templateRegistry;
-		this.mapper = MapperFactory.buildMapper(this.format, this.registry, this.templateRegistry);
+		this.mapper = MapperFactory.buildWriterMapper(this.format, this.registry);
 	}
 }

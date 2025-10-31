@@ -3,8 +3,8 @@ package me.whereareiam.configura.common;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
-import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.common.template.DefaultTemplateRegistry;
+import me.whereareiam.configura.type.Format;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -29,9 +29,9 @@ public class MapperFactoryTest {
 		AdapterRegistry r1 = AdapterRegistry.empty();
 		AdapterRegistry r2 = r1.withAdapter(T.class, TA.class);
 		DefaultTemplateRegistry tr = new DefaultTemplateRegistry();
-		ObjectMapper m1 = MapperFactory.buildMapper(Format.YAML, r1, tr);
-		ObjectMapper m2 = MapperFactory.buildMapper(Format.YAML, r1, tr);
-		ObjectMapper m3 = MapperFactory.buildMapper(Format.YAML, r2, tr);
+		ObjectMapper m1 = MapperFactory.buildWriterMapper(Format.YAML, r1);
+		ObjectMapper m2 = MapperFactory.buildWriterMapper(Format.YAML, r1);
+		ObjectMapper m3 = MapperFactory.buildWriterMapper(Format.YAML, r2);
 		assertSame(m1, m2);
 		assertNotSame(m1, m3);
 	}

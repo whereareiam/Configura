@@ -27,8 +27,8 @@ public class ConfigFormatAutoDetectionTest {
 
 		ConfigWriter yamlWriter = new DefaultConfigWriter().withFormat(Format.YAML);
 		ConfigWriter jsonWriter = new DefaultConfigWriter().withFormat(Format.JSON);
-		yamlWriter.save(y, counter);
-		jsonWriter.save(j, counter);
+		yamlWriter.encode(y, counter);
+		jsonWriter.encode(j, counter);
 
 		ConfigReader yamlReader = new DefaultConfigReader().withFormat(Format.YAML);
 		ConfigReader jsonReader = new DefaultConfigReader().withFormat(Format.JSON);

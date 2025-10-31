@@ -2,16 +2,16 @@ package me.whereareiam.configura.writer;
 
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.template.TemplateRegistry;
+import me.whereareiam.configura.type.Format;
 
 import java.nio.file.Path;
 
 /**
  * Writes configuration to files.
  * <p>
- * Use this when you need explicit control over format.
- * Configure once and reuse for multiple files.
+ * Configure once and reuse for multiple files. The writer supports both "smart" writes (that apply
+ * templates and honor per-field merge policies) and "exact" writes that simply overwrite the file.
  */
 public interface ConfigWriter {
 	/**
@@ -22,10 +22,13 @@ public interface ConfigWriter {
 	 */
 	ConfigWriter withFormat(Format format);
 
-    /**
-     * Configure the template registry to use for default seeding.
-     */
-    ConfigWriter withTemplateRegistry(TemplateRegistry templateRegistry);
+	/**
+	 * Configure the template registry used to seed default values during smart writes.
+	 *
+	 * @param templateRegistry registry that maps model types to {@code TemplateProvider}s
+	 * @return this writer for chaining
+	 */
+	ConfigWriter withTemplateRegistry(TemplateRegistry templateRegistry);
 
 	/**
 	 * Register a custom type adapter.
@@ -38,63 +41,47 @@ public interface ConfigWriter {
 	<T> ConfigWriter registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass);
 
 	/**
-	 * Get the configured format.
+	 * Get the configured file format for serialization (YAML/JSON).
 	 *
-	 * @return the format
+	 * @return the configured format
 	 */
 	Format getFormat();
 
 	/**
-	 * Save configuration to a file.
-	 * Creates the file if it doesn't exist.
+	 * Smart write (apply) to a file path (string).
+	 *
+	 * <p>Behavior:
+	 * <ul>
+	 *   <li>Seeds missing fields using registered templates</li>
+	 *   <li>Preserves existing values for fields annotated with {@code @Policy(mergeOnUpdate = false)}</li>
+	 *   <li>Creates parent directories and the file if they do not exist</li>
+	 *   <li>If {@code file} omits an extension, an extension matching {@link Format} is appended</li>
+	 * </ul>
 	 *
 	 * @param file   path to the config file (without extension if format is configured)
 	 * @param config the configuration to save
 	 * @param <T>    the configuration type
 	 * @throws ConfigException if saving fails
 	 */
-	<T> void save(String file, T config);
+	<T> void encode(String file, T config);
 
 	/**
-	 * Save configuration to an explicit file path.
-	 * Creates the file if it doesn't exist.
-	 * <p>
-	 * If the provided path does not include an extension, an extension matching the configured
-	 * {@link Format} will be appended.
+	 * Smart write (apply) to an explicit path.
+	 *
+	 * <p>Behavior:
+	 * <ul>
+	 *   <li>Seeds missing fields using registered templates</li>
+	 *   <li>Preserves existing values for fields annotated with {@code @Policy(mergeOnUpdate = false)}</li>
+	 *   <li>Creates parent directories and the file if they do not exist</li>
+	 *   <li>If {@code path} omits an extension, an extension matching {@link Format} is appended</li>
+	 * </ul>
 	 *
 	 * @param path   full path to the config file (directory + filename)
 	 * @param config the configuration to save
 	 * @param <T>    the configuration type
 	 * @throws ConfigException if saving fails
 	 */
-	<T> void save(Path path, T config);
-
-	/**
-	 * Merge existing file content (if present) with the provided model, honoring
-	 * {@code @Policy(mergeOnUpdate = false)} on fields to preserve existing values.
-	 * Does not write the file.
-	 *
-	 * @param file   path to the config file (without extension if format is configured)
-	 * @param config the incoming model to merge
-	 * @param <T>    the configuration type
-	 * @return merged configuration instance
-	 */
-	<T> T merge(String file, T config);
-
-	/**
-	 * Merge existing file content (if present) with the provided model, honoring
-	 * {@code @Policy(mergeOnUpdate = false)} on fields to preserve existing values.
-	 * Does not write the file.
-	 * <p>
-	 * If the provided path does not include an extension, an extension matching the configured
-	 * {@link Format} will be considered when resolving the path.
-	 *
-	 * @param path   full path to the config file (directory + filename)
-	 * @param config the incoming model to merge
-	 * @param <T>    the configuration type
-	 * @return merged configuration instance
-	 */
-	<T> T merge(Path path, T config);
+	<T> void encode(Path path, T config);
 
 	/**
 	 * Serialize configuration to raw bytes using the configured format.
@@ -104,6 +91,52 @@ public interface ConfigWriter {
 	 * @return serialized bytes
 	 * @throws ConfigException if serialization fails
 	 */
-	<T> byte[] save(T config);
+	<T> byte[] encode(T config);
+
+	/**
+	 * Exact write (no seeding, no policy preservation) to an explicit path.
+	 * Creates parent directories if needed. If {@code path} omits an extension, one matching
+	 * {@link Format} is appended.
+	 *
+	 * @param path   full path to the config file (directory + filename)
+	 * @param config the configuration to write as-is
+	 * @param <T>    the configuration type
+	 * @throws ConfigException if writing fails
+	 */
+	<T> void write(Path path, T config);
+
+	/**
+	 * Exact write (no seeding, no policy preservation) to a file path (string).
+	 * Creates parent directories if needed. If {@code file} omits an extension, one matching
+	 * {@link Format} is appended.
+	 *
+	 * @param file   path to the config file (without extension if format is configured)
+	 * @param config the configuration to write as-is
+	 * @param <T>    the configuration type
+	 * @throws ConfigException if writing fails
+	 */
+	<T> void write(String file, T config);
+
+	/**
+	 * Compute the smart-apply result (seed + policy) for the given file path (string) without writing.
+	 *
+	 * @param file   path to the config file (without extension if format is configured)
+	 * @param config the incoming model to merge with existing file content
+	 * @param <T>    the configuration type
+	 * @return merged configuration instance
+	 */
+	<T> T merge(String file, T config);
+
+
+	/**
+	 * Compute the smart-apply result (seed + policy) for the given path without writing.
+	 * If the path omits an extension, an extension matching the configured {@link Format} is appended.
+	 *
+	 * @param path   full path to the config file (directory + filename)
+	 * @param config the incoming model to merge with existing file content
+	 * @param <T>    the configuration type
+	 * @return merged configuration instance
+	 */
+	<T> T merge(Path path, T config);
 }
 

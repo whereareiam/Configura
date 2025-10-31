@@ -51,7 +51,7 @@ public class TypeAdapterIntegrationTest {
 		job.timeout.seconds = 45;
 
 		String file = dir.resolve("job.yml").toString();
-		writer.save(file, job);
+		writer.encode(file, job);
 
 		Job read = reader.load(file, Job.class);
 		assertEquals(45, read.timeout.seconds);

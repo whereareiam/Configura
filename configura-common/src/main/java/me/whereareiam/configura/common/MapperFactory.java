@@ -12,8 +12,6 @@ import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.adapter.AdapterModule;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
 import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
-import me.whereareiam.configura.common.template.TemplateModule;
-import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 
 import java.util.Map;
@@ -23,16 +21,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class MapperFactory {
 	private static final ConcurrentHashMap<Key, ObjectMapper> CACHE = new ConcurrentHashMap<>();
 
-	public static ObjectMapper buildMapper(Format format, AdapterRegistry registry, TemplateRegistry templateRegistry) {
-		Key key = new Key(format, registry, templateRegistry);
-		return CACHE.computeIfAbsent(key, k -> create(format, registry.instantiate(), templateRegistry));
+	public static ObjectMapper buildWriterMapper(Format format, AdapterRegistry registry) {
+		Key key = new Key(format, registry);
+		return CACHE.computeIfAbsent(key, k -> createBase(format, registry.instantiate()));
 	}
 
-	private static ObjectMapper create(Format format, Map<Class<?>, TypeAdapter<?>> adapters, TemplateRegistry templateRegistry) {
+	public static ObjectMapper buildReaderMapper(Format format, AdapterRegistry registry) {
+		Key key = new Key(format, registry);
+		return CACHE.computeIfAbsent(key, k -> createBase(format, registry.instantiate()));
+	}
+
+	private static ObjectMapper createBase(Format format, Map<Class<?>, TypeAdapter<?>> adapters) {
 		ObjectMapper mapper = format == Format.YAML ? new ObjectMapper(new YAMLFactory()) : new ObjectMapper();
 		mapper.registerModule(new JavaTimeModule());
 		mapper.registerModule(new AdapterModule(adapters));
-		mapper.registerModule(new TemplateModule(adapters, templateRegistry));
 		mapper.registerModule(new PolymorphicModule());
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -44,15 +46,15 @@ public final class MapperFactory {
 		return mapper;
 	}
 
-	private record Key(Format format, AdapterRegistry registry, TemplateRegistry templateRegistry) {
+	private record Key(Format format, AdapterRegistry registry) {
 		@Override
 		public boolean equals(Object o) {
-			return o instanceof Key k && format == k.format && Objects.equals(registry, k.registry) && Objects.equals(templateRegistry, k.templateRegistry);
+			return o instanceof Key k && format == k.format && Objects.equals(registry, k.registry);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(format, registry, templateRegistry);
+			return Objects.hash(format, registry);
 		}
 	}
 }

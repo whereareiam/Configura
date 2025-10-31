@@ -48,7 +48,7 @@ public class MergePolicyUpdateReadTest {
 		existing.safeToMerge = "updated";
 		existing.keepAsIs = "original";
 		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.save(base, existing);
+		writer.encode(base, existing);
 
 		// Read file and manually edit (robust to quoted/unquoted rendering)
 		Path yaml = Path.of(base + ".yml");
@@ -62,7 +62,7 @@ public class MergePolicyUpdateReadTest {
 		model.safeToMerge = "newValue";
 		model.keepAsIs = "shouldNotAppear";
 
-		writer.save(base, model);
+		writer.encode(base, model);
 		PerFieldPolicy result = new DefaultConfigReader().withFormat(Format.YAML).load(base, PerFieldPolicy.class);
 
 		assertEquals("newValue", result.safeToMerge); // merged
@@ -82,7 +82,7 @@ public class MergePolicyUpdateReadTest {
 		model.keepAsIs = "seed";
 
 		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.save(base, model);
+		writer.encode(base, model);
 		PerFieldPolicy result = new DefaultConfigReader().withFormat(Format.YAML).load(base, PerFieldPolicy.class);
 
 		assertEquals("default", result.safeToMerge);
@@ -98,7 +98,7 @@ public class MergePolicyUpdateReadTest {
 		o.port = 9000;
 
 		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.save(base + ".yml", o);
+		writer.encode(base + ".yml", o);
 
 		Path yaml = Path.of(base + ".yml");
 		Files.writeString(yaml, Files.readString(yaml) + "\nunknown: 1\n", StandardCharsets.UTF_8);
@@ -107,7 +107,7 @@ public class MergePolicyUpdateReadTest {
 		n.host = "0.0.0.0";
 		n.port = 9000;
 
-		writer.save(base + ".yml", n);
+		writer.encode(base + ".yml", n);
 		New after = new DefaultConfigReader().withFormat(Format.YAML).load(base + ".yml", New.class);
 
 		String updated = Files.readString(yaml);
