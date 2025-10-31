@@ -97,15 +97,18 @@ public class DefaultConfigReader implements ConfigReader {
 		if (path == null) throw new ConfigException("path must not be null");
 		if (configClass == null) throw new ConfigException("configClass must not be null");
 
-		if (!Files.exists(path)) throw new ConfigException("Config file does not exist: " + path);
+		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
+		Path target = Path.of(resolved);
 
-		try (BufferedReader reader = Files.newBufferedReader(path)) {
+		if (!Files.exists(target)) throw new ConfigException("Config file does not exist: " + target);
+
+		try (BufferedReader reader = Files.newBufferedReader(target)) {
 			JsonNode node = mapper.readTree(reader);
-			if (node == null) throw new ConfigException("Config file is empty or invalid: " + path);
+			if (node == null) throw new ConfigException("Config file is empty or invalid: " + target);
 
 			return mapper.treeToValue(node, configClass);
 		} catch (IOException e) {
-			throw new ConfigException("Failed to read config file: " + path, e);
+			throw new ConfigException("Failed to read config file: " + target, e);
 		} catch (Exception e) {
 			throw new ConfigException("Failed to bind config to " + configClass.getName(), e);
 		}

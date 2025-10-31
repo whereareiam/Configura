@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.introspect.VisibilityChecker;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.adapter.AdapterModule;
@@ -31,8 +32,11 @@ public final class MapperFactory {
 		return CACHE.computeIfAbsent(key, k -> createBase(format, registry.instantiate()));
 	}
 
-	private static ObjectMapper createBase(Format format, Map<Class<?>, TypeAdapter<?>> adapters) {
-		ObjectMapper mapper = format == Format.YAML ? new ObjectMapper(new YAMLFactory()) : new ObjectMapper();
+    private static ObjectMapper createBase(Format format, Map<Class<?>, TypeAdapter<?>> adapters) {
+        ObjectMapper mapper = format == Format.YAML ? new ObjectMapper(new YAMLFactory()) : new ObjectMapper();
+
+        if (format == Format.YAML) mapper.configure(YAMLGenerator.Feature.WRITE_DOC_START_MARKER, false);
+		
 		mapper.registerModule(new JavaTimeModule());
 		mapper.registerModule(new AdapterModule(adapters));
 		mapper.registerModule(new PolymorphicModule());
