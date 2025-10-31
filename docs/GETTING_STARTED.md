@@ -163,7 +163,7 @@ public class NoRewriteConfig {
 }
 ```
 
-With class-level `mergeOnUpdate = false`, `Config.updateRead("file", cfg)` will not rewrite the file; it will load
+With class-level `mergeOnUpdate = false`, `Config.update("file", cfg)` will not rewrite the file; it will load
 as‑is.
 
 Per-field override example:

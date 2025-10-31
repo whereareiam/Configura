@@ -111,7 +111,7 @@ import me.whereareiam.configura.Config;
 
 HelloConfig cfg = new HelloConfig();
 // Writes defaults if needed and then re‑reads from disk
-cfg = Config.updateRead("config/hello", cfg);
+cfg = Config.update("config/hello", cfg);
 
 // Use it in your code
 System.out.println("Hello, " + cfg.name + "!");
