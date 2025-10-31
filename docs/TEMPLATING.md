@@ -170,3 +170,30 @@ public class AppConfig {
 - Use YAML for readability; switch to JSON by using a `.json` file extension.
 
 
+## Policy: controlling merge behavior
+
+Use `me.whereareiam.configura.annotation.Policy` on types or fields to tune how smart writes merge templates with existing files:
+
+- `mergeOnUpdate` (type-level): when `false`, update-read avoids rewriting the file and loads it as-is.
+- `skipMerge` (field-level): when `true`, do not add defaults for that field if it is missing or null in the existing file.
+- `preserveWrite` (field-level): when `true` and the existing file has a non-null value for the field, keep that subtree as-is (no deep merge or additions).
+
+Additional rules:
+
+- Existing user values win by default. Templates fill only missing or null values.
+- `skipMerge` treats null as missing (so templates are not added for that field when null/missing).
+- `preserveWrite` only applies when the existing value is non-null; nulls are treated as missing so templates can supply defaults.
+
+Example:
+
+```java
+public class Settings {
+    @Policy(preserveWrite = true)
+    private Synchronization synchronization;
+
+    public static class Synchronization {
+        @Policy(skipMerge = false)
+        private String server; // if null or missing, template will provide a default
+    }
+}
+```

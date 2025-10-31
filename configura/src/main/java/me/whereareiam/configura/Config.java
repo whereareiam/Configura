@@ -123,13 +123,15 @@ public final class Config {
 
 	public static <T> T update(String file, Class<T> configClass) {
 		T defaultInstance = getDefaultReader().load(new byte[0], configClass);
-		getDefaultWriter().encode(file, defaultInstance);
+		T merged = getDefaultWriter().merge(file, defaultInstance);
+		getDefaultWriter().write(file, merged);
 		return getDefaultReader().load(file, configClass);
 	}
 
 	public static <T> T update(Path path, Class<T> configClass) {
 		T defaultInstance = getDefaultReader().load(new byte[0], configClass);
-		getDefaultWriter().encode(path, defaultInstance);
+		T merged = getDefaultWriter().merge(path, defaultInstance);
+		getDefaultWriter().write(path, merged);
 		return getDefaultReader().load(path, configClass);
 	}
 }

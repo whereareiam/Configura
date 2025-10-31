@@ -34,6 +34,17 @@ public class DefaultConfigReader implements ConfigReader {
 		this.mapper = MapperFactory.buildReaderMapper(this.format, this.registry);
 	}
 
+	private DefaultConfigReader(
+			Format format,
+			AdapterRegistry registry,
+			TemplateRegistry templateRegistry
+	) {
+		this.format = format;
+		this.registry = registry;
+		this.templateRegistry = templateRegistry;
+		this.mapper = MapperFactory.buildReaderMapper(this.format, this.registry);
+	}
+
 	@Override
 	public ConfigReader withFormat(Format format) {
 		return new DefaultConfigReader(format, this.registry, this.templateRegistry);
@@ -152,13 +163,6 @@ public class DefaultConfigReader implements ConfigReader {
 
 	public ConfigReader withTemplateRegistry(TemplateRegistry templateRegistry) {
 		return new DefaultConfigReader(this.format, this.registry, templateRegistry);
-	}
-
-	private DefaultConfigReader(Format format, AdapterRegistry registry, TemplateRegistry templateRegistry) {
-		this.format = format;
-		this.registry = registry;
-		this.templateRegistry = templateRegistry;
-		this.mapper = MapperFactory.buildReaderMapper(this.format, this.registry);
 	}
 }
 

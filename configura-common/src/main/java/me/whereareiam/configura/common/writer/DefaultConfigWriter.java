@@ -1,12 +1,11 @@
 package me.whereareiam.configura.common.writer;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.TypeAdapter;
-import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.common.MapperFactory;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
+import me.whereareiam.configura.common.merge.ConfigMerger;
 import me.whereareiam.configura.common.template.TemplateSeeder;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
@@ -15,7 +14,6 @@ import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -24,6 +22,8 @@ public class DefaultConfigWriter implements ConfigWriter {
 	private final AdapterRegistry registry;
 	private final TemplateRegistry templateRegistry;
 	private final ObjectMapper mapper;
+	private final TemplateSeeder userSeeder;
+	private final TemplateSeeder defaultSeeder;
 
 	public DefaultConfigWriter() {
 		this(null);
@@ -34,6 +34,21 @@ public class DefaultConfigWriter implements ConfigWriter {
 		this.registry = AdapterRegistry.empty();
 		this.templateRegistry = templateRegistry;
 		this.mapper = MapperFactory.buildWriterMapper(this.format, this.registry);
+		this.userSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.USER_MODEL);
+		this.defaultSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.DEFAULT_INSTANCE);
+	}
+
+	private DefaultConfigWriter(
+			Format format,
+			AdapterRegistry registry,
+			TemplateRegistry templateRegistry
+	) {
+		this.format = format;
+		this.registry = registry;
+		this.templateRegistry = templateRegistry;
+		this.mapper = MapperFactory.buildWriterMapper(this.format, this.registry);
+		this.userSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.USER_MODEL);
+		this.defaultSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.DEFAULT_INSTANCE);
 	}
 
 	@Override
@@ -63,8 +78,8 @@ public class DefaultConfigWriter implements ConfigWriter {
 			Path path = Path.of(resolved);
 			Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
 
-			T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
-			ObjectNode toWrite = buildMergedNodePreservingPolicy(path, seeded, mapper);
+			T seeded = userSeeder.seed(config);
+			ObjectNode toWrite = ConfigMerger.buildMergedNodeFavorModel(path, seeded, mapper);
 
 			mapper.writeValue(path.toFile(), toWrite);
 		} catch (IOException e) {
@@ -79,8 +94,8 @@ public class DefaultConfigWriter implements ConfigWriter {
 			Path target = Path.of(resolved);
 			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
 
-			T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
-			ObjectNode toWrite = buildMergedNodePreservingPolicy(target, seeded, mapper);
+			T seeded = userSeeder.seed(config);
+			ObjectNode toWrite = ConfigMerger.buildMergedNodeFavorModel(target, seeded, mapper);
 
 			mapper.writeValue(target.toFile(), toWrite);
 		} catch (IOException e) {
@@ -126,8 +141,8 @@ public class DefaultConfigWriter implements ConfigWriter {
 		String resolved = FileUtil.resolvePathWithFormat(file, format);
 		Path path = Path.of(resolved);
 
-		T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
-		ObjectNode merged = buildMergedNodePreservingPolicy(path, seeded, mapper);
+		T seeded = defaultSeeder.seed(config);
+		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(path, seeded, mapper);
 		return bindNode(merged, (Class<T>) seeded.getClass());
 	}
 
@@ -137,40 +152,11 @@ public class DefaultConfigWriter implements ConfigWriter {
 		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
 		Path target = Path.of(resolved);
 
-		T seeded = new TemplateSeeder(mapper, templateRegistry).seed(config);
-		ObjectNode merged = buildMergedNodePreservingPolicy(target, seeded, mapper);
+		T seeded = defaultSeeder.seed(config);
+		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(target, seeded, mapper);
 		return bindNode(merged, (Class<T>) seeded.getClass());
 	}
 
-	private <T> ObjectNode buildMergedNodePreservingPolicy(Path path, T model, ObjectMapper om) {
-		ObjectNode modelNode = om.valueToTree(model);
-		if (!Files.exists(path)) return modelNode;
-
-		try {
-			JsonNode existing = om.readTree(path.toFile());
-			if (existing != null && existing.isObject()) {
-				ObjectNode existingNode = (ObjectNode) existing;
-				// Preserve fields marked with @Policy(mergeOnUpdate=false)
-				preservePolicyFields(existingNode, modelNode, model.getClass());
-			}
-		} catch (Exception ignored) {
-		}
-
-		return modelNode;
-	}
-
-	private static void preservePolicyFields(ObjectNode existingNode, ObjectNode modelNode, Class<?> modelClass) {
-		for (Field field : modelClass.getDeclaredFields()) {
-			Policy policy = field.getAnnotation(Policy.class);
-			if (policy != null && !policy.mergeOnUpdate()) {
-				String key = field.getName();
-				JsonNode existingVal = existingNode.get(key);
-				if (existingVal != null && !existingVal.isNull()) {
-					modelNode.set(key, existingVal);
-				}
-			}
-		}
-	}
 
 	private <T> T bindNode(ObjectNode node, Class<T> type) {
 		try {
@@ -178,12 +164,5 @@ public class DefaultConfigWriter implements ConfigWriter {
 		} catch (Exception e) {
 			throw new ConfigException("Failed to bind merged node to type: " + type.getName(), e);
 		}
-	}
-
-	private DefaultConfigWriter(Format format, AdapterRegistry registry, TemplateRegistry templateRegistry) {
-		this.format = format;
-		this.registry = registry;
-		this.templateRegistry = templateRegistry;
-		this.mapper = MapperFactory.buildWriterMapper(this.format, this.registry);
 	}
 }

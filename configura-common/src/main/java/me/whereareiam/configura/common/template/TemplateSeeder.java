@@ -1,6 +1,7 @@
 package me.whereareiam.configura.common.template;
 
 import com.fasterxml.jackson.databind.BeanDescription;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
@@ -16,10 +17,21 @@ import java.util.List;
 public final class TemplateSeeder {
 	private final ObjectMapper mapper;
 	private final TemplateRegistry templateRegistry;
+	private final SeedingMode mode;
+
+	public enum SeedingMode {
+		DEFAULT_INSTANCE, // seeding a zero/empty-constructed instance (e.g., update)
+		USER_MODEL        // seeding a user-provided model (e.g., save/encode)
+	}
 
 	public TemplateSeeder(ObjectMapper mapper, TemplateRegistry templateRegistry) {
+		this(mapper, templateRegistry, SeedingMode.USER_MODEL);
+	}
+
+	public TemplateSeeder(ObjectMapper mapper, TemplateRegistry templateRegistry, SeedingMode mode) {
 		this.mapper = mapper;
 		this.templateRegistry = templateRegistry;
+		this.mode = mode;
 	}
 
 	public <T> T seed(T model) {
@@ -51,13 +63,14 @@ public final class TemplateSeeder {
 		}
 	}
 
-	private static void mergeMissing(ObjectNode target, ObjectNode defaults) {
+	private void mergeMissing(ObjectNode target, ObjectNode defaults) {
 		for (var entry : defaults.properties()) {
 			String key = entry.getKey();
 			var value = entry.getValue();
 			var existing = target.get(key);
 
-			if (existing == null || existing.isNull()) {
+			boolean treatDefaultsAsMissing = shouldTreatPrimitiveDefaultAsMissing(existing);
+			if (existing == null || existing.isNull() || treatDefaultsAsMissing) {
 				target.set(key, value);
 				continue;
 			}
@@ -75,7 +88,14 @@ public final class TemplateSeeder {
 		for (BeanPropertyDefinition prop : props) {
 			String key = BeanPropertyUtil.computeKey(prop);
 			if (key == null || key.isEmpty()) continue;
-			if (PathNavigator.has(node, key)) continue;
+
+			boolean hasPath = PathNavigator.has(node, key);
+			if (hasPath) {
+				JsonNode existing = PathNavigator.read(node, key);
+				boolean treatDefaultsAsMissing = shouldTreatPrimitiveDefaultAsMissing(existing);
+				if (!treatDefaultsAsMissing) continue;
+			}
+
 
 			AnnotatedMember member = prop.getPrimaryMember();
 			if (member == null) continue;
@@ -114,6 +134,14 @@ public final class TemplateSeeder {
 		}
 
 		return false;
+	}
+
+	private boolean shouldTreatPrimitiveDefaultAsMissing(JsonNode existing) {
+		if (existing == null) return false;
+		if (mode != SeedingMode.DEFAULT_INSTANCE) return false;
+
+		return (existing.isNumber() && existing.asDouble() == 0.0)
+				|| (existing.isBoolean() && !existing.asBoolean());
 	}
 }
 

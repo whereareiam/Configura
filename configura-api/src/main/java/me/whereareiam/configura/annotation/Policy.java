@@ -6,21 +6,32 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares merge behavior for {@code updateRead} operations.
+ * Declares merge behavior for smart update/save operations.
  *
- * <p>When {@link #mergeOnUpdate()} is true (default), the framework will
- * merge defaults and templates into the file, pruning unknown fields and
- * adding missing ones. When false, the file is not rewritten and is loaded
- * as-is.
+ * <p>Semantics:</p>
+ * <ul>
+ *   <li>{@link #mergeOnUpdate()} — when false at type level, avoid rewriting and load as-is.</li>
+ *   <li>{@link #skipMerge()} — when true on a field, do not add missing defaults for that field.</li>
+ *   <li>{@link #preserveWrite()} — when true on a field, if user content exists, keep that subtree as-is (no deep merge).</li>
+ * </ul>
  */
 @Target({ElementType.TYPE, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Policy {
 	/**
-	 * When true, updateRead will merge new fields (from model/templates) and prune unknown fields.
-	 * When false, updateRead will not rewrite the file; it will load as-is.
+	 * When false at type level, updateRead will not rewrite the file; it will load as-is.
 	 */
 	boolean mergeOnUpdate() default true;
+
+	/**
+	 * Field-level: do not add missing defaults for this field when merging.
+	 */
+	boolean skipMerge() default false;
+
+	/**
+	 * Field-level: if existing file contains this field, keep its subtree as-is (no deep merge).
+	 */
+	boolean preserveWrite() default false;
 }
 
 
