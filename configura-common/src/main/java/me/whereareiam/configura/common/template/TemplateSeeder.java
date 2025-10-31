@@ -141,7 +141,8 @@ public final class TemplateSeeder {
 		if (mode != SeedingMode.DEFAULT_INSTANCE) return false;
 
 		return (existing.isNumber() && existing.asDouble() == 0.0)
-				|| (existing.isBoolean() && !existing.asBoolean());
+				|| (existing.isBoolean() && !existing.asBoolean())
+				|| (existing.isArray() && existing.isEmpty());
 	}
 }
 
