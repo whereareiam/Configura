@@ -32,18 +32,34 @@ public final class MapperFactory {
 		return CACHE.computeIfAbsent(key, k -> createBase(format, registry.instantiate()));
 	}
 
-    private static ObjectMapper createBase(Format format, Map<Class<?>, TypeAdapter<?>> adapters) {
-        ObjectMapper mapper = format == Format.YAML ? new ObjectMapper(new YAMLFactory()) : new ObjectMapper();
+	private static ObjectMapper createBase(Format format, Map<Class<?>, TypeAdapter<?>> adapters) {
+		return switch (format) {
+			case YAML -> createYamlMapper(adapters);
+			case JSON -> createJsonMapper(adapters);
+		};
+	}
 
-        if (format == Format.YAML) mapper.configure(YAMLGenerator.Feature.WRITE_DOC_START_MARKER, false);
-		
+	private static ObjectMapper createYamlMapper(Map<Class<?>, TypeAdapter<?>> adapters) {
+		YAMLFactory factory = new YAMLFactory();
+		factory.disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER);
+
+		ObjectMapper mapper = new ObjectMapper(factory);
+
+		return configureCommon(mapper, adapters);
+	}
+
+	private static ObjectMapper createJsonMapper(Map<Class<?>, TypeAdapter<?>> adapters) {
+		ObjectMapper mapper = new ObjectMapper();
+		return configureCommon(mapper, adapters);
+	}
+
+	private static ObjectMapper configureCommon(ObjectMapper mapper, Map<Class<?>, TypeAdapter<?>> adapters) {
 		mapper.registerModule(new JavaTimeModule());
 		mapper.registerModule(new AdapterModule(adapters));
 		mapper.registerModule(new PolymorphicModule());
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-
 		mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
 		mapper.setVisibility(VisibilityChecker.Std.defaultInstance().withFieldVisibility(JsonAutoDetect.Visibility.ANY));
 

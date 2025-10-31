@@ -24,14 +24,12 @@ public class DefaultTemplateRegistry implements TemplateRegistry {
 		if (modelType == null)
 			throw new IllegalArgumentException("Unable to resolve model type for provider: " + providerClass.getName());
 
-		System.out.println("Registering template provider for model type: " + modelType.getName() + " with provider: " + providerClass.getName());
 		providers.put(modelType, provider);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> TemplateProvider<T> getTemplateProvider(Class<T> modelType) {
-		System.out.println("Retrieving template provider for model type: " + modelType.getName() + ", size: " + providers.size());
 		return (TemplateProvider<T>) providers.get(modelType);
 	}
 
