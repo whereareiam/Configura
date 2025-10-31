@@ -43,6 +43,8 @@ public final class MapperFactory {
 		YAMLFactory factory = new YAMLFactory();
 		factory.disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER);
 		factory.disable(YAMLGenerator.Feature.SPLIT_LINES);
+		factory.enable(YAMLGenerator.Feature.INDENT_ARRAYS);
+		factory.enable(YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR);
 
 		ObjectMapper mapper = new ObjectMapper(factory);
 
