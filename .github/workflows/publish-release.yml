@@ -16,19 +16,14 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v3
 
+      - name: Compute VERSION
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Compute version from tag
-        id: version
-        shell: bash
-        run: |
-          RAW_TAG="${GITHUB_REF_NAME:-${GITHUB_HEAD_REF}}"
-          VERSION="${RAW_TAG#v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Publish all modules to repository
         env:
