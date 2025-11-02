@@ -214,6 +214,33 @@ Config.writer(Format.JSON).write("app-config", cfg);
 AppConfig fromJson = Config.reader(Format.JSON).read("app-config", AppConfig.class);
 ```
 
+### Post-processing with @PostProcess
+
+You can run custom logic after a configuration is loaded using `@PostProcess`:
+
+```java
+import me.whereareiam.configura.annotation.PostProcess;
+
+@Data
+public class Settings {
+    private int level;
+    private boolean enabled;
+    
+    public transient int computedValue; // Not serialized
+    
+    @PostProcess
+    public void afterLoad() {
+        // Runs automatically after config is loaded
+        computedValue = level * 10;
+        
+        // Validation example
+        if (level < 0) {
+            throw new IllegalStateException("Level must be positive");
+        }
+    }
+}
+```
+
 ### Templating examples
 
 Templates let you declare default values for simple values, lists, and object-like maps.

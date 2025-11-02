@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.MapperFactory;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
+import me.whereareiam.configura.common.processor.PostProcessor;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.reader.ConfigReader;
@@ -63,37 +64,45 @@ public class DefaultConfigReader implements ConfigReader {
 
 	@Override
 	public <T> T decode(byte[] bytes, Class<T> configClass) {
+		T config;
 		if (bytes == null || bytes.length == 0) {
 			try {
-				return mapper.treeToValue(mapper.createObjectNode(), configClass);
+				config = mapper.treeToValue(mapper.createObjectNode(), configClass);
 			} catch (Exception e) {
 				throw new ConfigException("Failed to bind empty bytes to " + configClass.getName(), e);
 			}
+		} else {
+			try {
+				config = mapper.readValue(bytes, configClass);
+			} catch (IOException e) {
+				throw new ConfigException("Failed to deserialize config bytes", e);
+			}
 		}
 
-		try {
-			return mapper.readValue(bytes, configClass);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to deserialize config bytes", e);
-		}
+		PostProcessor.process(config);
+		return config;
 	}
 
 	@Override
 	public <T> T decode(InputStream inputStream, Class<T> configClass) {
 		if (configClass == null) throw new ConfigException("configClass must not be null");
+		T config;
 		if (inputStream == null) {
 			try {
-				return mapper.treeToValue(mapper.createObjectNode(), configClass);
+				config = mapper.treeToValue(mapper.createObjectNode(), configClass);
 			} catch (Exception e) {
 				throw new ConfigException("Failed to bind empty stream to " + configClass.getName(), e);
 			}
+		} else {
+			try {
+				config = mapper.readValue(inputStream, configClass);
+			} catch (IOException e) {
+				throw new ConfigException("Failed to deserialize config stream", e);
+			}
 		}
 
-		try {
-			return mapper.readValue(inputStream, configClass);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to deserialize config stream", e);
-		}
+		PostProcessor.process(config);
+		return config;
 	}
 
 	@Override
@@ -117,7 +126,10 @@ public class DefaultConfigReader implements ConfigReader {
 			JsonNode node = mapper.readTree(reader);
 			if (node == null) throw new ConfigException("Config file is empty or invalid: " + target);
 
-			return mapper.treeToValue(node, configClass);
+			T config = mapper.treeToValue(node, configClass);
+			PostProcessor.process(config);
+
+			return config;
 		} catch (IOException e) {
 			throw new ConfigException("Failed to read config file: " + target, e);
 		} catch (Exception e) {
@@ -130,7 +142,11 @@ public class DefaultConfigReader implements ConfigReader {
 		try (BufferedReader reader = Files.newBufferedReader(path)) {
 			JsonNode node = om.readTree(reader);
 			if (node == null) throw new ConfigException("Config file is empty or invalid: " + path);
-			return om.treeToValue(node, configClass);
+
+			T config = om.treeToValue(node, configClass);
+			PostProcessor.process(config);
+
+			return config;
 		} catch (IOException e) {
 			throw new ConfigException("Failed to read config file: " + path, e);
 		} catch (Exception e) {

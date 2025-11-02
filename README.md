@@ -7,6 +7,7 @@ helpers, and pluggable formats (YAML/JSON).
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Templating guide](docs/TEMPLATING.md)
+- [Post-processing](docs/POST_PROCESSING.md)
 - [Type adapters](docs/TYPE_ADAPTERS.md)
 - [Polymorphic models](docs/POLYMORPHIC.md)
 
@@ -14,6 +15,7 @@ helpers, and pluggable formats (YAML/JSON).
 
 - **Model‑driven**: Define plain Java classes as your config model; no frameworks required.
 - **Inline templating**: Use `@Template` to declare defaults for scalars, lists, and object‑like maps.
+- **Post-processing**: Use `@PostProcess` to run validation, compute derived fields, or initialize state after loading.
 - **Multiple formats**: YAML and JSON supported out of the box.
 - **Service‑based & extensible**: Pluggable readers/writers, global type adapters, and service discovery.
 
@@ -97,10 +99,16 @@ dependencies {
 ```java
 import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.annotation.template.type.Literal;
+import me.whereareiam.configura.annotation.PostProcess;
 
 public class HelloConfig {
 	@Template(literal = @Literal(text = "world"))
 	public String name;
+	
+	@PostProcess
+	public void afterLoad() {
+		System.out.println("Config loaded!");
+	}
 }
 ```
 
@@ -112,6 +120,7 @@ import me.whereareiam.configura.Config;
 HelloConfig cfg = new HelloConfig();
 // Writes defaults if needed and then re‑reads from disk
 cfg = Config.update("config/hello", cfg);
+// afterLoad() has been called automatically
 
 // Use it in your code
 System.out.println("Hello, " + cfg.name + "!");
