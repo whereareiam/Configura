@@ -1,7 +1,6 @@
 ## Templating Guide
 
-Templates let you declare default values directly on fields of your config classes or source them from external
-providers/resources. These defaults are materialized into configuration files during smart writes (save/apply).
+Templates let you declare default values directly on fields or classes. These defaults are materialized into configuration files during smart writes (save/apply).
 
 ### When templates are used
 
@@ -12,7 +11,7 @@ Note: YAML is the default format when no extension is provided; JSON is also sup
 
 ### Annotation
 
-- `@Template` — single entrypoint; contains nested types: `Template.Literal`, `Template.Property`, `Template.List`, `Template.Object`, `Template.Source`, `Template.Supplier`.
+- `@Template` — can be used on fields or classes; contains nested types: `Template.Literal`, `Template.Property`, `Template.List`, `Template.Object`, `Template.Source`, `Template.Supplier`.
 
 Imports used in the examples:
 

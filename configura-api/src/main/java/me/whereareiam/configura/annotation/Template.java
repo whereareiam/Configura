@@ -8,13 +8,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares an inline template for the annotated field.
+ * Declares an inline template for the annotated field or class.
  * <p>
  * Use {@link #literal()}, {@link #items()} and {@link #properties()} to define
  * default values that can be materialized into generated configuration files
  * or used during merges.
  *
- * <p>Example for an object with properties:
+ * <p>Example for a field with properties:
  * <pre>{@code
  * class DbConfig {
  *    @Template(properties = {
@@ -24,8 +24,17 @@ import java.lang.annotation.Target;
  * 	public Map<String, TemplateObject> defaults;
  * }
  * }</pre>
+ *
+ * <p>Example for a class-level template:
+ * <pre>{@code
+ * @Template(supplier = @Template.Supplier(MyConfigProvider.class))
+ * class MyConfig {
+ *     private String name;
+ *     private int port;
+ * }
+ * }</pre>
  */
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Template {
 	Literal literal() default @Literal;

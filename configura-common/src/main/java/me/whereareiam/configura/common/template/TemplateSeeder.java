@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.TemplateProvider;
+import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.common.util.BeanPropertyUtil;
 import me.whereareiam.configura.common.util.PathNavigator;
 import me.whereareiam.configura.template.TemplateRegistry;
@@ -50,7 +51,7 @@ public final class TemplateSeeder {
 	private void seedRootFromModelProvider(ObjectNode target, Class<?> type) {
 		if (templateRegistry == null) return;
 		try {
-			TemplateProvider<?> provider = templateRegistry.getTemplateProvider((Class) type);
+			TemplateProvider<?> provider = getProviderForType(type);
 			if (provider == null) return;
 
 			Object instance = type.getDeclaredConstructor().newInstance();
@@ -60,6 +61,29 @@ public final class TemplateSeeder {
 			ObjectNode defaults = mapper.valueToTree(provided);
 			mergeMissing(target, defaults);
 		} catch (Exception ignored) {
+		}
+	}
+
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	private TemplateProvider<?> getProviderForType(Class<?> type) {
+		// First check registry
+		TemplateProvider<?> provider = templateRegistry.getTemplateProvider((Class) type);
+		if (provider != null) return provider;
+		
+		// Check for class-level @Template annotation
+		Template templateAnnotation = type.getAnnotation(Template.class);
+		if (templateAnnotation == null) return null;
+		
+		Template.Supplier supplierAnnotation = templateAnnotation.supplier();
+		Class<? extends TemplateProvider<?>> providerClass = supplierAnnotation.value();
+		
+		if (providerClass == Template.Supplier.None.class)
+			return null;
+		
+		try {
+			return providerClass.getDeclaredConstructor().newInstance();
+		} catch (Exception e) {
+			return null;
 		}
 	}
 
