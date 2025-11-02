@@ -21,7 +21,7 @@ public class AdapterRegistryTest {
 	}
 
 	@Test
-	void withAdapter_creates_new_registry() {
+	void withAdapterCreatesNewRegistry() {
 		AdapterRegistry r1 = AdapterRegistry.empty();
 		AdapterRegistry r2 = r1.withAdapter(T.class, TA.class);
 		assertNotEquals(r1, r2);

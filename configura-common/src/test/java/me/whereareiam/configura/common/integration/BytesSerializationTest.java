@@ -20,7 +20,7 @@ public class BytesSerializationTest {
 	}
 
 	@Test
-	void toBytes_and_fromBytes_roundtrip() {
+	void toBytesAndFromBytesRoundtrip() {
 		Model m = new Model();
 		m.name = "service";
 		m.port = 8080;
@@ -38,7 +38,7 @@ public class BytesSerializationTest {
 	}
 
 	@Test
-	void fromBytes_with_empty_bytes_returns_default_instance() {
+	void fromBytesWithEmptyBytesReturnsDefaultInstance() {
 		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
 		Model restored = reader.load(new byte[0], Model.class);
 		assertNotNull(restored);
