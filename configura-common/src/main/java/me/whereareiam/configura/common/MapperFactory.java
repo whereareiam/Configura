@@ -61,7 +61,7 @@ public final class MapperFactory {
 
 		DefaultPrettyPrinter prettyPrinter = new DefaultPrettyPrinter()
 				.withSeparators(Separators.createDefaultInstance()
-						.withObjectFieldValueSpacing(Separators.Spacing.NONE));
+						.withObjectFieldValueSpacing(Separators.Spacing.AFTER));
 		prettyPrinter.indentArraysWith(DefaultIndenter.SYSTEM_LINEFEED_INSTANCE);
 		mapper.setDefaultPrettyPrinter(prettyPrinter);
 
