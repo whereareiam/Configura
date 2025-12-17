@@ -54,6 +54,8 @@ public final class MapperFactory {
 
 	private static ObjectMapper createJsonMapper(Map<Class<?>, TypeAdapter<?>> adapters) {
 		ObjectMapper mapper = new ObjectMapper();
+		mapper.enable(SerializationFeature.INDENT_OUTPUT);
+
 		return configureCommon(mapper, adapters);
 	}
 
