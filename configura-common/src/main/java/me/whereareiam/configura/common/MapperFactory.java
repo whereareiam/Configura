@@ -6,6 +6,9 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.core.util.Separators;
 import com.fasterxml.jackson.databind.introspect.VisibilityChecker;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
@@ -55,6 +58,12 @@ public final class MapperFactory {
 	private static ObjectMapper createJsonMapper(Map<Class<?>, TypeAdapter<?>> adapters) {
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.enable(SerializationFeature.INDENT_OUTPUT);
+
+		DefaultPrettyPrinter prettyPrinter = new DefaultPrettyPrinter()
+				.withSeparators(Separators.createDefaultInstance()
+						.withObjectFieldValueSpacing(Separators.Spacing.NONE));
+		prettyPrinter.indentArraysWith(DefaultIndenter.SYSTEM_LINEFEED_INSTANCE);
+		mapper.setDefaultPrettyPrinter(prettyPrinter);
 
 		return configureCommon(mapper, adapters);
 	}
