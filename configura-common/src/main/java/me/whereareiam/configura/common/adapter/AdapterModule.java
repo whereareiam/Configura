@@ -60,6 +60,32 @@ public final class AdapterModule extends SimpleModule {
 				}
 			}
 		});
+
+		// Register key serializer so map keys of this type are serialized using the adapter
+		addKeySerializer(type, new JsonSerializer<>() {
+			@Override
+			public void serialize(Object value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+				try {
+					// Write the key as a field name using the adapter's serialized form
+					gen.writeFieldName(adapter.serialize(value));
+				} catch (Exception ex) {
+					throw new JsonMappingException(gen, "Adapter key serialization failed for " + type.getName(), ex);
+				}
+			}
+		});
+
+		// Register key deserializer so map keys are deserialized using the adapter
+		addKeyDeserializer(type, new KeyDeserializer() {
+			@Override
+			public Object deserializeKey(String key, DeserializationContext ctxt) throws IOException {
+				try {
+					// Adapter expects raw string; pass it through directly
+					return adapter.deserialize(key);
+				} catch (Exception ex) {
+					throw new IOException("Adapter key deserialization failed for " + type.getName(), ex);
+				}
+			}
+		});
 	}
 
 	private static String asText(JsonNode node) {
