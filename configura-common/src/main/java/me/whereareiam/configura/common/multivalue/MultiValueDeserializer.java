@@ -30,7 +30,6 @@ public class MultiValueDeserializer extends JsonDeserializer<MultiValue> impleme
 		JsonNode node = codec.readTree(p);
 
 		JavaType ct = contentType != null ? contentType : ctxt.getTypeFactory().constructType(Object.class);
-		ObjectMapper mapper = (ObjectMapper) codec;
 
 		List<Object> values = new ArrayList<>();
 		if (node == null || node.isNull()) {
@@ -39,12 +38,12 @@ public class MultiValueDeserializer extends JsonDeserializer<MultiValue> impleme
 
 		if (node.isArray()) {
 			for (JsonNode element : node) {
-				values.add(mapper.convertValue(element, ct));
+				values.add(convert(codec, element, ct));
 			}
 			return new MultiValue<>(values);
 		}
 
-		values.add(mapper.convertValue(node, ct));
+		values.add(convert(codec, node, ct));
 		return new MultiValue<>(values);
 	}
 
@@ -56,5 +55,17 @@ public class MultiValueDeserializer extends JsonDeserializer<MultiValue> impleme
 				: ctxt.getTypeFactory().constructType(Object.class);
 
 		return new MultiValueDeserializer(content);
+	}
+
+	private Object convert(ObjectCodec codec, JsonNode node, JavaType targetType) {
+		if (codec instanceof ObjectMapper mapper)
+			return mapper.convertValue(node, targetType);
+
+		// Fallback: best-effort using treeToValue
+		try {
+			return codec.treeToValue(node, targetType.getRawClass());
+		} catch (Exception e) {
+			throw new IllegalStateException("Failed to convert MultiValue element", e);
+		}
 	}
 }
