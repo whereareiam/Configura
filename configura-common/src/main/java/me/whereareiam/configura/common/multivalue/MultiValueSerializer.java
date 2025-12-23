@@ -13,11 +13,21 @@ import java.io.IOException;
 public class MultiValueSerializer extends JsonSerializer<MultiValue> {
 	@Override
 	public void serialize(MultiValue value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+		if (value == null || value.asList().isEmpty()) {
+			gen.writeStartArray();
+			gen.writeEndArray();
+			return;
+		}
+
+		var list = value.asList();
+		if (value.isSinglePreferred() && list.size() == 1) {
+			serializers.defaultSerializeValue(list.get(0), gen);
+			return;
+		}
+
 		gen.writeStartArray();
-		if (value != null) {
-			for (Object element : value.asList()) {
-				serializers.defaultSerializeValue(element, gen);
-			}
+		for (Object element : list) {
+			serializers.defaultSerializeValue(element, gen);
 		}
 		gen.writeEndArray();
 	}

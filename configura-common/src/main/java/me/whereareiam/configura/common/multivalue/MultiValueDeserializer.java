@@ -40,15 +40,15 @@ public class MultiValueDeserializer extends JsonDeserializer<MultiValue> impleme
 			for (JsonNode element : node) {
 				values.add(convert(codec, element, ct));
 			}
-			return new MultiValue<>(values);
+			return new MultiValue<>(values, false);
 		}
 
 		values.add(convert(codec, node, ct));
-		return new MultiValue<>(values);
+		return new MultiValue<>(values, true);
 	}
 
 	@Override
-	public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property) throws JsonMappingException {
+	public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property) {
 		JavaType targetType = property != null ? property.getType() : ctxt.getContextualType();
 		JavaType content = (targetType != null && targetType.containedTypeCount() > 0)
 				? targetType.containedType(0)

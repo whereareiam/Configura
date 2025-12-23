@@ -16,21 +16,30 @@ import java.util.List;
 @Getter
 @ToString
 @EqualsAndHashCode
+@SuppressWarnings("unused")
 public class MultiValue<T> {
 	private final List<T> values;
+	private final boolean singlePreferred;
 
 	public MultiValue() {
 		this.values = new ArrayList<>();
+		this.singlePreferred = false;
 	}
 
 	public MultiValue(T single) {
 		this.values = new ArrayList<>();
 		if (single != null)
 			this.values.add(single);
+		this.singlePreferred = true;
 	}
 
 	public MultiValue(Collection<T> values) {
+		this(values, false);
+	}
+
+	public MultiValue(Collection<T> values, boolean singlePreferred) {
 		this.values = values != null ? new ArrayList<>(values) : new ArrayList<>();
+		this.singlePreferred = singlePreferred;
 	}
 
 	public boolean isEmpty() {
@@ -50,6 +59,6 @@ public class MultiValue<T> {
 	}
 
 	public static <T> MultiValue<T> of(Collection<T> values) {
-		return new MultiValue<>(values);
+		return new MultiValue<>(values, false);
 	}
 }

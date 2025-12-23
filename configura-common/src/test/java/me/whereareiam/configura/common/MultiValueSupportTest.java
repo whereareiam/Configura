@@ -1,5 +1,7 @@
 package me.whereareiam.configura.common;
 
+import lombok.Getter;
+import lombok.Setter;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.type.Format;
@@ -14,17 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MultiValueSupportTest {
-
+	@Setter
+	@Getter
 	static class Conf {
 		private MultiValue<String> audit;
-
-		public MultiValue<String> getAudit() {
-			return audit;
-		}
-
-		public void setAudit(MultiValue<String> audit) {
-			this.audit = audit;
-		}
 	}
 
 	@Test
@@ -58,5 +53,17 @@ class MultiValueSupportTest {
 		String yaml = new String(out, StandardCharsets.UTF_8);
 		assertTrue(yaml.contains("- \"123\""));
 		assertTrue(yaml.contains("- \"456\""));
+	}
+
+	@Test
+	void serializesSingleAsScalar() {
+		Conf conf = new Conf();
+		conf.setAudit(MultiValue.of("123"));
+
+		DefaultConfigWriter writer = (DefaultConfigWriter) new DefaultConfigWriter().withFormat(Format.YAML);
+		byte[] out = writer.encode(conf);
+
+		String yaml = new String(out, StandardCharsets.UTF_8);
+		assertTrue(yaml.contains("audit: \"123\""));
 	}
 }
