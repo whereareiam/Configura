@@ -3,7 +3,6 @@ package me.whereareiam.configura.integration;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.annotation.Field;
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.annotation.Policy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -46,7 +45,6 @@ public class ConfigTemplatesOnSaveTest {
 			public PoolConfig pool;
 
 			@Field
-			@Policy(mergeOnUpdate = false)
 			public Boolean ssl;
 
 			public static class PoolConfig {

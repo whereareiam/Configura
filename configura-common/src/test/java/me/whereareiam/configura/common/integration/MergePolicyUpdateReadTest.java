@@ -1,7 +1,6 @@
 package me.whereareiam.configura.common.integration;
 
 import me.whereareiam.configura.annotation.Field;
-import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.type.Format;
@@ -31,63 +30,6 @@ public class MergePolicyUpdateReadTest {
 		public int port;
 	}
 
-	static class PerFieldPolicy {
-		@Field
-		public String safeToMerge;
-
-		@Field
-		@Policy(mergeOnUpdate = false)
-		public String keepAsIs;
-	}
-
-	@Test
-	void fieldPolicyKeepExistingPreservesValue(@TempDir Path dir) throws Exception {
-		String base = dir.resolve("fieldpolicy").toString();
-
-		PerFieldPolicy existing = new PerFieldPolicy();
-		existing.safeToMerge = "updated";
-		existing.keepAsIs = "original";
-		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.encode(base, existing);
-
-		// Read file and manually edit (robust to quoted/unquoted rendering)
-		Path yaml = Path.of(base + ".yml");
-		String content = Files.readString(yaml);
-		content = content.replace("keepAsIs: original", "keepAsIs: preserved");
-		content = content.replace("keepAsIs: \"original\"", "keepAsIs: preserved");
-		Files.writeString(yaml, content, StandardCharsets.UTF_8);
-
-		// Now try to update with new model values
-		PerFieldPolicy model = new PerFieldPolicy();
-		model.safeToMerge = "newValue";
-		model.keepAsIs = "shouldNotAppear";
-
-		writer.encode(base, model);
-		PerFieldPolicy result = new DefaultConfigReader().withFormat(Format.YAML).load(base, PerFieldPolicy.class);
-
-		assertEquals("newValue", result.safeToMerge); // merged
-		assertEquals("preserved", result.keepAsIs); // kept as-is
-
-		// Verify file content contains preserved value
-		String updated = Files.readString(yaml);
-		assertFalse(updated.contains("keepAsIs: original") || updated.contains("keepAsIs: \"original\""));
-	}
-
-	@Test
-	void fieldPolicyWithNoExistingWritesDefault(@TempDir Path dir) {
-		String base = dir.resolve("fieldpolicy2").toString();
-
-		PerFieldPolicy model = new PerFieldPolicy();
-		model.safeToMerge = "default";
-		model.keepAsIs = "seed";
-
-		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.encode(base, model);
-		PerFieldPolicy result = new DefaultConfigReader().withFormat(Format.YAML).load(base, PerFieldPolicy.class);
-
-		assertEquals("default", result.safeToMerge);
-		assertEquals("seed", result.keepAsIs);
-	}
 
 	@Test
 	void mergeTruePrunesUnknown(@TempDir Path dir) throws Exception {

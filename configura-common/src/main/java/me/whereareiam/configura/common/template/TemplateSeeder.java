@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.TemplateProvider;
+import me.whereareiam.configura.annotation.MergeStrategy;
+import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.common.util.BeanPropertyUtil;
 import me.whereareiam.configura.common.util.PathNavigator;
@@ -59,7 +61,7 @@ public final class TemplateSeeder {
 			if (provided == null) return;
 
 			ObjectNode defaults = mapper.valueToTree(provided);
-			mergeMissing(target, defaults);
+			mergeMissingWithStrategy(target, defaults, type);
 		} catch (Exception ignored) {
 		}
 	}
@@ -102,6 +104,74 @@ public final class TemplateSeeder {
 			if (existing.isObject() && value.isObject())
 				mergeMissing((ObjectNode) existing, (ObjectNode) value);
 		}
+	}
+
+	/**
+	 * Merges missing values from defaults into target, respecting field-level merge strategies.
+	 *
+	 * @param target the target node being populated (user config)
+	 * @param defaults the default values from template
+	 * @param modelClass the Java class being configured
+	 */
+	private void mergeMissingWithStrategy(ObjectNode target, ObjectNode defaults, Class<?> modelClass) {
+		for (var entry : defaults.properties()) {
+			String key = entry.getKey();
+			var value = entry.getValue();
+			var existing = target.get(key);
+
+			// Get the merge strategy for this field
+			MergeStrategy strategy = getFieldMergeStrategy(modelClass, key);
+
+			// Handle SKIP strategy
+			if (strategy == MergeStrategy.SKIP) {
+				continue;
+			}
+
+			// Handle MAP_ADDITIVE_ONLY strategy
+			if (strategy == MergeStrategy.MAP_ADDITIVE_ONLY) {
+				// Only add the entire field if it's completely missing from user config
+				// If user has the field (even if empty), don't merge any keys into it
+				if (existing == null || existing.isNull()) {
+					target.set(key, value);
+				}
+				// Otherwise, user has content - respect it completely, don't add template keys
+				continue;
+			}
+
+			// DEFAULT strategy: original deep merge behavior
+			boolean treatDefaultsAsMissing = shouldTreatPrimitiveDefaultAsMissing(existing);
+			if (existing == null || existing.isNull() || treatDefaultsAsMissing) {
+				target.set(key, value);
+				continue;
+			}
+
+			// Deep merge for nested objects (DEFAULT strategy only)
+			if (existing.isObject() && value.isObject()) {
+				mergeMissing((ObjectNode) existing, (ObjectNode) value);
+			}
+		}
+	}
+
+	/**
+	 * Gets the merge strategy for a specific field in a model class.
+	 *
+	 * @param modelClass the class to inspect
+	 * @param fieldName the field name
+	 * @return the merge strategy, or DEFAULT if no policy specified
+	 */
+	private MergeStrategy getFieldMergeStrategy(Class<?> modelClass, String fieldName) {
+		try {
+			Field field = modelClass.getDeclaredField(fieldName);
+			Policy policy = field.getAnnotation(Policy.class);
+
+			if (policy != null) {
+				return policy.value();
+			}
+		} catch (NoSuchFieldException ignored) {
+			// Field doesn't exist in Java class, just continue with default
+		}
+
+		return MergeStrategy.DEFAULT;
 	}
 
 	private void seedNode(ObjectNode node, Class<?> type) {

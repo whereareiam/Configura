@@ -3,6 +3,7 @@ package me.whereareiam.configura.common.merge;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import me.whereareiam.configura.annotation.MergeStrategy;
 import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.exception.ConfigException;
 
@@ -36,7 +37,7 @@ public final class ConfigMerger {
 			JsonNode existing = mapper.readTree(path.toFile());
 			if (existing != null && existing.isObject()) {
 				ObjectNode existingNode = (ObjectNode) existing;
-				overlayModelOverExisting(modelNode, existingNode, model.getClass());
+				overlayModelOverExisting(modelNode, existingNode);
 			}
 		} catch (Exception e) {
 			throw new ConfigException("Failed to merge (model-wins) with existing config: " + path, e);
@@ -46,20 +47,23 @@ public final class ConfigMerger {
 	}
 
 	public static void mergeExistingIntoModel(ObjectNode modelNode, ObjectNode existingNode, Class<?> modelClass) {
-		preservePolicyFields(existingNode, modelNode, modelClass);
-
 		existingNode.fieldNames().forEachRemaining(key -> {
 			JsonNode existingVal = existingNode.get(key);
 			JsonNode modelVal = modelNode.get(key);
 
-			Policy policy = getFieldPolicy(modelClass, key);
-			boolean preserveWrite = policy != null && policy.preserveWrite();
+			// Check if this field has MAP_ADDITIVE_ONLY policy
+			MergeStrategy strategy = getFieldMergeStrategy(modelClass, key);
 
-			if (preserveWrite) {
-				if (existingVal != null && !existingVal.isNull()) modelNode.set(key, existingVal);
+			// For MAP_ADDITIVE_ONLY: if existing file has this field, replace model's value entirely
+			// This prevents template keys from being merged in
+			if (strategy == MergeStrategy.MAP_ADDITIVE_ONLY) {
+				if (existingVal != null && !existingVal.isNull()) {
+					modelNode.set(key, existingVal);
+				}
 				return;
 			}
 
+			// Default behavior: deep merge for objects
 			if (existingVal != null && !existingVal.isNull() && existingVal.isObject() && modelVal != null && modelVal.isObject()) {
 				mergeExistingIntoModel((ObjectNode) modelVal, (ObjectNode) existingVal, modelClass);
 				return;
@@ -68,59 +72,31 @@ public final class ConfigMerger {
 			if (existingVal != null && !existingVal.isNull())
 				modelNode.set(key, existingVal);
 		});
-
-		for (Field f : modelClass.getDeclaredFields()) {
-			Policy p = f.getAnnotation(Policy.class);
-			if (p == null || !p.skipMerge()) continue;
-
-			String key = f.getName();
-			JsonNode existingVal = existingNode.get(key);
-			boolean hasNonNullExisting = existingVal != null && !existingVal.isNull();
-
-			if (!hasNonNullExisting && modelNode.has(key))
-				modelNode.remove(key);
-		}
 	}
 
-	public static void preservePolicyFields(ObjectNode existingNode, ObjectNode modelNode, Class<?> modelClass) {
-		for (Field field : modelClass.getDeclaredFields()) {
-			Policy policy = field.getAnnotation(Policy.class);
-
-			if (policy != null && !policy.mergeOnUpdate()) {
-				String key = field.getName();
-				JsonNode existingVal = existingNode.get(key);
-
-				if (existingVal != null && !existingVal.isNull())
-					modelNode.set(key, existingVal);
-			}
-		}
-	}
-
-	private static Policy getFieldPolicy(Class<?> modelClass, String key) {
+	/**
+	 * Gets the merge strategy for a specific field in a model class.
+	 */
+	private static MergeStrategy getFieldMergeStrategy(Class<?> modelClass, String fieldName) {
 		try {
-			Field f = modelClass.getDeclaredField(key);
-
-			return f.getAnnotation(Policy.class);
+			Field field = modelClass.getDeclaredField(fieldName);
+			Policy policy = field.getAnnotation(Policy.class);
+			if (policy != null) {
+				return policy.value();
+			}
 		} catch (NoSuchFieldException ignored) {
-			return null;
+			// Field doesn't exist in Java class
 		}
+		return MergeStrategy.DEFAULT;
 	}
 
-	private static void overlayModelOverExisting(ObjectNode modelNode, ObjectNode existingNode, Class<?> modelClass) {
+	private static void overlayModelOverExisting(ObjectNode modelNode, ObjectNode existingNode) {
 		existingNode.fieldNames().forEachRemaining(key -> {
 			JsonNode existingVal = existingNode.get(key);
 			JsonNode modelVal = modelNode.get(key);
 
-			Policy policy = getFieldPolicy(modelClass, key);
-			boolean preserveWrite = policy != null && (policy.preserveWrite() || !policy.mergeOnUpdate());
-
-			if (preserveWrite && existingVal != null && !existingVal.isNull()) {
-				modelNode.set(key, existingVal);
-				return;
-			}
-
 			if (existingVal != null && !existingVal.isNull() && modelVal != null && modelVal.isObject() && existingVal.isObject())
-				overlayModelOverExisting((ObjectNode) modelVal, (ObjectNode) existingVal, modelClass);
+				overlayModelOverExisting((ObjectNode) modelVal, (ObjectNode) existingVal);
 		});
 	}
 }
