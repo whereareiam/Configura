@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.TemplateProvider;
 import me.whereareiam.configura.annotation.MergeStrategy;
-import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.annotation.Template;
 import me.whereareiam.configura.common.util.BeanPropertyUtil;
 import me.whereareiam.configura.common.util.PathNavigator;
@@ -122,13 +121,13 @@ public final class TemplateSeeder {
 			// Get the merge strategy for this field
 			MergeStrategy strategy = getFieldMergeStrategy(modelClass, key);
 
-			// Handle SKIP strategy
-			if (strategy == MergeStrategy.SKIP) {
+			// Handle NONE strategy
+			if (strategy == MergeStrategy.NONE) {
 				continue;
 			}
 
-			// Handle MAP_ADDITIVE_ONLY strategy
-			if (strategy == MergeStrategy.MAP_ADDITIVE_ONLY) {
+			// Handle SHALLOW strategy
+			if (strategy == MergeStrategy.SHALLOW) {
 				// Only add the entire field if it's completely missing from user config
 				// If user has the field (even if empty), don't merge any keys into it
 				if (existing == null || existing.isNull()) {
@@ -138,7 +137,7 @@ public final class TemplateSeeder {
 				continue;
 			}
 
-			// DEFAULT strategy: original deep merge behavior
+			// DEEP strategy: original deep merge behavior
 			boolean treatDefaultsAsMissing = shouldTreatPrimitiveDefaultAsMissing(existing);
 			if (existing == null || existing.isNull() || treatDefaultsAsMissing) {
 				target.set(key, value);
@@ -162,16 +161,21 @@ public final class TemplateSeeder {
 	private MergeStrategy getFieldMergeStrategy(Class<?> modelClass, String fieldName) {
 		try {
 			Field field = modelClass.getDeclaredField(fieldName);
-			Policy policy = field.getAnnotation(Policy.class);
+			me.whereareiam.configura.annotation.Field fieldAnnotation = 
+				field.getAnnotation(me.whereareiam.configura.annotation.Field.class);
 
-			if (policy != null) {
-				return policy.value();
+			if (fieldAnnotation != null) {
+				// If additive = true, use SHALLOW merge
+				if (fieldAnnotation.additive()) {
+					return MergeStrategy.SHALLOW;
+				}
+				return fieldAnnotation.merge();
 			}
 		} catch (NoSuchFieldException ignored) {
 			// Field doesn't exist in Java class, just continue with default
 		}
 
-		return MergeStrategy.DEFAULT;
+		return MergeStrategy.DEEP;
 	}
 
 	private void seedNode(ObjectNode node, Class<?> type) {

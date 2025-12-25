@@ -2,44 +2,39 @@ package me.whereareiam.configura.annotation;
 
 /**
  * Defines how template defaults should be merged with existing user configuration.
- *
- * <p>This enum controls the behavior when merging template-provided defaults with
- * user configuration files, particularly for collection types like Maps and Lists.</p>
  */
 public enum MergeStrategy {
     /**
-     * Default deep merge behavior.
-     *
-     * <p>Recursively merges all missing keys from template into existing config.
-     * For Maps/Objects: adds any keys present in template but missing in user config.
-     * This means deleted entries will reappear from templates.</p>
+     * Deep merge - recursively merge nested structures.
+     * Template adds missing keys while preserving user changes.
      *
      * <p>Example: If template has {a:1, b:2} and user has {a:5}, result is {a:5, b:2}</p>
+     *
+     * <p>Use for nested config objects where you want to add new template keys.</p>
      */
-    DEFAULT,
+    DEEP,
 
     /**
-     * Map additive-only strategy (recommended for user-editable Maps).
-     *
-     * <p>Only applies template defaults if the field itself is missing/null in user config.
-     * Once user has the field (even if empty), no keys are added from template.
-     * This allows users to permanently delete unwanted template entries.</p>
+     * Shallow merge - only apply template if field is completely missing.
+     * Once user has any value (even empty), template is ignored.
      *
      * <p>Example scenarios:</p>
      * <ul>
-     *   <li>User file missing field → Apply full template Map</li>
+     *   <li>User file missing field → Apply full template</li>
      *   <li>User has {a:5} → Keep {a:5}, don't add template's b:2</li>
      *   <li>User has {} → Keep {}, don't add anything from template</li>
      * </ul>
      *
-     * <p>Use this for Maps where users should be able to remove entries (e.g., languages, commands).</p>
+     * <p>Use for Maps/Lists where users should control all entries.</p>
      */
-    MAP_ADDITIVE_ONLY,
+    SHALLOW,
 
     /**
-     * Skip merging entirely.
+     * No merge - template is never applied.
      *
      * <p>Field is either from user config or omitted. No template defaults are applied.</p>
+     *
+     * <p>Use for pure user data with no template defaults.</p>
      */
-    SKIP
+    NONE
 }

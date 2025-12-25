@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.annotation.MergeStrategy;
-import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.exception.ConfigException;
 
 import java.lang.reflect.Field;
@@ -54,19 +53,34 @@ public final class ConfigMerger {
 			JsonNode existingVal = existingNode.get(key);
 			JsonNode modelVal = modelNode.get(key);
 
-			// Check if this field has MAP_ADDITIVE_ONLY policy
+			// Check if existing file has explicit null for @Field(optional=true)
+			if (existingVal != null && existingVal.isNull() && isOptionalField(modelClass, key)) {
+				// User explicitly deleted this field - keep it null
+				modelNode.set(key, existingVal);
+				return;
+			}
+
+			// Check merge strategy
 			MergeStrategy strategy = getFieldMergeStrategy(modelClass, key);
 
-			// For MAP_ADDITIVE_ONLY: if existing file has this field, replace model's value entirely
+			// For SHALLOW: if existing file has this field, replace model's value entirely
 			// This prevents template keys from being merged in
-			if (strategy == MergeStrategy.MAP_ADDITIVE_ONLY) {
+			if (strategy == MergeStrategy.SHALLOW) {
 				if (existingVal != null && !existingVal.isNull()) {
 					modelNode.set(key, existingVal);
 				}
 				return;
 			}
 
-			// Default behavior: deep merge for objects
+			// For NONE: never apply template
+			if (strategy == MergeStrategy.NONE) {
+				if (existingVal != null && !existingVal.isNull()) {
+					modelNode.set(key, existingVal);
+				}
+				return;
+			}
+
+			// Default DEEP behavior: deep merge for objects
 			if (existingVal != null && !existingVal.isNull() && existingVal.isObject() && modelVal != null && modelVal.isObject()) {
 				// Get the actual field type for nested recursion
 				Class<?> nestedClass = getFieldType(modelClass, key);
@@ -85,14 +99,34 @@ public final class ConfigMerger {
 	private static MergeStrategy getFieldMergeStrategy(Class<?> modelClass, String fieldName) {
 		try {
 			Field field = modelClass.getDeclaredField(fieldName);
-			Policy policy = field.getAnnotation(Policy.class);
-			if (policy != null) {
-				return policy.value();
+			me.whereareiam.configura.annotation.Field annotation = 
+				field.getAnnotation(me.whereareiam.configura.annotation.Field.class);
+			
+			if (annotation != null) {
+				// If additive = true, use SHALLOW merge
+				if (annotation.additive()) {
+					return MergeStrategy.SHALLOW;
+				}
+				return annotation.merge();
 			}
 		} catch (NoSuchFieldException ignored) {
 			// Field doesn't exist in Java class
 		}
-		return MergeStrategy.DEFAULT;
+		return MergeStrategy.DEEP;
+	}
+
+	/**
+	 * Checks if a field is marked as optional.
+	 */
+	private static boolean isOptionalField(Class<?> modelClass, String fieldName) {
+		try {
+			Field field = modelClass.getDeclaredField(fieldName);
+			me.whereareiam.configura.annotation.Field annotation = 
+				field.getAnnotation(me.whereareiam.configura.annotation.Field.class);
+			return annotation != null && annotation.optional();
+		} catch (NoSuchFieldException e) {
+			return false;
+		}
 	}
 
 	/**

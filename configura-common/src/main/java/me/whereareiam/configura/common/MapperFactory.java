@@ -16,6 +16,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.adapter.AdapterModule;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
+import me.whereareiam.configura.common.merge.OptionalFieldModule;
 import me.whereareiam.configura.common.multivalue.MultiValueModule;
 import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
 import me.whereareiam.configura.type.Format;
@@ -74,6 +75,7 @@ public final class MapperFactory {
 		mapper.registerModule(new AdapterModule(adapters));
 		mapper.registerModule(new PolymorphicModule());
 		mapper.registerModule(new MultiValueModule());
+		mapper.registerModule(new OptionalFieldModule());
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
