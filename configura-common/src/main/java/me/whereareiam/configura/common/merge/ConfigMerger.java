@@ -8,8 +8,11 @@ import me.whereareiam.configura.annotation.Policy;
 import me.whereareiam.configura.exception.ConfigException;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 public final class ConfigMerger {
 	public static <T> ObjectNode buildMergedNodeFavorExisting(Path path, T model, ObjectMapper mapper) {
@@ -95,11 +98,25 @@ public final class ConfigMerger {
 	/**
 	 * Gets the type of a specific field in a model class.
 	 * Used for recursive merging to check nested field policies.
+	 * For Map fields, returns the Map's value type (generic parameter) instead of Map.class.
 	 */
 	private static Class<?> getFieldType(Class<?> modelClass, String fieldName) {
 		try {
 			Field field = modelClass.getDeclaredField(fieldName);
-			return field.getType();
+			Class<?> fieldType = field.getType();
+			
+			// If field is a Map, extract the value type (V in Map<K, V>)
+			if (Map.class.isAssignableFrom(fieldType)) {
+				Type genericType = field.getGenericType();
+				if (genericType instanceof ParameterizedType paramType) {
+					Type[] typeArgs = paramType.getActualTypeArguments();
+					// typeArgs[0] is key type, typeArgs[1] is value type
+					if (typeArgs.length >= 2 && typeArgs[1] instanceof Class)
+						return (Class<?>) typeArgs[1];
+				}
+			}
+			
+			return fieldType;
 		} catch (NoSuchFieldException ignored) {
 			// Field doesn't exist in Java class
 			return null;
