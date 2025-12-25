@@ -103,10 +103,6 @@ public final class ConfigMerger {
 				field.getAnnotation(me.whereareiam.configura.annotation.Field.class);
 			
 			if (annotation != null) {
-				// If additive = true, use SHALLOW merge
-				if (annotation.additive()) {
-					return MergeStrategy.SHALLOW;
-				}
 				return annotation.merge();
 			}
 		} catch (NoSuchFieldException ignored) {

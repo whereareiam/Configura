@@ -165,10 +165,6 @@ public final class TemplateSeeder {
 				field.getAnnotation(me.whereareiam.configura.annotation.Field.class);
 
 			if (fieldAnnotation != null) {
-				// If additive = true, use SHALLOW merge
-				if (fieldAnnotation.additive()) {
-					return MergeStrategy.SHALLOW;
-				}
 				return fieldAnnotation.merge();
 			}
 		} catch (NoSuchFieldException ignored) {
