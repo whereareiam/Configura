@@ -65,7 +65,9 @@ public final class ConfigMerger {
 
 			// Default behavior: deep merge for objects
 			if (existingVal != null && !existingVal.isNull() && existingVal.isObject() && modelVal != null && modelVal.isObject()) {
-				mergeExistingIntoModel((ObjectNode) modelVal, (ObjectNode) existingVal, modelClass);
+				// Get the actual field type for nested recursion
+				Class<?> nestedClass = getFieldType(modelClass, key);
+				mergeExistingIntoModel((ObjectNode) modelVal, (ObjectNode) existingVal, nestedClass != null ? nestedClass : modelClass);
 				return;
 			}
 
@@ -88,6 +90,20 @@ public final class ConfigMerger {
 			// Field doesn't exist in Java class
 		}
 		return MergeStrategy.DEFAULT;
+	}
+
+	/**
+	 * Gets the type of a specific field in a model class.
+	 * Used for recursive merging to check nested field policies.
+	 */
+	private static Class<?> getFieldType(Class<?> modelClass, String fieldName) {
+		try {
+			Field field = modelClass.getDeclaredField(fieldName);
+			return field.getType();
+		} catch (NoSuchFieldException ignored) {
+			// Field doesn't exist in Java class
+			return null;
+		}
 	}
 
 	private static void overlayModelOverExisting(ObjectNode modelNode, ObjectNode existingNode) {
