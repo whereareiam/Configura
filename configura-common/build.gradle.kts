@@ -1,6 +1,6 @@
 dependencies {
     "compileOnly"(project(":configura-api"))
-    "implementation"(libs.bundles.jackson)
+    "compileOnly"(libs.bundles.jackson)
 
     "testImplementation"(project(":configura-api"))
     "testImplementation"(libs.junit.jupiter)
