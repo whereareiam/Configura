@@ -41,6 +41,17 @@ public interface ConfigReader {
 	 */
 	<T> ConfigReader registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass);
 
+	/**
+	 * Register a custom type adapter instance.
+	 * This allows for dependency injection into adapters.
+	 *
+	 * @param type            the type to adapt
+	 * @param adapterInstance the adapter instance
+	 * @param <T>             the type
+	 * @return this reader for chaining
+	 */
+	<T> ConfigReader registerAdapter(Class<T> type, TypeAdapter<T> adapterInstance);
+
     /**
      * Get the configured file format (YAML/JSON).
      *

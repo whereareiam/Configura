@@ -58,6 +58,12 @@ public class DefaultConfigReader implements ConfigReader {
 	}
 
 	@Override
+	public <T> ConfigReader registerAdapter(Class<T> type, TypeAdapter<T> adapterInstance) {
+		AdapterRegistry nextRegistry = this.registry.withAdapter(type, adapterInstance);
+		return new DefaultConfigReader(this.format, nextRegistry, this.templateRegistry);
+	}
+
+	@Override
 	public Format getFormat() {
 		return format;
 	}

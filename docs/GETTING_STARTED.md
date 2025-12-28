@@ -148,40 +148,39 @@ server:
   host: 127.0.0.1
 ```
 
-### Control merge behavior with @Policy
+### Control merge behavior with @Field
 
-By default, `updateRead` merges defaults and prunes unknown fields. You can change this at the class level or per field.
-
-```java
-import lombok.Data;
-import me.whereareiam.configura.annotation.Policy;
-
-@Data
-@Policy(mergeOnUpdate = false) // class-level: never rewrite on updateRead
-public class NoRewriteConfig {
-	private String note;
-}
-```
-
-With class-level `mergeOnUpdate = false`, `Config.update("file", cfg)` will not rewrite the file; it will load
-as‑is.
-
-Per-field override example:
+By default, templates deeply merge with user configuration. You can control this behavior per-field using the `merge` property.
 
 ```java
 import lombok.Data;
-import me.whereareiam.configura.annotation.Policy;
+import me.whereareiam.configura.annotation.Field;
+import me.whereareiam.configura.annotation.MergeStrategy;
 
 @Data
-public class MixedPolicyConfig {
-	private String safeToMerge;
-
-	@Policy(mergeOnUpdate = false) // this field opts out of merge-driven rewrites
-	private String keepAsIs;
+public class CommandsConfig {
+    // SHALLOW: user controls all entries, template only applies if field is missing
+    @Field(merge = MergeStrategy.SHALLOW)
+    private Map<String, CommandDefinition> commands;
 }
 ```
 
-If any field sets `@Policy(mergeOnUpdate = false)`, the update step will skip rewriting to preserve that field.
+**Available strategies:**
+- `DEEP` (default): Recursively merge, add missing keys from template
+- `SHALLOW`: Only apply template if field is completely missing
+- `NONE`: Never apply template
+
+**Optional fields** - allow users to explicitly delete:
+
+```java
+@Data
+public class CommandDefinition {
+    @Field(optional = true)
+    private Requirements requirements; // User can set to null to remove
+}
+```
+
+See [TEMPLATING.md](TEMPLATING.md#merge-strategies-controlling-template-behavior) for detailed examples.
 
 ### Read or create with defaults
 

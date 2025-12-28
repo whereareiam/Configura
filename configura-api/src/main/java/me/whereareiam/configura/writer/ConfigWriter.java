@@ -41,6 +41,17 @@ public interface ConfigWriter {
 	<T> ConfigWriter registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass);
 
 	/**
+	 * Register a custom type adapter instance.
+	 * This allows for dependency injection into adapters.
+	 *
+	 * @param type            the type to adapt
+	 * @param adapterInstance the adapter instance
+	 * @param <T>             the type
+	 * @return this writer for chaining
+	 */
+	<T> ConfigWriter registerAdapter(Class<T> type, TypeAdapter<T> adapterInstance);
+
+	/**
 	 * Get the configured file format for serialization (YAML/JSON).
 	 *
 	 * @return the configured format

@@ -169,30 +169,97 @@ public class AppConfig {
 - Use YAML for readability; switch to JSON by using a `.json` file extension.
 
 
-## Policy: controlling merge behavior
+## Merge Strategies: controlling template behavior
 
-Use `me.whereareiam.configura.annotation.Policy` on types or fields to tune how smart writes merge templates with existing files:
+Use the `@Field` annotation's `merge` property to control how templates merge with existing configuration files.
 
-- `mergeOnUpdate` (type-level): when `false`, update-read avoids rewriting the file and loads it as-is.
-- `skipMerge` (field-level): when `true`, do not add defaults for that field if it is missing or null in the existing file.
-- `preserveWrite` (field-level): when `true` and the existing file has a non-null value for the field, keep that subtree as-is (no deep merge or additions).
+### Available Strategies
 
-Additional rules:
+#### DEEP (default)
+Recursively merges nested structures. Template adds missing keys while preserving user changes.
 
-- Existing user values win by default. Templates fill only missing or null values.
-- `skipMerge` treats null as missing (so templates are not added for that field when null/missing).
-- `preserveWrite` only applies when the existing value is non-null; nulls are treated as missing so templates can supply defaults.
-
-Example:
+**Use for:** Nested config objects where you want to add new template keys over time.
 
 ```java
-public class Settings {
-    @Policy(preserveWrite = true)
-    private Synchronization synchronization;
-
-    public static class Synchronization {
-        @Policy(skipMerge = false)
-        private String server; // if null or missing, template will provide a default
-    }
+@Data
+public class ServerConfig {
+    @Field  // merge = DEEP by default
+    private DatabaseSettings database;
 }
+```
+
+**Behavior:**
+- Template has: `{ host: "localhost", port: 5432 }`
+- User has: `{ host: "example.com" }`
+- Result: `{ host: "example.com", port: 5432 }` ✅
+
+---
+
+#### SHALLOW
+Only applies template if field is completely missing from user config. Once user has any value (even empty), template is ignored.
+
+**Use for:** Maps/Lists where users should control all entries (commands, languages, feature flags).
+
+```java
+@Data
+public class CommandsConfig {
+    @Field(merge = MergeStrategy.SHALLOW)
+    private Map<String, CommandDefinition> commands;
+}
+```
+
+**Behavior:**
+- Template has: `{ help: {...}, reload: {...} }`
+- User has: `{ help: {...} }` (deleted reload)
+- Result: `{ help: {...} }` (reload NOT re-added) ✅
+
+---
+
+#### NONE
+Template is never applied. Field is pure user data.
+
+**Use for:** User-specific data with no template defaults.
+
+```java
+@Data
+public class UserPreferences {
+    @Field(merge = MergeStrategy.NONE)
+    private String theme;
+}
+```
+
+**Behavior:**
+- Template has: `theme: "dark"`
+- User has: (nothing)
+- Result: `null` (template NOT applied) ✅
+
+---
+
+### Optional Fields
+
+Use `@Field(optional = true)` to allow users to explicitly delete fields.
+
+```java
+@Data
+public class CommandDefinition {
+    @Field(optional = true)
+    private Requirements requirements;
+}
+```
+
+**How it works:**
+- When user sets field to `null` and saves, writes explicit `null` in YAML
+- On next reload, `null` is preserved (template doesn't re-apply)
+- User must write `requirements: null` (not delete the line entirely)
+
+**Example YAML:**
+```yaml
+commands:
+  status:
+    enabled: true
+    requirements: null  # User explicitly disabled requirements
+  
+  help:
+    enabled: true
+    # No requirements field - template will provide default if it exists
 ```

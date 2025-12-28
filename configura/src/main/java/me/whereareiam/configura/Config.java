@@ -77,6 +77,19 @@ public final class Config {
 		defaultWriter = defaultWriter.registerAdapter(type, adapterClass);
 	}
 
+	/**
+	 * Register a type adapter instance for the given type.
+	 * This allows for dependency injection into adapters.
+	 *
+	 * @param type the type to register an adapter for
+	 * @param adapterInstance the adapter instance
+	 * @param <T> the type
+	 */
+	public static <T> void registerAdapter(Class<T> type, TypeAdapter<T> adapterInstance) {
+		defaultReader = defaultReader.registerAdapter(type, adapterInstance);
+		defaultWriter = defaultWriter.registerAdapter(type, adapterInstance);
+	}
+
 	public static <T> PolymorphicBuilder<T> registerPolymorphic(Class<T> baseType) {
 		return PolymorphicRegistry.register(baseType);
 	}

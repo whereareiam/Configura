@@ -62,6 +62,12 @@ public class DefaultConfigWriter implements ConfigWriter {
 		return new DefaultConfigWriter(this.format, next, this.templateRegistry);
 	}
 
+	@Override
+	public <T> ConfigWriter registerAdapter(Class<T> type, TypeAdapter<T> adapterInstance) {
+		AdapterRegistry next = this.registry.withAdapter(type, adapterInstance);
+		return new DefaultConfigWriter(this.format, next, this.templateRegistry);
+	}
+
 	public ConfigWriter withTemplateRegistry(TemplateRegistry templateRegistry) {
 		return new DefaultConfigWriter(this.format, this.registry, templateRegistry);
 	}
