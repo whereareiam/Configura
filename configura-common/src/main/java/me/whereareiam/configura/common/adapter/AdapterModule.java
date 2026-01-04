@@ -6,6 +6,8 @@ import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import me.whereareiam.configura.TypeAdapter;
+import me.whereareiam.configura.common.node.NodeConverter;
+import me.whereareiam.configura.node.Node;
 
 import java.io.IOException;
 import java.util.Map;
@@ -14,10 +16,6 @@ import java.util.Map;
  * Jackson module that wires Configura TypeAdapter serializers/deserializers.
  */
 public final class AdapterModule extends SimpleModule {
-	public AdapterModule() {
-		this(null);
-	}
-
 	@SuppressWarnings("unchecked")
 	public AdapterModule(Map<Class<?>, TypeAdapter<?>> adapters) {
 		super("configura-adapter-module", Version.unknownVersion());
@@ -39,7 +37,8 @@ public final class AdapterModule extends SimpleModule {
 			@Override
 			public void serialize(Object value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
 				try {
-					gen.writeString(adapter.serialize(value));
+					Node node = adapter.serializeNode(value);
+					gen.writeTree(NodeConverter.toJsonNode(node));
 				} catch (Exception ex) {
 					throw new JsonMappingException(gen, "Adapter serialization failed for " + type.getName(), ex);
 				}
@@ -49,12 +48,9 @@ public final class AdapterModule extends SimpleModule {
 		addDeserializer(type, new JsonDeserializer<>() {
 			@Override
 			public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-				String raw = p.currentToken() != null && p.currentToken().isScalarValue()
-						? p.getValueAsString()
-						: asText(p.readValueAsTree());
-
 				try {
-					return adapter.deserialize(stripQuotes(raw));
+					Node node = NodeConverter.fromJsonNode(p.readValueAsTree());
+					return adapter.deserializeNode(node);
 				} catch (Exception ex) {
 					throw new JsonMappingException(p, "Adapter deserialization failed for " + type.getName(), ex);
 				}
@@ -86,19 +82,5 @@ public final class AdapterModule extends SimpleModule {
 				}
 			}
 		});
-	}
-
-	private static String asText(JsonNode node) {
-		return node == null ? null : node.asText();
-	}
-
-	private static String stripQuotes(String text) {
-		if (text == null) return null;
-		String t = text.trim();
-		if (t.length() >= 2 && ((t.startsWith("\"") && t.endsWith("\""))
-				|| (t.startsWith("'") && t.endsWith("'"))))
-			return t.substring(1, t.length() - 1);
-
-		return t;
 	}
 }
