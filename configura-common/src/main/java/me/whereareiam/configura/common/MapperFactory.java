@@ -3,12 +3,14 @@ package me.whereareiam.configura.common;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.core.util.Separators;
+import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.VisibilityChecker;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
@@ -16,6 +18,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.adapter.AdapterModule;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
+import me.whereareiam.configura.common.dynamic.DynamicFieldIntrospector;
 import me.whereareiam.configura.common.merge.OptionalFieldModule;
 import me.whereareiam.configura.common.multivalue.MultiValueModule;
 import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
@@ -82,6 +85,10 @@ public final class MapperFactory {
 		mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
 		mapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
 		mapper.setVisibility(VisibilityChecker.Std.defaultInstance().withFieldVisibility(JsonAutoDetect.Visibility.ANY));
+
+		AnnotationIntrospector base = mapper.getSerializationConfig().getAnnotationIntrospector();
+		AnnotationIntrospector combined = AnnotationIntrospectorPair.pair(new DynamicFieldIntrospector(), base);
+		mapper.setAnnotationIntrospector(combined);
 
 		return mapper;
 	}

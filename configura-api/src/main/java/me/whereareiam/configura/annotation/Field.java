@@ -31,6 +31,15 @@ public @interface Field {
 	String name() default "";
 
 	/**
+	 * Treats this map as a dynamic field.
+	 * Unknown keys in the configuration are routed into the map,
+	 * and the map entries are written as top-level properties.
+	 *
+	 * @return true if field should act as a dynamic key bucket
+	 */
+	boolean dynamic() default false;
+
+	/**
 	 * Whether this field is optional (user can delete it).
 	 * When true, setting to null writes explicit {@code null} in YAML,
 	 * preventing template from re-applying defaults.
