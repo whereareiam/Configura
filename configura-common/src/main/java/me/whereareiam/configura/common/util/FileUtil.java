@@ -8,9 +8,6 @@ public final class FileUtil {
 		if (lower.endsWith(".yml") || lower.endsWith(".json"))
 			return file;
 
-		return switch (format) {
-			case YAML -> file + ".yml";
-			case JSON -> file + ".json";
-		};
+		return file + format.getExtension();
 	}
 }
