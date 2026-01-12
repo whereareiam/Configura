@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.MapperFactory;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
+import me.whereareiam.configura.common.node.NodeConverter;
 import me.whereareiam.configura.common.merge.ConfigMerger;
 import me.whereareiam.configura.common.template.TemplateSeeder;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
+import me.whereareiam.configura.node.Node;
 import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
@@ -161,6 +163,35 @@ public class DefaultConfigWriter implements ConfigWriter {
 		T seeded = defaultSeeder.seed(config);
 		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(target, seeded, mapper);
 		return bindNode(merged, (Class<T>) seeded.getClass());
+	}
+
+	@Override
+	public byte[] encodeNode(Node node) {
+		try {
+			Node safe = node == null ? new me.whereareiam.configura.node.ObjectNode() : node;
+			return mapper.writeValueAsBytes(NodeConverter.toJsonNode(safe));
+		} catch (IOException e) {
+			throw new ConfigException("Failed to serialize node to bytes", e);
+		}
+	}
+
+	@Override
+	public void writeNode(String file, Node node) {
+		String resolved = FileUtil.resolvePathWithFormat(file, format);
+		writeNode(Path.of(resolved), node);
+	}
+
+	@Override
+	public void writeNode(Path path, Node node) {
+		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
+		try {
+			Path target = Path.of(resolved);
+			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
+			Node safe = node == null ? new me.whereareiam.configura.node.ObjectNode() : node;
+			mapper.writeValue(target.toFile(), NodeConverter.toJsonNode(safe));
+		} catch (IOException e) {
+			throw new ConfigException("Failed to write node config file: " + resolved, e);
+		}
 	}
 
 

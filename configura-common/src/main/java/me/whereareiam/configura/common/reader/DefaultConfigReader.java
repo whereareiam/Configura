@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.MapperFactory;
 import me.whereareiam.configura.common.adapter.AdapterRegistry;
+import me.whereareiam.configura.common.node.NodeConverter;
 import me.whereareiam.configura.common.processor.PostProcessor;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
+import me.whereareiam.configura.node.Node;
+import me.whereareiam.configura.node.ObjectNode;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
@@ -66,6 +69,54 @@ public class DefaultConfigReader implements ConfigReader {
 	@Override
 	public Format getFormat() {
 		return format;
+	}
+
+	@Override
+	public Node decodeNode(byte[] bytes) {
+		if (bytes == null || bytes.length == 0) return new ObjectNode();
+		try {
+			JsonNode node = mapper.readTree(bytes);
+			if (node == null) return new ObjectNode();
+			return NodeConverter.fromJsonNode(node);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to deserialize config bytes into node", e);
+		}
+	}
+
+	@Override
+	public Node decodeNode(InputStream inputStream) {
+		if (inputStream == null) return new ObjectNode();
+		try {
+			JsonNode node = mapper.readTree(inputStream);
+			if (node == null) return new ObjectNode();
+			return NodeConverter.fromJsonNode(node);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to deserialize config stream into node", e);
+		}
+	}
+
+	@Override
+	public Node readNode(String fileName) {
+		if (fileName == null) throw new ConfigException("fileName must not be null");
+		String resolved = FileUtil.resolvePathWithFormat(fileName, format);
+		return readNode(Path.of(resolved));
+	}
+
+	@Override
+	public Node readNode(Path path) {
+		if (path == null) throw new ConfigException("path must not be null");
+		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
+		Path target = Path.of(resolved);
+
+		if (!Files.exists(target)) throw new ConfigException("Config file does not exist: " + target);
+
+		try (BufferedReader reader = Files.newBufferedReader(target)) {
+			JsonNode node = mapper.readTree(reader);
+			if (node == null) throw new ConfigException("Config file is empty or invalid: " + target);
+			return NodeConverter.fromJsonNode(node);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to read config file: " + target, e);
+		}
 	}
 
 	@Override

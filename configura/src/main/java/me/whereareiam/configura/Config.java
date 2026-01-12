@@ -6,6 +6,7 @@ import me.whereareiam.configura.common.polymorphic.PolymorphicRegistry;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.template.DefaultTemplateRegistry;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
+import me.whereareiam.configura.node.Node;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
@@ -114,12 +115,40 @@ public final class Config {
 		return getDefaultReader().load(inputStream, configClass);
 	}
 
+	public static Node loadNode(String file) {
+		return getDefaultReader().loadNode(file);
+	}
+
+	public static Node loadNode(Path path) {
+		return getDefaultReader().loadNode(path);
+	}
+
+	public static Node loadNode(byte[] bytes) {
+		return getDefaultReader().loadNode(bytes);
+	}
+
+	public static Node loadNode(InputStream inputStream) {
+		return getDefaultReader().loadNode(inputStream);
+	}
+
 	public static <T> void save(String file, T config) {
 		getDefaultWriter().encode(file, config);
 	}
 
 	public static <T> void save(Path path, T config) {
 		getDefaultWriter().encode(path, config);
+	}
+
+	public static void saveNode(String file, Node node) {
+		getDefaultWriter().writeNode(file, node);
+	}
+
+	public static void saveNode(Path path, Node node) {
+		getDefaultWriter().writeNode(path, node);
+	}
+
+	public static byte[] saveNode(Node node) {
+		return getDefaultWriter().encodeNode(node);
 	}
 
 	public static <T> byte[] save(T config) {
