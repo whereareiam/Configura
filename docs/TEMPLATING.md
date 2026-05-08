@@ -100,22 +100,22 @@ fields they describe for clarity.
 
   ```java
   import java.util.Map;
-import java.util.List;
+  import java.util.List;
 
-@Data
-public class AppConfig {
-	@Template(text = "MyApp")
-	private String appName;
+  @Data
+  public class AppConfig {
+    @Template(text = "MyApp")
+    private String appName;
 
-	@Template(properties = {
-			@Template.Property(name = "host", text = "127.0.0.1"),
-			@Template.Property(name = "port", number = "8080")
-	})
-	private Map<String, Object> server;
+    @Template(properties = {
+            @Template.Property(name = "host", text = "127.0.0.1"),
+            @Template.Property(name = "port", number = "8080")
+    })
+    private Map<String, Object> server;
 
-	@Template(stringItems = {"user", "admin"})
-	private List<String> roles;
-}
+    @Template(stringItems = {"user", "admin"})
+    private List<String> roles;
+  }
   ```
 
 </details>
@@ -125,9 +125,11 @@ public class AppConfig {
 ```java
 import me.whereareiam.configura.Config;
 
+Config config = Config.builder().build();
+
 AppConfig cfg = new AppConfig();
-Config.save("app-config", cfg);
-cfg = Config.read("app-config", AppConfig.class);
+config.objects().save("app-config", cfg);
+cfg = config.objects().read("app-config", AppConfig.class);
 ```
 
 ### External templates with Template.Source
@@ -169,13 +171,13 @@ public class AppConfig {
 - Use YAML for readability; switch to JSON by using a `.json` file extension.
 
 
-## Merge Strategies: controlling template behavior
+## Merge Policies: controlling template behavior
 
-Use the `@Field` annotation's `merge` property to control how templates merge with existing configuration files.
+Use `@Merge` to select a built-in merge preset, or register custom named policies in code through `Config.builder()`.
 
-### Available Strategies
+### Available Presets
 
-#### DEEP (default)
+#### `DEEP_DEFAULTS` (default)
 Recursively merges nested structures. Template adds missing keys while preserving user changes.
 
 **Use for:** Nested config objects where you want to add new template keys over time.
@@ -183,7 +185,7 @@ Recursively merges nested structures. Template adds missing keys while preservin
 ```java
 @Data
 public class ServerConfig {
-    @Field  // merge = DEEP by default
+    @Merge
     private DatabaseSettings database;
 }
 ```
@@ -191,11 +193,11 @@ public class ServerConfig {
 **Behavior:**
 - Template has: `{ host: "localhost", port: 5432 }`
 - User has: `{ host: "example.com" }`
-- Result: `{ host: "example.com", port: 5432 }` ✅
+- Result: `{ host: "example.com", port: 5432 }`
 
 ---
 
-#### SHALLOW
+#### `SOURCE_OWNS_FIELD`
 Only applies template if field is completely missing from user config. Once user has any value (even empty), template is ignored.
 
 **Use for:** Maps/Lists where users should control all entries (commands, languages, feature flags).
@@ -203,7 +205,7 @@ Only applies template if field is completely missing from user config. Once user
 ```java
 @Data
 public class CommandsConfig {
-    @Field(merge = MergeStrategy.SHALLOW)
+    @Merge(preset = MergePreset.SOURCE_OWNS_FIELD)
     private Map<String, CommandDefinition> commands;
 }
 ```
@@ -211,11 +213,11 @@ public class CommandsConfig {
 **Behavior:**
 - Template has: `{ help: {...}, reload: {...} }`
 - User has: `{ help: {...} }` (deleted reload)
-- Result: `{ help: {...} }` (reload NOT re-added) ✅
+- Result: `{ help: {...} }` (reload NOT re-added)
 
 ---
 
-#### NONE
+#### `NEVER_TEMPLATE`
 Template is never applied. Field is pure user data.
 
 **Use for:** User-specific data with no template defaults.
@@ -223,7 +225,7 @@ Template is never applied. Field is pure user data.
 ```java
 @Data
 public class UserPreferences {
-    @Field(merge = MergeStrategy.NONE)
+    @Merge(preset = MergePreset.NEVER_TEMPLATE)
     private String theme;
 }
 ```
@@ -231,26 +233,46 @@ public class UserPreferences {
 **Behavior:**
 - Template has: `theme: "dark"`
 - User has: (nothing)
-- Result: `null` (template NOT applied) ✅
+- Result: `null` (template NOT applied)
 
 ---
 
-### Optional Fields
+#### `DECLARED_KEYS_ONLY_MAP`
+Only merge defaults into keys the source already declared.
 
-Use `@Field(optional = true)` to allow users to explicitly delete fields.
+**Use for:** Maps where the field should stay implicit unless the user opts in by creating a key.
+
+**Behavior:**
+- Template has: `{ authentication: { step: "auth", complete: "lobby" }, registration: {...} }`
+- User has: `{ authentication: { complete: "" } }`
+- Result: `{ authentication: { step: "auth", complete: "" } }`
+
+### Explicit null handling
+
+Explicit source `null` is preserved by default during merge/update. Templates do not reapply over an explicit `null` unless a merge policy is designed to say otherwise.
+
+### Global defaults and named policies
+
+You can change the default policy for unannotated fields or register named policies for specific fields.
 
 ```java
-@Data
-public class CommandDefinition {
-    @Field(optional = true)
-    private Requirements requirements;
+import me.whereareiam.configura.Config;
+import me.whereareiam.configura.annotation.Merge;
+import me.whereareiam.configura.merge.MergePolicy;
+import me.whereareiam.configura.type.MergePreset;
+
+Config config = Config.builder()
+        .defaultMergePreset(MergePreset.SOURCE_OWNS_FIELD)
+        .mergePolicy("declaredKeysOnly", MergePolicy.builder()
+                .mapMode(MergePolicy.MapMode.DECLARED_SOURCE_KEYS_ONLY)
+                .build())
+        .build();
+
+public class FlowConfig {
+    @Merge(policy = "declaredKeysOnly")
+    private Map<String, Step> scenarios;
 }
 ```
-
-**How it works:**
-- When user sets field to `null` and saves, writes explicit `null` in YAML
-- On next reload, `null` is preserved (template doesn't re-apply)
-- User must write `requirements: null` (not delete the line entirely)
 
 **Example YAML:**
 ```yaml

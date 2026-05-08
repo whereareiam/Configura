@@ -1,8 +1,6 @@
 package me.whereareiam.configura.writer;
 
-import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.node.Node;
 import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 
@@ -30,27 +28,6 @@ public interface ConfigWriter {
 	 * @return this writer for chaining
 	 */
 	ConfigWriter withTemplateRegistry(TemplateRegistry templateRegistry);
-
-	/**
-	 * Register a custom type adapter.
-	 *
-	 * @param type         the type to adapt
-	 * @param adapterClass the adapter class
-	 * @param <T>          the type
-	 * @return this writer for chaining
-	 */
-	<T> ConfigWriter registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass);
-
-	/**
-	 * Register a custom type adapter instance.
-	 * This allows for dependency injection into adapters.
-	 *
-	 * @param type            the type to adapt
-	 * @param adapterInstance the adapter instance
-	 * @param <T>             the type
-	 * @return this writer for chaining
-	 */
-	<T> ConfigWriter registerAdapter(Class<T> type, TypeAdapter<T> adapterInstance);
 
 	/**
 	 * Get the configured file format for serialization (YAML/JSON).
@@ -151,35 +128,4 @@ public interface ConfigWriter {
 	 */
 	<T> T merge(Path path, T config);
 
-	/**
-	 * Serialize a Configura node tree to raw bytes using the configured format.
-	 *
-	 * @param node node tree to serialize
-	 * @return serialized bytes
-	 * @throws ConfigException if serialization fails
-	 */
-	byte[] encodeNode(Node node);
-
-	/**
-	 * Exact write of a Configura node tree to a file path (string).
-	 * Creates parent directories if needed. If {@code file} omits an extension, one matching
-	 * {@link Format} is appended.
-	 *
-	 * @param file path to the config file (without extension if format is configured)
-	 * @param node node tree to write
-	 * @throws ConfigException if writing fails
-	 */
-	void writeNode(String file, Node node);
-
-	/**
-	 * Exact write of a Configura node tree to a file path.
-	 * Creates parent directories if needed. If {@code path} omits an extension, one matching
-	 * {@link Format} is appended.
-	 *
-	 * @param path full path to the config file (directory + filename)
-	 * @param node node tree to write
-	 * @throws ConfigException if writing fails
-	 */
-	void writeNode(Path path, Node node);
 }
-

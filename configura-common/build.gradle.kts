@@ -1,10 +1,10 @@
-dependencies {
-    "compileOnly"(project(":configura-api"))
-    "implementation"(libs.bundles.jackson)
+plugins {
+    id("configura.publish")
+}
 
-    "testImplementation"(project(":configura-api"))
-    "testImplementation"(libs.junit.jupiter)
-    "testRuntimeOnly"(libs.junit.platform.launcher)
+dependencies {
+    "api"(project(":configura-api"))
+    "implementation"(libs.bundles.jackson)
 }
 
 publishing {
@@ -14,7 +14,7 @@ publishing {
             artifactId = "configura-common"
             pom {
                 name.set("configura-common")
-                description.set("Internal runtime for Configura")
+                description.set("Shared implementation for Configura")
             }
         }
     }

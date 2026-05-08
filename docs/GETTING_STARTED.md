@@ -122,20 +122,20 @@ public class AppConfig {
 }
 ```
 
-### Map fields to custom keys with @Field
+### Rename fields with Jackson annotations
 
-Use `@Field(name = "...")` to map a Java field to a nested key path in the file.
+Use `@JsonProperty("...")` to map a Java field to a different serialized key name.
 
 ```java
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import me.whereareiam.configura.annotation.Field;
 
 @Data
 public class ServerConfig {
-	@Field(name = "server.port")
+	@JsonProperty("bind_port")
 	private int port = 8080;
 
-	@Field(name = "server.host")
+	@JsonProperty("bind_host")
 	private String host = "127.0.0.1";
 }
 ```
@@ -143,74 +143,99 @@ public class ServerConfig {
 This yields YAML like:
 
 ```yaml
-server:
-  port: 8080
-  host: 127.0.0.1
+bind_port: 8080
+bind_host: 127.0.0.1
 ```
 
-### Control merge behavior with @Field
+### Customize serialization with a Jackson module
 
-By default, templates deeply merge with user configuration. You can control this behavior per-field using the `merge` property.
+Configura now uses Jackson modules directly for custom serialization behavior.
 
 ```java
+import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+
+SimpleModule module = new SimpleModule("duration-module", Version.unknownVersion());
+module.addSerializer(MyType.class, new MyTypeSerializer());
+module.addDeserializer(MyType.class, new MyTypeDeserializer());
+
+Config config = Config.builder()
+		.module(module)
+		.build();
+```
+
+### Control merge behavior with @Merge
+
+By default, templates use the `DEEP_DEFAULTS` built-in merge preset. You can select a different preset per field, set a global default, or register named custom policies.
+
+```java
+import me.whereareiam.configura.Config;
+import me.whereareiam.configura.merge.MergePolicy;
 import lombok.Data;
-import me.whereareiam.configura.annotation.Field;
-import me.whereareiam.configura.annotation.MergeStrategy;
+import me.whereareiam.configura.annotation.Merge;
+import me.whereareiam.configura.type.MergePreset;
 
 @Data
 public class CommandsConfig {
-    // SHALLOW: user controls all entries, template only applies if field is missing
-    @Field(merge = MergeStrategy.SHALLOW)
+    @Merge(preset = MergePreset.SOURCE_OWNS_FIELD)
     private Map<String, CommandDefinition> commands;
 }
 ```
 
-**Available strategies:**
-- `DEEP` (default): Recursively merge, add missing keys from template
-- `SHALLOW`: Only apply template if field is completely missing
-- `NONE`: Never apply template
-
-**Optional fields** - allow users to explicitly delete:
+**Built-in presets:**
+- `DEEP_DEFAULTS`: Recursively fill missing values from templates
+- `SOURCE_OWNS_FIELD`: If the source provides a value, the source owns the field
+- `SOURCE_OWNS_MAP`: Source map entries are preserved as-is
+- `SOURCE_OWNS_LIST`: Source list is preserved as-is
+- `NEVER_TEMPLATE`: Do not apply template values
+- `DECLARED_KEYS_ONLY_MAP`: Only merge into map keys already declared by the source
 
 ```java
-@Data
-public class CommandDefinition {
-    @Field(optional = true)
-    private Requirements requirements; // User can set to null to remove
-}
+Config config = Config.builder()
+        .defaultMergePreset(MergePreset.SOURCE_OWNS_FIELD)
+        .mergePolicy("declaredKeysOnly", MergePolicy.builder()
+                .mapMode(MergePolicy.MapMode.DECLARED_SOURCE_KEYS_ONLY)
+                .build())
+        .build();
 ```
 
-See [TEMPLATING.md](TEMPLATING.md#merge-strategies-controlling-template-behavior) for detailed examples.
+Explicit source `null` is preserved during merge/update by default.
+
+See [TEMPLATING.md](TEMPLATING.md#merge-policies-controlling-template-behavior) for detailed examples.
 
 ### Read or create with defaults
 
-Use the static helper. YAML is used by default. Templates are applied on save.
+Build a configured `Config` engine. YAML is used by default. Templates are applied on save/update.
 
 ```java
 import me.whereareiam.configura.Config;
 
-AppConfig config = new AppConfig();
-Config.save("app-config", config);
-config = Config.read("app-config", AppConfig.class);
+Config config = Config.builder().build();
+AppConfig appConfig = new AppConfig();
+config.objects().save("app-config", appConfig);
+appConfig = config.objects().read("app-config", AppConfig.class);
 
-System.out.println("Hello, " + config.getName() + "!");
+System.out.println("Hello, " + appConfig.getName() + "!");
 ```
 
 ### Alternatives: explicit read/write
 
-You can also read and write explicitly. Omit extensions; the configured format determines the output.
+You can also keep static helpers for one-off use, or use a built `Config` for an explicit format. Omit extensions; the
+configured format determines the output.
 
 ```java
 import me.whereareiam.configura.Config;
+import me.whereareiam.configura.type.Format;
 
 AppConfig cfg = new AppConfig();
 cfg.setName("world");
 
 Config.save("app-config", cfg);
-AppConfig fromYaml = Config.read("app-config", AppConfig.class);
+AppConfig fromYaml = Config.load("app-config", AppConfig.class);
 
-Config.writer(Format.JSON).write("app-config", cfg);
-AppConfig fromJson = Config.reader(Format.JSON).read("app-config", AppConfig.class);
+Config json = Config.builder().format(Format.JSON).build();
+json.objects().write("app-config", cfg);
+AppConfig fromJson = json.objects().read("app-config", AppConfig.class);
 ```
 
 ### Post-processing with @PostProcess
@@ -305,4 +330,3 @@ public class DbConfig {
   ```
 
 </details>
-

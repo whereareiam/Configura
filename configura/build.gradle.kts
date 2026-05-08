@@ -1,6 +1,5 @@
 plugins {
-    `java-library`
-    `maven-publish`
+    id("configura.publish")
 }
 
 dependencies {

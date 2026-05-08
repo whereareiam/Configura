@@ -1,3 +1,11 @@
+plugins {
+    id("configura.publish")
+}
+
+dependencies {
+    api(libs.jackson)
+}
+
 java {
     withSourcesJar()
     withJavadocJar()

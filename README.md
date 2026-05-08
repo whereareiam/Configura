@@ -8,7 +8,6 @@ helpers, and pluggable formats (YAML/JSON).
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Templating guide](docs/TEMPLATING.md)
 - [Post-processing](docs/POST_PROCESSING.md)
-- [Type adapters](docs/TYPE_ADAPTERS.md)
 - [Polymorphic models](docs/POLYMORPHIC.md)
 
 ### Features
@@ -17,7 +16,7 @@ helpers, and pluggable formats (YAML/JSON).
 - **Inline templating**: Use `@Template` to declare defaults for scalars, lists, and object‑like maps.
 - **Post-processing**: Use `@PostProcess` to run validation, compute derived fields, or initialize state after loading.
 - **Multiple formats**: YAML and JSON supported out of the box.
-- **Service‑based & extensible**: Pluggable readers/writers, global type adapters, and service discovery.
+- **Jackson-native & extensible**: Pluggable readers/writers and custom Jackson modules.
 
 ### Installation
 
@@ -112,19 +111,22 @@ public class HelloConfig {
 }
 ```
 
-2) Read/update using the static helper without specifying an extension (defaults to YAML):
+2) Build a configured `Config` engine and update without specifying an extension (defaults to YAML):
 
 ```java
 import me.whereareiam.configura.Config;
 
-HelloConfig cfg = new HelloConfig();
+Config config = Config.builder().build();
 // Writes defaults if needed and then re‑reads from disk
-cfg = Config.update("config/hello", cfg);
+HelloConfig cfg = config.objects().update("config/hello", HelloConfig.class);
 // afterLoad() has been called automatically
 
 // Use it in your code
 System.out.println("Hello, " + cfg.name + "!");
 ```
+
+Static helpers like `Config.update(...)` and `Config.save(...)` are still available for one-off use, but the built `Config`
+instance is the preferred API when you want a configured engine object.
 
 3) Want object‑like defaults? Use `@Template(properties=...)`:
 
@@ -145,5 +147,3 @@ public class DbConfig {
 ```
 
 See [Getting Started](docs/GETTING_STARTED.md) for more details and examples.
-
-

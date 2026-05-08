@@ -1,5 +1,9 @@
 rootProject.name = "Configura"
 
-include("configura-common")
+pluginManagement {
+	includeBuild("build-logic")
+}
+
 include("configura-api")
+include("configura-common")
 include("configura")
