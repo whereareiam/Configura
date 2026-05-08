@@ -5,29 +5,34 @@ on:
     types: [ published ]
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.details.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Extract build details
+        id: details
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
   publish:
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      checks: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - name: Compute VERSION
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Publish all modules to repository
+      - name: Build and publish project
+        uses: ./.github/actions/gradle-build
         env:
           PUBLISH_USER: ${{ secrets.PUBLISH_USER }}
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
           PUBLISH_REALM: release
-        run: ./gradlew --no-daemon publish
-
-
+        with:
+          gradle-command: ./gradlew --no-daemon test build publish

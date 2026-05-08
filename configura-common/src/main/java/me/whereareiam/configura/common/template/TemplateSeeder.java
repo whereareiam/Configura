@@ -6,11 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import me.whereareiam.configura.TemplateProvider;
-import me.whereareiam.configura.annotation.MergeStrategy;
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.common.util.BeanPropertyUtil;
+import me.whereareiam.configura.TemplateProvider;
+import me.whereareiam.configura.common.merge.MergePolicyResolver;
 import me.whereareiam.configura.common.util.PathNavigator;
+import me.whereareiam.configura.merge.MergePolicy;
 import me.whereareiam.configura.template.TemplateRegistry;
 
 import java.lang.reflect.Field;
@@ -20,6 +20,7 @@ public final class TemplateSeeder {
 	private final ObjectMapper mapper;
 	private final TemplateRegistry templateRegistry;
 	private final SeedingMode mode;
+	private final MergePolicyResolver mergePolicyResolver;
 
 	public enum SeedingMode {
 		DEFAULT_INSTANCE, // seeding a zero/empty-constructed instance (e.g., update)
@@ -27,13 +28,18 @@ public final class TemplateSeeder {
 	}
 
 	public TemplateSeeder(ObjectMapper mapper, TemplateRegistry templateRegistry) {
-		this(mapper, templateRegistry, SeedingMode.USER_MODEL);
+		this(mapper, templateRegistry, SeedingMode.USER_MODEL, new MergePolicyResolver());
 	}
 
 	public TemplateSeeder(ObjectMapper mapper, TemplateRegistry templateRegistry, SeedingMode mode) {
+		this(mapper, templateRegistry, mode, new MergePolicyResolver());
+	}
+
+	public TemplateSeeder(ObjectMapper mapper, TemplateRegistry templateRegistry, SeedingMode mode, MergePolicyResolver mergePolicyResolver) {
 		this.mapper = mapper;
 		this.templateRegistry = templateRegistry;
 		this.mode = mode;
+		this.mergePolicyResolver = mergePolicyResolver != null ? mergePolicyResolver : new MergePolicyResolver();
 	}
 
 	public <T> T seed(T model) {
@@ -119,59 +125,44 @@ public final class TemplateSeeder {
 			var existing = target.get(key);
 
 			// Get the merge strategy for this field
-			MergeStrategy strategy = getFieldMergeStrategy(modelClass, key);
+			MergePolicy policy = mergePolicyResolver.resolve(modelClass, key);
 
-			// Handle NONE strategy
-			if (strategy == MergeStrategy.NONE) {
+			if (policy.valueMode() == MergePolicy.ValueMode.NEVER_TEMPLATE) {
 				continue;
 			}
 
-			// Handle SHALLOW strategy
-			if (strategy == MergeStrategy.SHALLOW) {
-				// Only add the entire field if it's completely missing from user config
-				// If user has the field (even if empty), don't merge any keys into it
+			if (policy.valueMode() == MergePolicy.ValueMode.SOURCE_OWNS_VALUE
+					|| policy.objectMode() == MergePolicy.ObjectMode.SOURCE_OWNS_OBJECT
+					|| policy.mapMode() == MergePolicy.MapMode.SOURCE_OWNS_MAP
+					|| policy.listMode() == MergePolicy.ListMode.SOURCE_OWNS_LIST) {
 				if (existing == null || existing.isNull()) {
 					target.set(key, value);
 				}
-				// Otherwise, user has content - respect it completely, don't add template keys
 				continue;
 			}
 
-			// DEEP strategy: original deep merge behavior
+			if (policy.mapMode() == MergePolicy.MapMode.DECLARED_SOURCE_KEYS_ONLY) {
+				if (existing == null || existing.isNull() || shouldTreatPrimitiveDefaultAsMissing(existing)) {
+					target.set(key, value);
+					continue;
+				}
+
+				if (existing.isObject() && value.isObject()) {
+					mergeMissing((ObjectNode) existing, (ObjectNode) value);
+				}
+				continue;
+			}
+
 			boolean treatDefaultsAsMissing = shouldTreatPrimitiveDefaultAsMissing(existing);
 			if (existing == null || existing.isNull() || treatDefaultsAsMissing) {
 				target.set(key, value);
 				continue;
 			}
 
-			// Deep merge for nested objects (DEFAULT strategy only)
 			if (existing.isObject() && value.isObject()) {
 				mergeMissing((ObjectNode) existing, (ObjectNode) value);
 			}
 		}
-	}
-
-	/**
-	 * Gets the merge strategy for a specific field in a model class.
-	 *
-	 * @param modelClass the class to inspect
-	 * @param fieldName the field name
-	 * @return the merge strategy, or DEFAULT if no policy specified
-	 */
-	private MergeStrategy getFieldMergeStrategy(Class<?> modelClass, String fieldName) {
-		try {
-			Field field = modelClass.getDeclaredField(fieldName);
-			me.whereareiam.configura.annotation.Field fieldAnnotation = 
-				field.getAnnotation(me.whereareiam.configura.annotation.Field.class);
-
-			if (fieldAnnotation != null) {
-				return fieldAnnotation.merge();
-			}
-		} catch (NoSuchFieldException ignored) {
-			// Field doesn't exist in Java class, just continue with default
-		}
-
-		return MergeStrategy.DEEP;
 	}
 
 	private void seedNode(ObjectNode node, Class<?> type) {
@@ -180,7 +171,7 @@ public final class TemplateSeeder {
 		if (props == null || props.isEmpty()) return;
 
 		for (BeanPropertyDefinition prop : props) {
-			String key = BeanPropertyUtil.computeKey(prop);
+			String key = prop.getName();
 			if (key == null || key.isEmpty()) continue;
 
 			boolean hasPath = PathNavigator.has(node, key);
@@ -239,5 +230,3 @@ public final class TemplateSeeder {
 				|| (existing.isArray() && existing.isEmpty());
 	}
 }
-
-

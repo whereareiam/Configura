@@ -4,31 +4,54 @@ on:
   push:
     branches:
       - dev
+  workflow_dispatch:
 
 jobs:
+  validate-ref:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject release refs for manual development publish
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            release|release/*)
+              echo "Manual development publish is not allowed from ${GITHUB_REF_NAME}."
+              exit 1
+              ;;
+          esac
+
+  prepare:
+    needs: validate-ref
+    if: always() && (github.event_name != 'workflow_dispatch' || needs.validate-ref.result == 'success')
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.details.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Extract build details
+        id: details
+        run: |
+          branch_name="${GITHUB_REF_NAME//\//-}"
+          echo "version=${branch_name}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
   publish:
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      checks: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - name: Compute VERSION
-        run: echo "VERSION=${GITHUB_REF##*/}-${GITHUB_SHA::7}" >> $GITHUB_ENV
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Publish all modules to repository
+      - name: Build and publish project
+        uses: ./.github/actions/gradle-build
         env:
           PUBLISH_USER: ${{ secrets.PUBLISH_USER }}
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          VERSION: ${{ env.VERSION }}
+          VERSION: ${{ needs.prepare.outputs.version }}
           PUBLISH_REALM: development
-        run: ./gradlew --no-daemon publish
-
-
+        with:
+          gradle-command: ./gradlew --no-daemon test publish

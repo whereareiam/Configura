@@ -128,6 +128,5 @@ Then read/write normally via `Config` or a `ConfigReader/ConfigWriter`.
 
 - Keep the discriminator stable to avoid migrations.
 - Prefer simple, uppercase mapping keys (e.g., `SYMBOL`).
-- You can mix polymorphic models with `TypeAdapter`s; they are independent features.
-
+- You can combine polymorphic models with Jackson modules; they are independent features.
 

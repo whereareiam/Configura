@@ -11,6 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DefaultTemplateRegistry implements TemplateRegistry {
 	private final Map<Class<?>, TemplateProvider<?>> providers = new ConcurrentHashMap<>();
 
+	public DefaultTemplateRegistry copy() {
+		DefaultTemplateRegistry copy = new DefaultTemplateRegistry();
+		copy.providers.putAll(this.providers);
+		return copy;
+	}
+
 	@Override
 	public <T, P extends TemplateProvider<T>> void registerTemplate(Class<P> providerClass) {
 		TemplateProvider<T> provider;

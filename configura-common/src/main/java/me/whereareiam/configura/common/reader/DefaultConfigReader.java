@@ -2,15 +2,10 @@ package me.whereareiam.configura.common.reader;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import me.whereareiam.configura.TypeAdapter;
 import me.whereareiam.configura.common.MapperFactory;
-import me.whereareiam.configura.common.adapter.AdapterRegistry;
-import me.whereareiam.configura.common.node.NodeConverter;
 import me.whereareiam.configura.common.processor.PostProcessor;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.node.Node;
-import me.whereareiam.configura.node.ObjectNode;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
@@ -23,7 +18,6 @@ import java.nio.file.Path;
 
 public class DefaultConfigReader implements ConfigReader {
 	private final Format format;
-	private final AdapterRegistry registry;
 	private final TemplateRegistry templateRegistry;
 	private final ObjectMapper mapper;
 
@@ -33,90 +27,27 @@ public class DefaultConfigReader implements ConfigReader {
 
 	public DefaultConfigReader(TemplateRegistry templateRegistry) {
 		this.format = Format.YAML;
-		this.registry = AdapterRegistry.empty();
 		this.templateRegistry = templateRegistry;
-		this.mapper = MapperFactory.buildReaderMapper(this.format, this.registry);
+		this.mapper = MapperFactory.buildReaderMapper(this.format);
 	}
 
 	private DefaultConfigReader(
 			Format format,
-			AdapterRegistry registry,
 			TemplateRegistry templateRegistry
 	) {
 		this.format = format;
-		this.registry = registry;
 		this.templateRegistry = templateRegistry;
-		this.mapper = MapperFactory.buildReaderMapper(this.format, this.registry);
+		this.mapper = MapperFactory.buildReaderMapper(this.format);
 	}
 
 	@Override
 	public ConfigReader withFormat(Format format) {
-		return new DefaultConfigReader(format, this.registry, this.templateRegistry);
-	}
-
-	@Override
-	public <T> ConfigReader registerAdapter(Class<T> type, Class<? extends TypeAdapter<T>> adapterClass) {
-		AdapterRegistry nextRegistry = this.registry.withAdapter(type, adapterClass);
-		return new DefaultConfigReader(this.format, nextRegistry, this.templateRegistry);
-	}
-
-	@Override
-	public <T> ConfigReader registerAdapter(Class<T> type, TypeAdapter<T> adapterInstance) {
-		AdapterRegistry nextRegistry = this.registry.withAdapter(type, adapterInstance);
-		return new DefaultConfigReader(this.format, nextRegistry, this.templateRegistry);
+		return new DefaultConfigReader(format, this.templateRegistry);
 	}
 
 	@Override
 	public Format getFormat() {
 		return format;
-	}
-
-	@Override
-	public Node decodeNode(byte[] bytes) {
-		if (bytes == null || bytes.length == 0) return new ObjectNode();
-		try {
-			JsonNode node = mapper.readTree(bytes);
-			if (node == null) return new ObjectNode();
-			return NodeConverter.fromJsonNode(node);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to deserialize config bytes into node", e);
-		}
-	}
-
-	@Override
-	public Node decodeNode(InputStream inputStream) {
-		if (inputStream == null) return new ObjectNode();
-		try {
-			JsonNode node = mapper.readTree(inputStream);
-			if (node == null) return new ObjectNode();
-			return NodeConverter.fromJsonNode(node);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to deserialize config stream into node", e);
-		}
-	}
-
-	@Override
-	public Node readNode(String fileName) {
-		if (fileName == null) throw new ConfigException("fileName must not be null");
-		String resolved = FileUtil.resolvePathWithFormat(fileName, format);
-		return readNode(Path.of(resolved));
-	}
-
-	@Override
-	public Node readNode(Path path) {
-		if (path == null) throw new ConfigException("path must not be null");
-		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
-		Path target = Path.of(resolved);
-
-		if (!Files.exists(target)) throw new ConfigException("Config file does not exist: " + target);
-
-		try (BufferedReader reader = Files.newBufferedReader(target)) {
-			JsonNode node = mapper.readTree(reader);
-			if (node == null) throw new ConfigException("Config file is empty or invalid: " + target);
-			return NodeConverter.fromJsonNode(node);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to read config file: " + target, e);
-		}
 	}
 
 	@Override
@@ -165,8 +96,7 @@ public class DefaultConfigReader implements ConfigReader {
 	@Override
 	public <T> T read(String fileName, Class<T> configClass) {
 		if (fileName == null) throw new ConfigException("fileName must not be null");
-		String resolved = FileUtil.resolvePathWithFormat(fileName, format);
-		return read(Path.of(resolved), configClass, mapper);
+		return read(FileUtil.resolvePathWithFormat(fileName, format), configClass, mapper);
 	}
 
 	@Override
@@ -174,8 +104,7 @@ public class DefaultConfigReader implements ConfigReader {
 		if (path == null) throw new ConfigException("path must not be null");
 		if (configClass == null) throw new ConfigException("configClass must not be null");
 
-		String resolved = FileUtil.resolvePathWithFormat(path.toString(), format);
-		Path target = Path.of(resolved);
+		Path target = FileUtil.resolvePathWithFormat(path, format);
 
 		if (!Files.exists(target)) throw new ConfigException("Config file does not exist: " + target);
 
@@ -215,9 +144,7 @@ public class DefaultConfigReader implements ConfigReader {
 		if (fileName == null) throw new ConfigException("fileName must not be null");
 		if (configClass == null) throw new ConfigException("configClass must not be null");
 
-		String resolved = FileUtil.resolvePathWithFormat(fileName, format);
-
-		return read(Path.of(resolved), configClass);
+		return read(FileUtil.resolvePathWithFormat(fileName, format), configClass);
 	}
 
 	public <T> T load(Path path, Class<T> configClass) {
@@ -235,8 +162,6 @@ public class DefaultConfigReader implements ConfigReader {
 	}
 
 	public ConfigReader withTemplateRegistry(TemplateRegistry templateRegistry) {
-		return new DefaultConfigReader(this.format, this.registry, templateRegistry);
+		return new DefaultConfigReader(this.format, templateRegistry);
 	}
 }
-
-
