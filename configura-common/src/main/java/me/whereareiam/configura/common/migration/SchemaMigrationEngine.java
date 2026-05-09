@@ -125,7 +125,16 @@ public final class SchemaMigrationEngine {
 		if (!resolvedVersionField.persist())
 			return;
 
-		root.put(resolvedVersionField.fieldName(), definition.currentVersion());
+		String fieldName = resolvedVersionField.fieldName();
+		ObjectNode ordered = root.objectNode();
+		ordered.put(fieldName, definition.currentVersion());
+		for (var entry : root.properties()) {
+			if (!fieldName.equals(entry.getKey()))
+				ordered.set(entry.getKey(), entry.getValue());
+		}
+
+		root.removeAll();
+		root.setAll(ordered);
 	}
 
 	private <T> ObjectNode requireObjectRoot(JsonNode source, Class<T> type, boolean syntheticSource) {

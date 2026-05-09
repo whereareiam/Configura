@@ -72,6 +72,7 @@ class SchemaVersioningTest {
 		assertEquals(1, persisted.path("_version").asInt());
 		assertEquals("proxy-auth", persisted.path("connection").path("routing").path("defaults").path("step").path("target").asText());
 		assertTrue(persisted.path("connection").path("routing").path("defaultProxy").isMissingNode());
+		assertBefore(Files.readString(file), "_version:", "connection:");
 	}
 
 	@Test
@@ -133,6 +134,7 @@ class SchemaVersioningTest {
 		assertEquals(1, persisted.path("schemaVersion").asInt());
 		assertTrue(persisted.path("_version").isMissingNode());
 		assertEquals("ready", persisted.path("label").asText());
+		assertBefore(readWritten(config, file), "schemaVersion:", "label:");
 	}
 
 	@Test
@@ -217,6 +219,7 @@ class SchemaVersioningTest {
 		JsonNode persisted = config.readNode(file);
 		assertEquals(1, persisted.path("_version").asInt());
 		assertEquals("proxy-auth", persisted.path("connection").path("routing").path("defaults").path("step").path("target").asText());
+		assertBefore(readWritten(config, file), "_version:", "connection:");
 	}
 
 	@Test
@@ -633,5 +636,21 @@ class SchemaVersioningTest {
 			ObjectNode step = context.object(defaults, "step");
 			step.set("target", defaultProxy);
 		}
+	}
+
+	private static String readWritten(Config config, Path file) {
+		try {
+			return Files.readString(file.resolveSibling(file.getFileName() + config.extension()));
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static void assertBefore(String content, String first, String second) {
+		int firstIndex = content.indexOf(first);
+		int secondIndex = content.indexOf(second);
+		assertTrue(firstIndex >= 0, first + " should be present");
+		assertTrue(secondIndex >= 0, second + " should be present");
+		assertTrue(firstIndex < secondIndex, first + " should appear before " + second);
 	}
 }
