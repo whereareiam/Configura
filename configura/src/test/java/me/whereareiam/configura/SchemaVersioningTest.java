@@ -75,6 +75,50 @@ class SchemaVersioningTest {
 	}
 
 	@Test
+	@DisplayName("ConfigDocument update backs up the file before persisting a migrated version by default")
+	void configDocumentUpdateBacksUpMigratedFileByDefault(@TempDir Path tempDir) throws Exception {
+		Path file = tempDir.resolve("settings.yml");
+		Files.writeString(file, """
+				connection:
+				  routing:
+				    defaultProxy: proxy-auth
+				""");
+
+		Config config = versionedSettingsConfig();
+		config.update(file, SettingsConfig.class);
+
+		Path backup = file.resolveSibling("settings.yml.bak");
+		assertTrue(Files.exists(backup));
+
+		String backupContent = Files.readString(backup);
+		assertTrue(backupContent.contains("defaultProxy: proxy-auth"));
+		assertFalse(backupContent.contains("_version"));
+	}
+
+	@Test
+	@DisplayName("ConfigDocument update skips backup when migration backup is disabled")
+	void configDocumentUpdateSkipsBackupWhenDisabled(@TempDir Path tempDir) throws Exception {
+		Path file = tempDir.resolve("settings.yml");
+		Files.writeString(file, """
+				connection:
+				  routing:
+				    defaultProxy: proxy-auth
+				""");
+
+		Config config = Config.builder()
+				.format(Format.YAML)
+				.backupOnMigration(false)
+				.versioned(SettingsConfig.class, spec -> spec
+						.currentVersion(1)
+						.migration(new SettingsMigrationV0ToV1()))
+				.build();
+
+		config.update(file, SettingsConfig.class);
+
+		assertFalse(Files.exists(file.resolveSibling("settings.yml.bak")));
+	}
+
+	@Test
 	@DisplayName("Custom @SchemaVersion field is picked up automatically")
 	void customConfigVersionFieldIsPickedUpAutomatically(@TempDir Path tempDir) {
 		Config config = versionedCustomVersionConfig();
@@ -194,6 +238,30 @@ class SchemaVersioningTest {
 		JsonNode rawTree = config.readNode(file);
 		assertTrue(rawTree.path("_version").isMissingNode());
 		assertEquals("proxy-auth", rawTree.path("connection").path("routing").path("defaultProxy").asText());
+	}
+
+	@Test
+	@DisplayName("Save backs up the existing file before persisting a migrated version")
+	void saveBacksUpMigratedFile(@TempDir Path tempDir) throws Exception {
+		Path file = tempDir.resolve("settings.yml");
+		Files.writeString(file, """
+				connection:
+				  routing:
+				    defaultProxy: proxy-auth
+				""");
+
+		Config config = versionedSettingsConfig();
+		SettingsConfig settings = new SettingsConfig();
+		settings.connection.routing.defaults.step.target = "proxy-auth";
+
+		config.save(file, settings);
+
+		Path backup = file.resolveSibling("settings.yml.bak");
+		assertTrue(Files.exists(backup));
+
+		String backupContent = Files.readString(backup);
+		assertTrue(backupContent.contains("defaultProxy: proxy-auth"));
+		assertFalse(backupContent.contains("_version"));
 	}
 
 	@Test

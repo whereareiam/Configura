@@ -41,6 +41,7 @@ public final class Config {
 	private final MergePolicyRegistry policyRegistry;
 	private final MigrationDefinitionRegistry versionedRegistry;
 	private final MergePolicy defaultMergePolicy;
+	private final boolean backupOnMigration;
 	private final Configura runtime;
 
 	private Config(
@@ -50,7 +51,8 @@ public final class Config {
 			DefaultTemplateRegistry templateRegistry,
 			MergePolicyRegistry policyRegistry,
 			MigrationDefinitionRegistry versionedRegistry,
-			MergePolicy defaultMergePolicy
+			MergePolicy defaultMergePolicy,
+			boolean backupOnMigration
 	) {
 		this.extension = extension;
 		this.mapperFactory = mapperFactory;
@@ -59,6 +61,7 @@ public final class Config {
 		this.policyRegistry = policyRegistry.copy();
 		this.versionedRegistry = versionedRegistry.copy();
 		this.defaultMergePolicy = defaultMergePolicy;
+		this.backupOnMigration = backupOnMigration;
 		this.runtime = new Configura(
 				extension,
 				mapperFactory,
@@ -66,7 +69,8 @@ public final class Config {
 				this.templateRegistry,
 				this.policyRegistry,
 				this.versionedRegistry,
-				this.defaultMergePolicy
+				this.defaultMergePolicy,
+				this.backupOnMigration
 		);
 	}
 
@@ -266,27 +270,31 @@ public final class Config {
 	public Config withModule(Module module) {
 		List<Module> next = new ArrayList<>(modules);
 		if (module != null) next.add(module);
-		return new Config(extension, mapperFactory, next, templateRegistry, policyRegistry, versionedRegistry, defaultMergePolicy);
+		return new Config(extension, mapperFactory, next, templateRegistry, policyRegistry, versionedRegistry, defaultMergePolicy, backupOnMigration);
 	}
 
 	public <T, P extends TemplateProvider<T>> Config withTemplate(Class<P> providerClass) {
 		DefaultTemplateRegistry registry = templateRegistry.copy();
 		registry.registerTemplate(providerClass);
-		return new Config(extension, mapperFactory, modules, registry, policyRegistry, versionedRegistry, defaultMergePolicy);
+		return new Config(extension, mapperFactory, modules, registry, policyRegistry, versionedRegistry, defaultMergePolicy, backupOnMigration);
 	}
 
 	public Config withMergePolicy(String name, MergePolicy policy) {
 		MergePolicyRegistry next = policyRegistry.copy();
 		next.register(name, policy);
-		return new Config(extension, mapperFactory, modules, templateRegistry, next, versionedRegistry, defaultMergePolicy);
+		return new Config(extension, mapperFactory, modules, templateRegistry, next, versionedRegistry, defaultMergePolicy, backupOnMigration);
 	}
 
 	public Config withDefaultMergePreset(MergePreset preset) {
-		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, preset.policy());
+		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, preset.policy(), backupOnMigration);
 	}
 
 	public Config withDefaultMergePolicy(MergePolicy policy) {
-		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, policy);
+		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, policy, backupOnMigration);
+	}
+
+	public Config withBackupOnMigration(boolean backupOnMigration) {
+		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, defaultMergePolicy, backupOnMigration);
 	}
 
 	public <T> Config withVersioned(Class<T> type, Consumer<MigrationDefinition<T>> customizer) {
@@ -295,7 +303,7 @@ public final class Config {
 			customizer.accept(definition);
 		MigrationDefinitionRegistry next = versionedRegistry.copy();
 		next.register(definition);
-		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, next, defaultMergePolicy);
+		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, next, defaultMergePolicy, backupOnMigration);
 	}
 
 	public String extension() {
@@ -322,6 +330,10 @@ public final class Config {
 		return defaultMergePolicy;
 	}
 
+	public boolean backupOnMigration() {
+		return backupOnMigration;
+	}
+
 	public static final class Builder {
 		private String extension;
 		private Function<List<Module>, ObjectMapper> mapperFactory;
@@ -330,6 +342,7 @@ public final class Config {
 		private final MergePolicyRegistry policyRegistry;
 		private final MigrationDefinitionRegistry versionedRegistry;
 		private MergePolicy defaultMergePolicy;
+		private boolean backupOnMigration;
 
 		private Builder() {
 			Config defaults = defaultConfig;
@@ -340,6 +353,7 @@ public final class Config {
 				this.policyRegistry = MergePolicyRegistry.standard();
 				this.versionedRegistry = new MigrationDefinitionRegistry();
 				this.defaultMergePolicy = MergePreset.DEEP_DEFAULTS.policy();
+				this.backupOnMigration = true;
 				return;
 			}
 
@@ -350,6 +364,7 @@ public final class Config {
 			this.policyRegistry = defaults.policyRegistry.copy();
 			this.versionedRegistry = defaults.versionedRegistry.copy();
 			this.defaultMergePolicy = defaults.defaultMergePolicy;
+			this.backupOnMigration = defaults.backupOnMigration;
 		}
 
 		private Builder(Config source) {
@@ -360,6 +375,7 @@ public final class Config {
 			this.policyRegistry = source.policyRegistry.copy();
 			this.versionedRegistry = source.versionedRegistry.copy();
 			this.defaultMergePolicy = source.defaultMergePolicy;
+			this.backupOnMigration = source.backupOnMigration;
 		}
 
 		public Builder format(Format format) {
@@ -412,6 +428,11 @@ public final class Config {
 			return this;
 		}
 
+		public Builder backupOnMigration(boolean backupOnMigration) {
+			this.backupOnMigration = backupOnMigration;
+			return this;
+		}
+
 		public <T> Builder versioned(Class<T> type, Consumer<MigrationDefinition<T>> customizer) {
 			MigrationDefinition<T> definition = new MigrationDefinition<>(type);
 			if (customizer != null) customizer.accept(definition);
@@ -420,7 +441,7 @@ public final class Config {
 		}
 
 		public Config build() {
-			return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, defaultMergePolicy);
+			return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, defaultMergePolicy, backupOnMigration);
 		}
 	}
 }

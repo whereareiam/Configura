@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ public final class Configura {
 	private final MergePolicyRegistry policyRegistry;
 	private final MigrationDefinitionRegistry versionedRegistry;
 	private final MergePolicy defaultPolicy;
+	private final boolean backupOnMigration;
 	private final ObjectMapper mapper;
 	private final MergePolicyResolver mergePolicyResolver;
 	private final SchemaMigrationEngine migrationRunner;
@@ -50,7 +52,8 @@ public final class Configura {
 			DefaultTemplateRegistry templateRegistry,
 			MergePolicyRegistry policyRegistry,
 			MigrationDefinitionRegistry versionedRegistry,
-			MergePolicy defaultPolicy
+			MergePolicy defaultPolicy,
+			boolean backupOnMigration
 	) {
 		this.extension = extension;
 		this.mapperFactory = mapperFactory;
@@ -59,6 +62,7 @@ public final class Configura {
 		this.policyRegistry = policyRegistry != null ? policyRegistry.copy() : MergePolicyRegistry.standard();
 		this.versionedRegistry = versionedRegistry != null ? versionedRegistry.copy() : new MigrationDefinitionRegistry();
 		this.defaultPolicy = defaultPolicy != null ? defaultPolicy : MergePreset.DEEP_DEFAULTS.policy();
+		this.backupOnMigration = backupOnMigration;
 		this.mapper = mapperFactory.apply(this.modules);
 
 		this.mergePolicyResolver = new MergePolicyResolver(this.defaultPolicy, this.policyRegistry);
@@ -75,29 +79,33 @@ public final class Configura {
 		List<Module> next = new ArrayList<>(modules);
 		if (module != null)
 			next.add(module);
-		return new Configura(extension, mapperFactory, next, templateRegistry, policyRegistry, versionedRegistry, defaultPolicy);
+		return new Configura(extension, mapperFactory, next, templateRegistry, policyRegistry, versionedRegistry, defaultPolicy, backupOnMigration);
 	}
 
 	public <T, P extends TemplateProvider<T>> Configura withTemplate(Class<P> providerClass) {
 		DefaultTemplateRegistry registry = templateRegistry.copy();
 		registry.registerTemplate(providerClass);
-		return new Configura(extension, mapperFactory, modules, registry, policyRegistry, versionedRegistry, defaultPolicy);
+		return new Configura(extension, mapperFactory, modules, registry, policyRegistry, versionedRegistry, defaultPolicy, backupOnMigration);
 	}
 
 	public Configura withMergePolicy(String name, MergePolicy policy) {
 		MergePolicyRegistry next = policyRegistry.copy();
 		next.register(name, policy);
-		return new Configura(extension, mapperFactory, modules, templateRegistry, next, versionedRegistry, defaultPolicy);
+		return new Configura(extension, mapperFactory, modules, templateRegistry, next, versionedRegistry, defaultPolicy, backupOnMigration);
 	}
 
 	public Configura withDefaultMergePolicy(MergePolicy defaultPolicy) {
-		return new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, defaultPolicy);
+		return new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, defaultPolicy, backupOnMigration);
+	}
+
+	public Configura withBackupOnMigration(boolean backupOnMigration) {
+		return new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, defaultPolicy, backupOnMigration);
 	}
 
 	public <T> Configura withVersioned(MigrationDefinition<T> definition) {
 		MigrationDefinitionRegistry next = versionedRegistry.copy();
 		next.register(definition);
-		return new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, next, defaultPolicy);
+		return new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, next, defaultPolicy, backupOnMigration);
 	}
 
 	public <T> T read(String file, Class<T> type) {
@@ -209,6 +217,7 @@ public final class Configura {
 			ensureParent(target);
 			T seeded = saveSeeder.seed(value);
 			SchemaMigrationEngine.MigrationResult existing = existingMigratedTree(target, seeded.getClass());
+			backupBeforePersistedMigration(target, existing);
 			ObjectNode merged = ConfigMerger.buildMergedNodeFavorModel(existing.node(), seeded, mapper, mergePolicyResolver);
 			migrationRunner.stampCurrentVersion((Class<T>) seeded.getClass(), merged, existing.node());
 			mapper.writeValue(target.toFile(), merged);
@@ -270,6 +279,7 @@ public final class Configura {
 		T empty = instantiate(type);
 		T seeded = updateSeeder.seed(empty);
 		SchemaMigrationEngine.MigrationResult existing = existingMigratedTree(target, type);
+		backupBeforePersistedMigration(target, existing);
 		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(existing.node(), seeded, mapper, mergePolicyResolver);
 		migrationRunner.stampCurrentVersion(type, merged, existing.node());
 		writeTree(target, merged);
@@ -286,6 +296,19 @@ public final class Configura {
 
 	private void ensureParent(Path path) throws IOException {
 		Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
+	}
+
+	private void backupBeforePersistedMigration(Path path, SchemaMigrationEngine.MigrationResult existing) {
+		if (!backupOnMigration || existing == null || !existing.migrated() || !Files.exists(path))
+			return;
+
+		Path backup = path.resolveSibling(path.getFileName().toString() + ".bak");
+		try {
+			ensureParent(backup);
+			Files.copy(path, backup, StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
+			throw new ConfigException("Failed to back up config file before migration: " + path, e);
+		}
 	}
 
 	private <T> T instantiate(Class<T> type) {
@@ -352,5 +375,9 @@ public final class Configura {
 
 	public MergePolicy defaultPolicy() {
 		return defaultPolicy;
+	}
+
+	public boolean backupOnMigration() {
+		return backupOnMigration;
 	}
 }

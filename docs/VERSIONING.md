@@ -33,8 +33,21 @@ but does not persist a version field back to disk.
 - `read(...)` migrates in memory only
 - `update(...)` migrates and persists the upgraded file
 - `save(...)` upgrades existing on-disk content before saving
+- by default, `update(...)` and `save(...)` back up an existing file to `your-config.ext.bak` before persisting a migrated version
 - `readNode(...)` stays raw
 - `readMigratedNode(..., Type.class)` returns the upgraded tree without writing it
+
+If you want to skip the backup step:
+
+```java
+Config config = Config.builder()
+		.format(Format.YAML)
+		.backupOnMigration(false)
+		.versioned(Settings.class, spec -> spec
+				.currentVersion(1)
+				.migration(new SettingsMigrationV0ToV1()))
+		.build();
+```
 
 ## Basic Example
 

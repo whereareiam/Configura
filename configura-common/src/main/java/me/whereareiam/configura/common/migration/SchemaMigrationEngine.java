@@ -24,7 +24,7 @@ public final class SchemaMigrationEngine {
 	public <T> MigrationResult migrate(Class<T> type, JsonNode source, Path sourcePath, boolean syntheticSource) {
 		ObjectNode root = requireObjectRoot(source, type, syntheticSource);
 		MigrationDefinition<T> definition = registry.get(type);
-		if (definition == null) return new MigrationResult(root, new ResolvedVersionField(null, false));
+		if (definition == null) return new MigrationResult(root, new ResolvedVersionField(null, false), false);
 
 		ResolvedVersionField resolvedVersionField = resolveVersionField(
 				type,
@@ -34,7 +34,7 @@ public final class SchemaMigrationEngine {
 
 		if (syntheticSource) {
 			stampVersion(root, definition, resolvedVersionField);
-			return new MigrationResult(root, resolvedVersionField);
+			return new MigrationResult(root, resolvedVersionField, false);
 		}
 
 		int sourceVersion = readVersion(root, definition, type, resolvedVersionField);
@@ -74,7 +74,7 @@ public final class SchemaMigrationEngine {
 		}
 
 		stampVersion(migrated, definition, resolvedVersionField);
-		return new MigrationResult(migrated, resolvedVersionField);
+		return new MigrationResult(migrated, resolvedVersionField, sourceVersion < definition.currentVersion());
 	}
 
 	public <T> ObjectNode stampCurrentVersion(Class<T> type, ObjectNode node) {
@@ -174,7 +174,7 @@ public final class SchemaMigrationEngine {
 		return null;
 	}
 
-	public record MigrationResult(ObjectNode node, ResolvedVersionField resolvedVersionField) {
+	public record MigrationResult(ObjectNode node, ResolvedVersionField resolvedVersionField, boolean migrated) {
 	}
 
 	private record ResolvedVersionField(String fieldName, boolean persist) {
