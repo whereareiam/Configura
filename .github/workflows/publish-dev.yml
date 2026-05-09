@@ -38,6 +38,7 @@ jobs:
 
   publish:
     needs: prepare
+    if: always() && needs.prepare.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
