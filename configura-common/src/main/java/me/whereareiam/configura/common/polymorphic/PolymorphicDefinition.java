@@ -8,7 +8,7 @@ import java.util.Map;
 
 @Getter
 @RequiredArgsConstructor
-public final class PolymorphicInfo {
+public final class PolymorphicDefinition {
 	private final String discriminator;
 	private final Map<String, Class<?>> mappings;
 	private final String defaultValue;

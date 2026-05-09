@@ -31,7 +31,7 @@ public final class PolymorphicModule extends SimpleModule {
 			@Override
 			public JsonDeserializer<?> modifyDeserializer(DeserializationConfig config, BeanDescription beanDesc, JsonDeserializer<?> deserializer) {
 				Class<?> raw = beanDesc.getBeanClass();
-				PolymorphicInfo effective = effectiveInfoFor(raw);
+				PolymorphicDefinition effective = effectiveInfoFor(raw);
 				if (effective == null) return deserializer;
 				return new JsonDeserializer<>() {
 					@Override
@@ -49,7 +49,7 @@ public final class PolymorphicModule extends SimpleModule {
 			@Override
 			public JsonSerializer<?> modifySerializer(SerializationConfig config, BeanDescription beanDesc, JsonSerializer<?> serializer) {
 				Class<?> raw = beanDesc.getBeanClass();
-				PolymorphicInfo effective = effectiveInfoFor(raw);
+				PolymorphicDefinition effective = effectiveInfoFor(raw);
 				if (effective == null) return serializer;
 
 				return new JsonSerializer<>() {
@@ -69,8 +69,8 @@ public final class PolymorphicModule extends SimpleModule {
 		});
 	}
 
-	private static PolymorphicInfo effectiveInfoFor(Class<?> raw) {
-		PolymorphicInfo info = PolymorphicRegistry.get(raw);
+	private static PolymorphicDefinition effectiveInfoFor(Class<?> raw) {
+		PolymorphicDefinition info = PolymorphicRegistry.get(raw);
 
 		if (info != null) return info;
 		Polymorphic anno = raw.getAnnotation(Polymorphic.class);
@@ -78,7 +78,7 @@ public final class PolymorphicModule extends SimpleModule {
 		return fromAnnotation(anno);
 	}
 
-	private static Class<?> resolveTarget(JsonNode node, Class<?> raw, PolymorphicInfo info) {
+	private static Class<?> resolveTarget(JsonNode node, Class<?> raw, PolymorphicDefinition info) {
 		Class<?> target = null;
 
 		// 1) discriminator path (if configured and present)
@@ -108,14 +108,14 @@ public final class PolymorphicModule extends SimpleModule {
 		return target != null ? target : raw;
 	}
 
-	private static String inferDiscriminatorValue(PolymorphicInfo info, Object value) {
+	private static String inferDiscriminatorValue(PolymorphicDefinition info, Object value) {
 		return info.getMappings().entrySet().stream()
 				.filter(e -> e.getValue().isAssignableFrom(value.getClass()))
 				.map(Map.Entry::getKey)
 				.findFirst().orElse(null);
 	}
 
-	private static PolymorphicInfo fromAnnotation(Polymorphic anno) {
+	private static PolymorphicDefinition fromAnnotation(Polymorphic anno) {
 		if (anno == null) return null;
 
 		Map<String, Class<?>> map = new LinkedHashMap<>();
@@ -128,7 +128,7 @@ public final class PolymorphicModule extends SimpleModule {
 
 		Class<?> defaultTarget = anno.defaultTarget();
 
-		return new PolymorphicInfo(
+		return new PolymorphicDefinition(
 				anno.discriminator(),
 				Map.copyOf(map),
 				anno.defaultValue(),
@@ -137,5 +137,4 @@ public final class PolymorphicModule extends SimpleModule {
 		);
 	}
 }
-
 

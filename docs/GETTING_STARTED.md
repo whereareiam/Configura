@@ -113,11 +113,10 @@ We recommend a simple POJO model using Lombok for brevity.
 ```java
 import lombok.Data;
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.annotation.template.type.Literal;
 
 @Data
 public class AppConfig {
-	@Template(literal = @Literal(text = "world"))
+	@Template(text = "world")
 	private String name;
 }
 ```
@@ -202,6 +201,8 @@ Config config = Config.builder()
 Explicit source `null` is preserved during merge/update by default.
 
 See [TEMPLATING.md](TEMPLATING.md#merge-policies-controlling-template-behavior) for detailed examples.
+When defaults are not enough and you need to rename, move, or restructure fields across releases, use
+[VERSIONING.md](VERSIONING.md).
 
 ### Read or create with defaults
 
@@ -212,16 +213,16 @@ import me.whereareiam.configura.Config;
 
 Config config = Config.builder().build();
 AppConfig appConfig = new AppConfig();
-config.objects().save("app-config", appConfig);
-appConfig = config.objects().read("app-config", AppConfig.class);
+config.save("app-config", appConfig);
+appConfig = config.read("app-config", AppConfig.class);
 
 System.out.println("Hello, " + appConfig.getName() + "!");
 ```
 
 ### Alternatives: explicit read/write
 
-You can also keep static helpers for one-off use, or use a built `Config` for an explicit format. Omit extensions; the
-configured format determines the output.
+You can also use the JVM-wide default engine via `Config.defaults()`, or use a built `Config` for an explicit format.
+Omit extensions; the configured format determines the output.
 
 ```java
 import me.whereareiam.configura.Config;
@@ -230,12 +231,12 @@ import me.whereareiam.configura.type.Format;
 AppConfig cfg = new AppConfig();
 cfg.setName("world");
 
-Config.save("app-config", cfg);
-AppConfig fromYaml = Config.load("app-config", AppConfig.class);
+Config.defaults().save("app-config", cfg);
+AppConfig fromYaml = Config.defaults().read("app-config", AppConfig.class);
 
 Config json = Config.builder().format(Format.JSON).build();
-json.objects().write("app-config", cfg);
-AppConfig fromJson = json.objects().read("app-config", AppConfig.class);
+json.write("app-config", cfg);
+AppConfig fromJson = json.read("app-config", AppConfig.class);
 ```
 
 ### Post-processing with @PostProcess
@@ -275,11 +276,10 @@ Templates let you declare default values for simple values, lists, and object-li
   ```java
   import lombok.Data;
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.annotation.template.type.Literal;
 
 @Data
 public class GreetingConfig {
-	@Template(literal = @Literal(text = "world"))
+	@Template(text = "world")
 	private String name;
 }
   ```
@@ -295,11 +295,10 @@ public class GreetingConfig {
 import java.util.List;
 
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.annotation.template.type.Literal;
 
 @Data
 public class RolesConfig {
-	@Template(items = {@Literal(text = "user"), @Literal(text = "admin")})
+	@Template(stringItems = {"user", "admin"})
 	private List<String> roles;
 }
   ```
@@ -316,14 +315,12 @@ import java.util.List;
 import java.util.Map;
 
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.annotation.template.type.Literal;
-import me.whereareiam.configura.annotation.template.type.Property;
 
 @Data
 public class DbConfig {
 	@Template(properties = {
-			@Property(name = "host", value = @Literal(text = "localhost")),
-			@Property(name = "port", value = @Literal(number = "5432"))
+			@Template.Property(name = "host", text = "localhost"),
+			@Template.Property(name = "port", number = "5432")
 	})
 	private Map<String, Object> defaults;
 }

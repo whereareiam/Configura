@@ -30,7 +30,7 @@ public class Settings {
 When you load this config, `afterLoad()` is called automatically:
 
 ```java
-Settings settings = Config.load("config/settings", Settings.class);
+Settings settings = Config.defaults().read("config/settings", Settings.class);
 // afterLoad() has been called, computedValue is now 50 (if level was 5)
 ```
 
