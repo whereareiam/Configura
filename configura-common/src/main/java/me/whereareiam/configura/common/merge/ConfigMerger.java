@@ -38,6 +38,17 @@ public final class ConfigMerger {
 		return modelNode;
 	}
 
+	public static <T> ObjectNode buildMergedNodeFavorExisting(ObjectNode existingNode, T model, ObjectMapper mapper, MergePolicyResolver resolver) {
+		ObjectNode modelNode = mapper.valueToTree(model);
+		mergeExistingIntoModel(
+				modelNode,
+				existingNode != null ? existingNode.deepCopy() : mapper.createObjectNode(),
+				model.getClass(),
+				resolver
+		);
+		return modelNode;
+	}
+
 	public static <T> ObjectNode buildMergedNodeFavorModel(Path path, T model, ObjectMapper mapper) {
 		return buildMergedNodeFavorModel(path, model, mapper, new MergePolicyResolver());
 	}
@@ -56,6 +67,13 @@ public final class ConfigMerger {
 			throw new ConfigException("Failed to merge (model-wins) with existing config: " + path, e);
 		}
 
+		return modelNode;
+	}
+
+	public static <T> ObjectNode buildMergedNodeFavorModel(ObjectNode existingNode, T model, ObjectMapper mapper, MergePolicyResolver resolver) {
+		ObjectNode modelNode = mapper.valueToTree(model);
+		if (existingNode != null)
+			overlayModelOverExisting(modelNode, existingNode.deepCopy());
 		return modelNode;
 	}
 

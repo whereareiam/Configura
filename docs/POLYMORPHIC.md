@@ -32,8 +32,8 @@ class CommandTrigger extends TriggerBase { public String command; }
 Read/write usage:
 
 ```java
-TriggerBase cfg = Config.read("trigger", TriggerBase.class);
-Config.save("trigger", cfg);
+TriggerBase cfg = Config.defaults().read("trigger", TriggerBase.class);
+Config.defaults().save("trigger", cfg);
 ```
 
 Example YAML:
@@ -129,4 +129,3 @@ Then read/write normally via `Config` or a `ConfigReader/ConfigWriter`.
 - Keep the discriminator stable to avoid migrations.
 - Prefer simple, uppercase mapping keys (e.g., `SYMBOL`).
 - You can combine polymorphic models with Jackson modules; they are independent features.
-

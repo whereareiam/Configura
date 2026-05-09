@@ -4,7 +4,7 @@ Templates let you declare default values directly on fields or classes. These de
 
 ### When templates are used
 
-- During smart writes, e.g. `Config.save("app-config", new AppConfig())`, templates help seed missing values.
+- During smart writes, e.g. `Config.defaults().save("app-config", new AppConfig())`, templates help seed missing values.
 - Reading does not apply templates; it strictly deserializes the file.
 
 Note: YAML is the default format when no extension is provided; JSON is also supported via `.json`.
@@ -128,8 +128,8 @@ import me.whereareiam.configura.Config;
 Config config = Config.builder().build();
 
 AppConfig cfg = new AppConfig();
-config.objects().save("app-config", cfg);
-cfg = config.objects().read("app-config", AppConfig.class);
+config.save("app-config", cfg);
+cfg = config.read("app-config", AppConfig.class);
 ```
 
 ### External templates with Template.Source

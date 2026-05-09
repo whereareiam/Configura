@@ -6,6 +6,7 @@ helpers, and pluggable formats (YAML/JSON).
 ### Table of contents
 
 - [Getting Started](docs/GETTING_STARTED.md)
+- [Versioned Config Migrations](docs/VERSIONING.md)
 - [Templating guide](docs/TEMPLATING.md)
 - [Post-processing](docs/POST_PROCESSING.md)
 - [Polymorphic models](docs/POLYMORPHIC.md)
@@ -14,6 +15,7 @@ helpers, and pluggable formats (YAML/JSON).
 
 - **Model‑driven**: Define plain Java classes as your config model; no frameworks required.
 - **Inline templating**: Use `@Template` to declare defaults for scalars, lists, and object‑like maps.
+- **Versioned migrations**: Register class-per-step migrations with `ConfigDocument` or `@SchemaVersion` support.
 - **Post-processing**: Use `@PostProcess` to run validation, compute derived fields, or initialize state after loading.
 - **Multiple formats**: YAML and JSON supported out of the box.
 - **Jackson-native & extensible**: Pluggable readers/writers and custom Jackson modules.
@@ -97,11 +99,10 @@ dependencies {
 
 ```java
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.annotation.template.type.Literal;
 import me.whereareiam.configura.annotation.PostProcess;
 
 public class HelloConfig {
-	@Template(literal = @Literal(text = "world"))
+	@Template(text = "world")
 	public String name;
 	
 	@PostProcess
@@ -118,29 +119,26 @@ import me.whereareiam.configura.Config;
 
 Config config = Config.builder().build();
 // Writes defaults if needed and then re‑reads from disk
-HelloConfig cfg = config.objects().update("config/hello", HelloConfig.class);
+HelloConfig cfg = config.update("config/hello", HelloConfig.class);
 // afterLoad() has been called automatically
 
 // Use it in your code
 System.out.println("Hello, " + cfg.name + "!");
 ```
 
-Static helpers like `Config.update(...)` and `Config.save(...)` are still available for one-off use, but the built `Config`
-instance is the preferred API when you want a configured engine object.
+For the JVM-wide default engine, use `Config.defaults()` and `Config.reconfigureDefaults(...)`.
 
 3) Want object‑like defaults? Use `@Template(properties=...)`:
 
 ```java
 import me.whereareiam.configura.annotation.Template;
-import me.whereareiam.configura.annotation.template.type.Literal;
-import me.whereareiam.configura.annotation.template.type.Property;
 
 import java.util.Map;
 
 public class DbConfig {
 	@Template(properties = {
-			@Property(name = "host", value = @Literal(text = "localhost")),
-			@Property(name = "port", value = @Literal(number = "5432"))
+			@Template.Property(name = "host", text = "localhost"),
+			@Template.Property(name = "port", number = "5432")
 	})
 	public Map<String, Object> defaults;
 }

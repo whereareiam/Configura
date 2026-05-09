@@ -29,7 +29,7 @@ class ConfigBuilderWiringTest {
 				.template(BasicTemplate.class)
 				.build();
 
-		BasicConfig config = configura.objects().update(tempDir.resolve("basic"), BasicConfig.class);
+		BasicConfig config = configura.update(tempDir.resolve("basic"), BasicConfig.class);
 
 		assertEquals("service", config.name);
 		assertTrue(config.processed);
@@ -46,9 +46,9 @@ class ConfigBuilderWiringTest {
 		Path file = tempDir.resolve("nulls.yml");
 		Files.writeString(file, "value: null\n");
 
-		NullConfig config = configura.objects().update(file, NullConfig.class);
+		NullConfig config = configura.update(file, NullConfig.class);
 		assertNull(config.value);
-		assertTrue(configura.trees().read(file).get("value").isNull());
+		assertTrue(configura.readNode(file).get("value").isNull());
 	}
 
 	@Test
@@ -67,7 +67,7 @@ class ConfigBuilderWiringTest {
 				      complete: ""
 				""");
 
-		RoutingConfig config = configura.objects().update(file, RoutingConfig.class);
+		RoutingConfig config = configura.update(file, RoutingConfig.class);
 		assertNotNull(config.routing);
 		assertEquals(1, config.routing.scenarios.size());
 		assertTrue(config.routing.scenarios.containsKey("authentication"));
@@ -95,7 +95,7 @@ class ConfigBuilderWiringTest {
 				    complete: ""
 				""");
 
-		DefaultRoutingConfig config = configura.objects().update(file, DefaultRoutingConfig.class);
+		DefaultRoutingConfig config = configura.update(file, DefaultRoutingConfig.class);
 		assertEquals(1, config.scenarios.size());
 		assertTrue(config.scenarios.containsKey("authentication"));
 		assertFalse(config.scenarios.containsKey("registration"));
@@ -122,7 +122,7 @@ class ConfigBuilderWiringTest {
 				      complete: ""
 				""");
 
-		NamedRoutingConfig config = configura.objects().update(file, NamedRoutingConfig.class);
+		NamedRoutingConfig config = configura.update(file, NamedRoutingConfig.class);
 		assertNotNull(config.routing);
 		assertEquals(1, config.routing.scenarios.size());
 		assertTrue(config.routing.scenarios.containsKey("authentication"));

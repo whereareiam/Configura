@@ -7,13 +7,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class PolymorphicRegistry {
-	private static final ConcurrentHashMap<Class<?>, PolymorphicInfo> REGISTRY = new ConcurrentHashMap<>();
+	private static final ConcurrentHashMap<Class<?>, PolymorphicDefinition> REGISTRY = new ConcurrentHashMap<>();
 
 	public static <T> Builder<T> register(Class<T> baseType) {
 		return new Builder<>(baseType);
 	}
 
-	public static PolymorphicInfo get(Class<?> baseType) {
+	public static PolymorphicDefinition get(Class<?> baseType) {
 		return REGISTRY.get(baseType);
 	}
 
@@ -62,9 +62,9 @@ public final class PolymorphicRegistry {
 		@Override
 		public void build() {
 			// Merge with existing registration if present
-			PolymorphicInfo existing = REGISTRY.get(baseType);
+			PolymorphicDefinition existing = REGISTRY.get(baseType);
 			if (existing == null) {
-				REGISTRY.put(baseType, new PolymorphicInfo(discriminator, Map.copyOf(mappings), defaultValue,
+				REGISTRY.put(baseType, new PolymorphicDefinition(discriminator, Map.copyOf(mappings), defaultValue,
 						new LinkedHashMap<>(inferFields), defaultTarget));
 				return;
 			}
@@ -82,10 +82,9 @@ public final class PolymorphicRegistry {
 			String finalDefaultValue = defaultValue != null ? defaultValue : existing.getDefaultValue();
 			Class<?> finalDefaultTarget = defaultTarget != null ? defaultTarget : existing.getDefaultTarget();
 
-			REGISTRY.put(baseType, new PolymorphicInfo(finalDiscriminator, Map.copyOf(mergedMappings),
+			REGISTRY.put(baseType, new PolymorphicDefinition(finalDiscriminator, Map.copyOf(mergedMappings),
 					finalDefaultValue, mergedInferFields, finalDefaultTarget));
 		}
 	}
 }
-
 

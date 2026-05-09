@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.TemplateProvider;
+import me.whereareiam.configura.common.migration.SchemaMigrationEngine;
+import me.whereareiam.configura.common.migration.MigrationDefinitionRegistry;
 import me.whereareiam.configura.common.merge.ConfigMerger;
 import me.whereareiam.configura.common.merge.MergePolicyResolver;
 import me.whereareiam.configura.common.processor.PostProcessor;
@@ -14,6 +16,7 @@ import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.MergePolicy;
 import me.whereareiam.configura.merge.MergePolicyRegistry;
+import me.whereareiam.configura.migration.MigrationDefinition;
 import me.whereareiam.configura.type.MergePreset;
 
 import java.io.IOException;
@@ -32,9 +35,11 @@ public final class Configura {
 	private final List<Module> modules;
 	private final DefaultTemplateRegistry templateRegistry;
 	private final MergePolicyRegistry policyRegistry;
+	private final MigrationDefinitionRegistry versionedRegistry;
 	private final MergePolicy defaultPolicy;
 	private final ObjectMapper mapper;
 	private final MergePolicyResolver mergePolicyResolver;
+	private final SchemaMigrationEngine migrationRunner;
 	private final TemplateSeeder updateSeeder;
 	private final TemplateSeeder saveSeeder;
 
@@ -44,6 +49,7 @@ public final class Configura {
 			List<Module> modules,
 			DefaultTemplateRegistry templateRegistry,
 			MergePolicyRegistry policyRegistry,
+			MigrationDefinitionRegistry versionedRegistry,
 			MergePolicy defaultPolicy
 	) {
 		this.extension = extension;
@@ -51,10 +57,12 @@ public final class Configura {
 		this.modules = List.copyOf(modules);
 		this.templateRegistry = templateRegistry.copy();
 		this.policyRegistry = policyRegistry != null ? policyRegistry.copy() : MergePolicyRegistry.standard();
+		this.versionedRegistry = versionedRegistry != null ? versionedRegistry.copy() : new MigrationDefinitionRegistry();
 		this.defaultPolicy = defaultPolicy != null ? defaultPolicy : MergePreset.DEEP_DEFAULTS.policy();
 		this.mapper = mapperFactory.apply(this.modules);
 
 		this.mergePolicyResolver = new MergePolicyResolver(this.defaultPolicy, this.policyRegistry);
+		this.migrationRunner = new SchemaMigrationEngine(this.mapper, this.versionedRegistry);
 		this.updateSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.DEFAULT_INSTANCE, this.mergePolicyResolver);
 		this.saveSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.USER_MODEL, this.mergePolicyResolver);
 	}
@@ -67,23 +75,29 @@ public final class Configura {
 		List<Module> next = new ArrayList<>(modules);
 		if (module != null)
 			next.add(module);
-		return new Configura(extension, mapperFactory, next, templateRegistry, policyRegistry, defaultPolicy);
+		return new Configura(extension, mapperFactory, next, templateRegistry, policyRegistry, versionedRegistry, defaultPolicy);
 	}
 
 	public <T, P extends TemplateProvider<T>> Configura withTemplate(Class<P> providerClass) {
 		DefaultTemplateRegistry registry = templateRegistry.copy();
 		registry.registerTemplate(providerClass);
-		return new Configura(extension, mapperFactory, modules, registry, policyRegistry, defaultPolicy);
+		return new Configura(extension, mapperFactory, modules, registry, policyRegistry, versionedRegistry, defaultPolicy);
 	}
 
 	public Configura withMergePolicy(String name, MergePolicy policy) {
 		MergePolicyRegistry next = policyRegistry.copy();
 		next.register(name, policy);
-		return new Configura(extension, mapperFactory, modules, templateRegistry, next, defaultPolicy);
+		return new Configura(extension, mapperFactory, modules, templateRegistry, next, versionedRegistry, defaultPolicy);
 	}
 
 	public Configura withDefaultMergePolicy(MergePolicy defaultPolicy) {
-		return new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, defaultPolicy);
+		return new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, defaultPolicy);
+	}
+
+	public <T> Configura withVersioned(MigrationDefinition<T> definition) {
+		MigrationDefinitionRegistry next = versionedRegistry.copy();
+		next.register(definition);
+		return new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, next, defaultPolicy);
 	}
 
 	public <T> T read(String file, Class<T> type) {
@@ -98,39 +112,20 @@ public final class Configura {
 		if (!Files.exists(target))
 			throw new ConfigException("Config file does not exist: " + target);
 
-		try {
-			T value = mapper.readValue(target.toFile(), type);
-			PostProcessor.process(value);
-			return value;
-		} catch (IOException e) {
-			throw new ConfigException("Failed to read config file: " + target, e);
-		}
+		SchemaMigrationEngine.MigrationResult migrated = readMigratedTreeInternal(target, type);
+		return bind(migrated.node(), type, "Failed to bind config to " + type.getName());
 	}
 
 	public <T> T read(byte[] bytes, Class<T> type) {
 		if (type == null) throw new ConfigException("type must not be null");
-		try {
-			T value = (bytes == null || bytes.length == 0)
-					? mapper.treeToValue(mapper.createObjectNode(), type)
-					: mapper.readValue(bytes, type);
-			PostProcessor.process(value);
-			return value;
-		} catch (Exception e) {
-			throw new ConfigException("Failed to read config bytes for " + type.getName(), e);
-		}
+		SchemaMigrationEngine.MigrationResult migrated = readMigratedTreeInternal(bytes, type);
+		return bind(migrated.node(), type, "Failed to read config bytes for " + type.getName());
 	}
 
 	public <T> T read(InputStream inputStream, Class<T> type) {
 		if (type == null) throw new ConfigException("type must not be null");
-		try {
-			T value = inputStream == null
-					? mapper.treeToValue(mapper.createObjectNode(), type)
-					: mapper.readValue(inputStream, type);
-			PostProcessor.process(value);
-			return value;
-		} catch (Exception e) {
-			throw new ConfigException("Failed to read config stream for " + type.getName(), e);
-		}
+		SchemaMigrationEngine.MigrationResult migrated = readMigratedTreeInternal(inputStream, type);
+		return bind(migrated.node(), type, "Failed to read config stream for " + type.getName());
 	}
 
 	public JsonNode readTree(String file) {
@@ -174,6 +169,22 @@ public final class Configura {
 		}
 	}
 
+	public <T> JsonNode readMigratedTree(String file, Class<T> type) {
+		return readMigratedTree(resolve(file), type);
+	}
+
+	public <T> JsonNode readMigratedTree(Path path, Class<T> type) {
+		return readMigratedTreeInternal(resolve(path), type).node();
+	}
+
+	public <T> JsonNode readMigratedTree(byte[] bytes, Class<T> type) {
+		return readMigratedTreeInternal(bytes, type).node();
+	}
+
+	public <T> JsonNode readMigratedTree(InputStream inputStream, Class<T> type) {
+		return readMigratedTreeInternal(inputStream, type).node();
+	}
+
 	public <T> void write(String file, T value) {
 		write(resolve(file), value);
 	}
@@ -182,7 +193,7 @@ public final class Configura {
 		Path target = resolve(path);
 		try {
 			ensureParent(target);
-			mapper.writeValue(target.toFile(), value);
+			mapper.writeValue(target.toFile(), value == null ? null : versionedNode(value));
 		} catch (IOException e) {
 			throw new ConfigException("Failed to write config file: " + target, e);
 		}
@@ -197,7 +208,9 @@ public final class Configura {
 		try {
 			ensureParent(target);
 			T seeded = saveSeeder.seed(value);
-			ObjectNode merged = ConfigMerger.buildMergedNodeFavorModel(target, seeded, mapper, mergePolicyResolver);
+			SchemaMigrationEngine.MigrationResult existing = existingMigratedTree(target, seeded.getClass());
+			ObjectNode merged = ConfigMerger.buildMergedNodeFavorModel(existing.node(), seeded, mapper, mergePolicyResolver);
+			migrationRunner.stampCurrentVersion((Class<T>) seeded.getClass(), merged, existing.node());
 			mapper.writeValue(target.toFile(), merged);
 		} catch (IOException e) {
 			throw new ConfigException("Failed to save config file: " + target, e);
@@ -206,7 +219,7 @@ public final class Configura {
 
 	public <T> byte[] writeBytes(T value) {
 		try {
-			return mapper.writeValueAsBytes(value);
+			return mapper.writeValueAsBytes(value == null ? null : versionedNode(value));
 		} catch (IOException e) {
 			throw new ConfigException("Failed to write config bytes", e);
 		}
@@ -242,8 +255,10 @@ public final class Configura {
 	public <T> T merge(Path path, T value) {
 		Path target = resolve(path);
 		T seeded = updateSeeder.seed(value);
-		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(target, seeded, mapper, mergePolicyResolver);
-		return bind(merged, (Class<T>) seeded.getClass());
+		SchemaMigrationEngine.MigrationResult existing = existingMigratedTree(target, seeded.getClass());
+		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(existing.node(), seeded, mapper, mergePolicyResolver);
+		migrationRunner.stampCurrentVersion((Class<T>) seeded.getClass(), merged, existing.node());
+		return bind(merged, (Class<T>) seeded.getClass(), "Failed to bind merged config to " + seeded.getClass().getName());
 	}
 
 	public <T> T update(String file, Class<T> type) {
@@ -254,7 +269,9 @@ public final class Configura {
 		Path target = resolve(path);
 		T empty = instantiate(type);
 		T seeded = updateSeeder.seed(empty);
-		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(target, seeded, mapper, mergePolicyResolver);
+		SchemaMigrationEngine.MigrationResult existing = existingMigratedTree(target, type);
+		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(existing.node(), seeded, mapper, mergePolicyResolver);
+		migrationRunner.stampCurrentVersion(type, merged, existing.node());
 		writeTree(target, merged);
 		return read(target, type);
 	}
@@ -279,14 +296,38 @@ public final class Configura {
 		}
 	}
 
-	private <T> T bind(ObjectNode node, Class<T> type) {
+	private <T> T bind(ObjectNode node, Class<T> type, String failureMessage) {
 		try {
 			T value = mapper.treeToValue(node, type);
 			PostProcessor.process(value);
 			return value;
 		} catch (Exception e) {
-			throw new ConfigException("Failed to bind merged config to " + type.getName(), e);
+			throw new ConfigException(failureMessage, e);
 		}
+	}
+
+	private <T> SchemaMigrationEngine.MigrationResult readMigratedTreeInternal(Path path, Class<T> type) {
+		return migrationRunner.migrate(type, readTree(path), path, false);
+	}
+
+	private <T> SchemaMigrationEngine.MigrationResult readMigratedTreeInternal(byte[] bytes, Class<T> type) {
+		return migrationRunner.migrate(type, readTree(bytes), null, bytes == null || bytes.length == 0);
+	}
+
+	private <T> SchemaMigrationEngine.MigrationResult readMigratedTreeInternal(InputStream inputStream, Class<T> type) {
+		return migrationRunner.migrate(type, readTree(inputStream), null, inputStream == null);
+	}
+
+	private <T> SchemaMigrationEngine.MigrationResult existingMigratedTree(Path path, Class<T> type) {
+		if (!Files.exists(path))
+			return migrationRunner.migrate(type, mapper.createObjectNode(), path, true);
+		return readMigratedTreeInternal(path, type);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> ObjectNode versionedNode(T value) {
+		ObjectNode node = mapper.valueToTree(value);
+		return migrationRunner.stampCurrentVersion((Class<T>) value.getClass(), node);
 	}
 
 	public String extension() {
@@ -303,6 +344,10 @@ public final class Configura {
 
 	public Map<String, MergePolicy> policies() {
 		return policyRegistry.asMap();
+	}
+
+	public boolean isVersioned(Class<?> type) {
+		return versionedRegistry.contains(type);
 	}
 
 	public MergePolicy defaultPolicy() {

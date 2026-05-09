@@ -54,9 +54,9 @@ class ConfigTemplateSaveRoundtripTest {
 		initial.service = null;
 		initial.database = null;
 
-		Config.save(file, initial);
+		Config.defaults().save(file, initial);
 
-		AppConfig afterFirstLoad = Config.load(file, AppConfig.class);
+		AppConfig afterFirstLoad = Config.defaults().read(file, AppConfig.class);
 		assertNotNull(afterFirstLoad.service);
 		assertEquals("svc", afterFirstLoad.service.name);
 		assertNotNull(afterFirstLoad.service.retry);
@@ -70,17 +70,17 @@ class ConfigTemplateSaveRoundtripTest {
 		afterFirstLoad.database.url = "jdbc:postgresql://db/prod";
 		afterFirstLoad.service.retry.retries = 5;
 		afterFirstLoad.database.ssl = true;
-		Config.save(file, afterFirstLoad);
+		Config.defaults().save(file, afterFirstLoad);
 
-		AppConfig afterSecondLoad = Config.load(file, AppConfig.class);
+		AppConfig afterSecondLoad = Config.defaults().read(file, AppConfig.class);
 		assertEquals("jdbc:postgresql://db/prod", afterSecondLoad.database.url);
 		assertEquals(5, afterSecondLoad.service.retry.retries);
 		assertEquals("svc", afterSecondLoad.service.name);
 		assertEquals(10, afterSecondLoad.database.pool.size);
 		assertEquals(true, afterSecondLoad.database.ssl);
 
-		Config.save(file, afterSecondLoad);
-		AppConfig afterThirdLoad = Config.load(file, AppConfig.class);
+		Config.defaults().save(file, afterSecondLoad);
+		AppConfig afterThirdLoad = Config.defaults().read(file, AppConfig.class);
 		assertEquals(true, afterThirdLoad.database.ssl);
 	}
 }

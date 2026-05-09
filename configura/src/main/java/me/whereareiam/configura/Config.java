@@ -1,21 +1,23 @@
 package me.whereareiam.configura;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
 import me.whereareiam.configura.builder.PolymorphicBuilder;
+import me.whereareiam.configura.common.Configura;
 import me.whereareiam.configura.common.MapperFactory;
+import me.whereareiam.configura.common.migration.MigrationDefinitionRegistry;
 import me.whereareiam.configura.common.polymorphic.PolymorphicRegistry;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
-import me.whereareiam.configura.common.Configura;
 import me.whereareiam.configura.common.template.DefaultTemplateRegistry;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.merge.MergePolicy;
 import me.whereareiam.configura.merge.MergePolicyRegistry;
-import me.whereareiam.configura.type.MergePreset;
+import me.whereareiam.configura.migration.MigrationDefinition;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
+import me.whereareiam.configura.type.MergePreset;
 import me.whereareiam.configura.writer.ConfigWriter;
 
 import java.io.InputStream;
@@ -23,29 +25,68 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 @SuppressWarnings("unused")
 public final class Config {
-	@Getter
-	private static TemplateRegistry defaultTemplateRegistry = new DefaultTemplateRegistry();
-	@Getter
-	private static ConfigReader defaultReader = new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(Format.YAML);
-	@Getter
-	private static ConfigWriter defaultWriter = new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(Format.YAML);
-	@Getter
+	private static final DefaultTemplateRegistry BOOTSTRAP_TEMPLATE_REGISTRY = new DefaultTemplateRegistry();
 	private static Config defaultConfig = builder().format(Format.YAML).build();
 
+	private final String extension;
+	private final Function<List<Module>, ObjectMapper> mapperFactory;
+	private final List<Module> modules;
+	private final DefaultTemplateRegistry templateRegistry;
+	private final MergePolicyRegistry policyRegistry;
+	private final MigrationDefinitionRegistry versionedRegistry;
+	private final MergePolicy defaultMergePolicy;
 	private final Configura runtime;
-	private final Objects objects = new Objects();
-	private final Trees trees = new Trees();
 
-	private Config(Configura runtime) {
-		this.runtime = runtime;
+	private Config(
+			String extension,
+			Function<List<Module>, ObjectMapper> mapperFactory,
+			List<Module> modules,
+			DefaultTemplateRegistry templateRegistry,
+			MergePolicyRegistry policyRegistry,
+			MigrationDefinitionRegistry versionedRegistry,
+			MergePolicy defaultMergePolicy
+	) {
+		this.extension = extension;
+		this.mapperFactory = mapperFactory;
+		this.modules = List.copyOf(modules);
+		this.templateRegistry = templateRegistry.copy();
+		this.policyRegistry = policyRegistry.copy();
+		this.versionedRegistry = versionedRegistry.copy();
+		this.defaultMergePolicy = defaultMergePolicy;
+		this.runtime = new Configura(
+				extension,
+				mapperFactory,
+				this.modules,
+				this.templateRegistry,
+				this.policyRegistry,
+				this.versionedRegistry,
+				this.defaultMergePolicy
+		);
 	}
 
 	public static Builder builder() {
 		return new Builder();
+	}
+
+	public static Config defaults() {
+		return defaultConfig;
+	}
+
+	public static void setDefaults(Config config) {
+		defaultConfig = Objects.requireNonNull(config, "config");
+	}
+
+	public static void reconfigureDefaults(Consumer<Builder> customizer) {
+		Builder builder = new Builder(defaults());
+		if (customizer != null)
+			customizer.accept(builder);
+		setDefaults(builder.build());
 	}
 
 	/**
@@ -66,28 +107,36 @@ public final class Config {
 	 * Create a new independent reader instance with default settings.
 	 */
 	public static ConfigReader reader() {
-		return new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(Format.YAML);
+		return new DefaultConfigReader()
+				.withTemplateRegistry(defaults().registeredTemplates())
+				.withFormat(defaultFormat());
 	}
 
 	/**
 	 * Create a new independent reader instance with the given format.
 	 */
 	public static ConfigReader reader(Format format) {
-		return new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(format);
+		return new DefaultConfigReader()
+				.withTemplateRegistry(defaults().registeredTemplates())
+				.withFormat(format);
 	}
 
 	/**
 	 * Create a new independent writer instance with default settings.
 	 */
 	public static ConfigWriter writer() {
-		return new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(Format.YAML);
+		return new DefaultConfigWriter()
+				.withTemplateRegistry(defaults().registeredTemplates())
+				.withFormat(defaultFormat());
 	}
 
 	/**
 	 * Create a new independent writer instance with the given format.
 	 */
 	public static ConfigWriter writer(Format format) {
-		return new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(format);
+		return new DefaultConfigWriter()
+				.withTemplateRegistry(defaults().registeredTemplates())
+				.withFormat(format);
 	}
 
 	/**
@@ -97,227 +146,221 @@ public final class Config {
 		return new DefaultTemplateRegistry();
 	}
 
-	public static void setReader(ConfigReader reader) {
-		Config.defaultReader = reader;
-		rebuildDefaultConfig();
-	}
-
-	public static void setWriter(ConfigWriter writer) {
-		Config.defaultWriter = writer;
-		rebuildDefaultConfig();
-	}
-
-	public static void setTemplateRegistry(TemplateRegistry registry) {
-		Config.defaultTemplateRegistry = registry;
-		Config.defaultReader = new DefaultConfigReader().withTemplateRegistry(defaultTemplateRegistry).withFormat(Config.defaultReader.getFormat());
-		Config.defaultWriter = new DefaultConfigWriter().withTemplateRegistry(defaultTemplateRegistry).withFormat(Config.defaultWriter.getFormat());
-		rebuildDefaultConfig();
-	}
-
 	public static <T> PolymorphicBuilder<T> registerPolymorphic(Class<T> baseType) {
 		return PolymorphicRegistry.register(baseType);
 	}
 
-	public static <T, P extends TemplateProvider<T>> void registerTemplate(Class<P> providerClass) {
-		defaultTemplateRegistry.registerTemplate(providerClass);
-		rebuildDefaultConfig();
+	private static Format inferFormat(String extension) {
+		if (Format.JSON.getExtension().equals(extension))
+			return Format.JSON;
+		if (Format.YAML.getExtension().equals(extension))
+			return Format.YAML;
+		return null;
 	}
 
-	public static <T> T load(String file, Class<T> configClass) {
-		return getDefaultConfig().objects().read(file, configClass);
-	}
-
-	public static <T> T load(Path path, Class<T> configClass) {
-		return getDefaultConfig().objects().read(path, configClass);
-	}
-
-	public static <T> T load(byte[] bytes, Class<T> configClass) {
-		return getDefaultConfig().objects().read(bytes, configClass);
-	}
-
-	public static <T> T load(InputStream inputStream, Class<T> configClass) {
-		return getDefaultConfig().objects().read(inputStream, configClass);
-	}
-
-	public static <T> void save(String file, T config) {
-		getDefaultConfig().objects().save(file, config);
-	}
-
-	public static <T> void save(Path path, T config) {
-		getDefaultConfig().objects().save(path, config);
-	}
-
-	public static <T> byte[] save(T config) {
-		return getDefaultConfig().objects().writeBytes(config);
-	}
-
-	public static <T> T merge(String file, T config) {
-		return getDefaultConfig().objects().merge(file, config);
-	}
-
-	public static <T> T merge(Path path, T config) {
-		return getDefaultConfig().objects().merge(path, config);
-	}
-
-	public static <T> T update(String file, Class<T> configClass) {
-		return getDefaultConfig().objects().update(file, configClass);
-	}
-
-	public static <T> T update(Path path, Class<T> configClass) {
-		return getDefaultConfig().objects().update(path, configClass);
-	}
-
-	private static void rebuildDefaultConfig() {
-		defaultConfig = builder().format(defaultReader.getFormat()).build();
+	private static Format defaultFormat() {
+		Format format = inferFormat(defaults().extension());
+		return format != null ? format : Format.YAML;
 	}
 
 	public ObjectMapper mapper() {
 		return runtime.mapper();
 	}
 
+	public <T> T read(String file, Class<T> type) {
+		return runtime.read(file, type);
+	}
+
+	public <T> T read(Path path, Class<T> type) {
+		return runtime.read(path, type);
+	}
+
+	public <T> T read(byte[] bytes, Class<T> type) {
+		return runtime.read(bytes, type);
+	}
+
+	public <T> T read(InputStream inputStream, Class<T> type) {
+		return runtime.read(inputStream, type);
+	}
+
+	public <T> void write(String file, T value) {
+		runtime.write(file, value);
+	}
+
+	public <T> void write(Path path, T value) {
+		runtime.write(path, value);
+	}
+
+	public <T> void save(String file, T value) {
+		runtime.save(file, value);
+	}
+
+	public <T> void save(Path path, T value) {
+		runtime.save(path, value);
+	}
+
+	public <T> byte[] writeBytes(T value) {
+		return runtime.writeBytes(value);
+	}
+
+	public <T> T merge(String file, T value) {
+		return runtime.merge(file, value);
+	}
+
+	public <T> T merge(Path path, T value) {
+		return runtime.merge(path, value);
+	}
+
+	public <T> T update(String file, Class<T> type) {
+		return runtime.update(file, type);
+	}
+
+	public <T> T update(Path path, Class<T> type) {
+		return runtime.update(path, type);
+	}
+
+	public JsonNode readNode(String file) {
+		return runtime.readTree(file);
+	}
+
+	public JsonNode readNode(Path path) {
+		return runtime.readTree(path);
+	}
+
+	public JsonNode readNode(byte[] bytes) {
+		return runtime.readTree(bytes);
+	}
+
+	public JsonNode readNode(InputStream inputStream) {
+		return runtime.readTree(inputStream);
+	}
+
+	public <T> JsonNode readMigratedNode(String file, Class<T> type) {
+		return runtime.readMigratedTree(file, type);
+	}
+
+	public <T> JsonNode readMigratedNode(Path path, Class<T> type) {
+		return runtime.readMigratedTree(path, type);
+	}
+
+	public <T> JsonNode readMigratedNode(byte[] bytes, Class<T> type) {
+		return runtime.readMigratedTree(bytes, type);
+	}
+
+	public <T> JsonNode readMigratedNode(InputStream inputStream, Class<T> type) {
+		return runtime.readMigratedTree(inputStream, type);
+	}
+
+	public void writeNode(String file, JsonNode node) {
+		runtime.writeTree(file, node);
+	}
+
+	public void writeNode(Path path, JsonNode node) {
+		runtime.writeTree(path, node);
+	}
+
+	public byte[] writeNodeBytes(JsonNode node) {
+		return runtime.writeTreeBytes(node);
+	}
+
 	public Config withModule(Module module) {
-		return new Config(runtime.withModule(module));
+		List<Module> next = new ArrayList<>(modules);
+		if (module != null) next.add(module);
+		return new Config(extension, mapperFactory, next, templateRegistry, policyRegistry, versionedRegistry, defaultMergePolicy);
 	}
 
 	public <T, P extends TemplateProvider<T>> Config withTemplate(Class<P> providerClass) {
-		return new Config(runtime.withTemplate(providerClass));
+		DefaultTemplateRegistry registry = templateRegistry.copy();
+		registry.registerTemplate(providerClass);
+		return new Config(extension, mapperFactory, modules, registry, policyRegistry, versionedRegistry, defaultMergePolicy);
 	}
 
 	public Config withMergePolicy(String name, MergePolicy policy) {
-		return new Config(runtime.withMergePolicy(name, policy));
+		MergePolicyRegistry next = policyRegistry.copy();
+		next.register(name, policy);
+		return new Config(extension, mapperFactory, modules, templateRegistry, next, versionedRegistry, defaultMergePolicy);
 	}
 
 	public Config withDefaultMergePreset(MergePreset preset) {
-		return new Config(runtime.withDefaultMergePolicy(preset.policy()));
+		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, preset.policy());
 	}
 
 	public Config withDefaultMergePolicy(MergePolicy policy) {
-		return new Config(runtime.withDefaultMergePolicy(policy));
+		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, policy);
 	}
 
-	public Objects objects() {
-		return objects;
-	}
-
-	public Trees trees() {
-		return trees;
+	public <T> Config withVersioned(Class<T> type, Consumer<MigrationDefinition<T>> customizer) {
+		MigrationDefinition<T> definition = new MigrationDefinition<>(type);
+		if (customizer != null)
+			customizer.accept(definition);
+		MigrationDefinitionRegistry next = versionedRegistry.copy();
+		next.register(definition);
+		return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, next, defaultMergePolicy);
 	}
 
 	public String extension() {
-		return runtime.extension();
+		return extension;
 	}
 
 	public List<Module> modules() {
-		return runtime.modules();
+		return modules;
+	}
+
+	public DefaultTemplateRegistry registeredTemplates() {
+		return templateRegistry.copy();
 	}
 
 	public Map<String, MergePolicy> mergePolicies() {
-		return runtime.policies();
+		return policyRegistry.asMap();
+	}
+
+	public boolean isVersioned(Class<?> type) {
+		return versionedRegistry.contains(type);
 	}
 
 	public MergePolicy defaultMergePolicy() {
-		return runtime.defaultPolicy();
-	}
-
-	public final class Objects {
-		private Objects() {
-		}
-
-		public <T> T read(String file, Class<T> type) {
-			return runtime.read(file, type);
-		}
-
-		public <T> T read(Path path, Class<T> type) {
-			return runtime.read(path, type);
-		}
-
-		public <T> T read(byte[] bytes, Class<T> type) {
-			return runtime.read(bytes, type);
-		}
-
-		public <T> T read(InputStream inputStream, Class<T> type) {
-			return runtime.read(inputStream, type);
-		}
-
-		public <T> void write(String file, T value) {
-			runtime.write(file, value);
-		}
-
-		public <T> void write(Path path, T value) {
-			runtime.write(path, value);
-		}
-
-		public <T> void save(String file, T value) {
-			runtime.save(file, value);
-		}
-
-		public <T> void save(Path path, T value) {
-			runtime.save(path, value);
-		}
-
-		public <T> byte[] writeBytes(T value) {
-			return runtime.writeBytes(value);
-		}
-
-		public <T> T merge(String file, T value) {
-			return runtime.merge(file, value);
-		}
-
-		public <T> T merge(Path path, T value) {
-			return runtime.merge(path, value);
-		}
-
-		public <T> T update(String file, Class<T> type) {
-			return runtime.update(file, type);
-		}
-
-		public <T> T update(Path path, Class<T> type) {
-			return runtime.update(path, type);
-		}
-	}
-
-	public final class Trees {
-		private Trees() {
-		}
-
-		public com.fasterxml.jackson.databind.JsonNode read(String file) {
-			return runtime.readTree(file);
-		}
-
-		public com.fasterxml.jackson.databind.JsonNode read(Path path) {
-			return runtime.readTree(path);
-		}
-
-		public com.fasterxml.jackson.databind.JsonNode read(byte[] bytes) {
-			return runtime.readTree(bytes);
-		}
-
-		public com.fasterxml.jackson.databind.JsonNode read(InputStream inputStream) {
-			return runtime.readTree(inputStream);
-		}
-
-		public void write(String file, com.fasterxml.jackson.databind.JsonNode node) {
-			runtime.writeTree(file, node);
-		}
-
-		public void write(Path path, com.fasterxml.jackson.databind.JsonNode node) {
-			runtime.writeTree(path, node);
-		}
-
-		public byte[] writeBytes(com.fasterxml.jackson.databind.JsonNode node) {
-			return runtime.writeTreeBytes(node);
-		}
+		return defaultMergePolicy;
 	}
 
 	public static final class Builder {
-		private String extension = Format.YAML.getExtension();
-		private Function<List<Module>, ObjectMapper> mapperFactory = MapperFactory::createYamlMapper;
+		private String extension;
+		private Function<List<Module>, ObjectMapper> mapperFactory;
 		private final List<Module> modules = new ArrayList<>();
-		private final DefaultTemplateRegistry templateRegistry = defaultTemplateRegistry instanceof DefaultTemplateRegistry registry
-				? registry.copy()
-				: new DefaultTemplateRegistry();
-		private final MergePolicyRegistry policyRegistry = MergePolicyRegistry.standard();
-		private MergePolicy defaultMergePolicy = MergePreset.DEEP_DEFAULTS.policy();
+		private final DefaultTemplateRegistry templateRegistry;
+		private final MergePolicyRegistry policyRegistry;
+		private final MigrationDefinitionRegistry versionedRegistry;
+		private MergePolicy defaultMergePolicy;
+
+		private Builder() {
+			Config defaults = defaultConfig;
+			if (defaults == null) {
+				this.extension = Format.YAML.getExtension();
+				this.mapperFactory = MapperFactory::createYamlMapper;
+				this.templateRegistry = BOOTSTRAP_TEMPLATE_REGISTRY.copy();
+				this.policyRegistry = MergePolicyRegistry.standard();
+				this.versionedRegistry = new MigrationDefinitionRegistry();
+				this.defaultMergePolicy = MergePreset.DEEP_DEFAULTS.policy();
+				return;
+			}
+
+			this.extension = defaults.extension;
+			this.mapperFactory = defaults.mapperFactory;
+			this.modules.addAll(defaults.modules);
+			this.templateRegistry = defaults.templateRegistry.copy();
+			this.policyRegistry = defaults.policyRegistry.copy();
+			this.versionedRegistry = defaults.versionedRegistry.copy();
+			this.defaultMergePolicy = defaults.defaultMergePolicy;
+		}
+
+		private Builder(Config source) {
+			this.extension = source.extension;
+			this.mapperFactory = source.mapperFactory;
+			this.modules.addAll(source.modules);
+			this.templateRegistry = source.templateRegistry.copy();
+			this.policyRegistry = source.policyRegistry.copy();
+			this.versionedRegistry = source.versionedRegistry.copy();
+			this.defaultMergePolicy = source.defaultMergePolicy;
+		}
 
 		public Builder format(Format format) {
 			if (format == Format.JSON) {
@@ -338,8 +381,7 @@ public final class Config {
 		}
 
 		public Builder module(Module module) {
-			if (module != null)
-				this.modules.add(module);
+			if (module != null) this.modules.add(module);
 			return this;
 		}
 
@@ -370,8 +412,15 @@ public final class Config {
 			return this;
 		}
 
+		public <T> Builder versioned(Class<T> type, Consumer<MigrationDefinition<T>> customizer) {
+			MigrationDefinition<T> definition = new MigrationDefinition<>(type);
+			if (customizer != null) customizer.accept(definition);
+			this.versionedRegistry.register(definition);
+			return this;
+		}
+
 		public Config build() {
-			return new Config(new Configura(extension, mapperFactory, modules, templateRegistry, policyRegistry, defaultMergePolicy));
+			return new Config(extension, mapperFactory, modules, templateRegistry, policyRegistry, versionedRegistry, defaultMergePolicy);
 		}
 	}
 }
