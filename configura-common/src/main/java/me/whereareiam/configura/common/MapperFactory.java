@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.introspect.VisibilityChecker;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import me.whereareiam.configura.common.duration.DurationModule;
 import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
 import me.whereareiam.configura.type.Format;
 
@@ -25,7 +26,7 @@ public final class MapperFactory {
 	private static final ConcurrentHashMap<Key, ObjectMapper> CACHE = new ConcurrentHashMap<>();
 
 	public static ObjectMapper buildWriterMapper(Format format) {
-        return buildReaderMapper(format);
+		return buildReaderMapper(format);
 	}
 
 	public static ObjectMapper buildReaderMapper(Format format) {
@@ -91,6 +92,7 @@ public final class MapperFactory {
 
 	private static ObjectMapper configureCommon(ObjectMapper mapper) {
 		mapper.registerModule(new JavaTimeModule());
+		mapper.registerModule(new DurationModule());
 		mapper.registerModule(new PolymorphicModule());
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -104,6 +106,7 @@ public final class MapperFactory {
 
 	private static ObjectMapper configureModern(ObjectMapper mapper, List<Module> modules) {
 		mapper.registerModule(new JavaTimeModule());
+		mapper.registerModule(new DurationModule());
 		mapper.registerModule(new PolymorphicModule());
 
 		if (modules != null) {

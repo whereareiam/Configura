@@ -146,6 +146,28 @@ bind_port: 8080
 bind_host: 127.0.0.1
 ```
 
+### Use readable durations
+
+`java.time.Duration` fields are written as compact config strings by default.
+
+```java
+import java.time.Duration;
+import lombok.Data;
+
+@Data
+public class SessionConfig {
+	private Duration defaultTtl = Duration.ofHours(2).plusMinutes(30);
+}
+```
+
+This yields YAML like:
+
+```yaml
+defaultTtl: "2h30m"
+```
+
+Configura also reads values such as `10m`, `1h30m`, `5s`, `250ms`, ISO values like `PT10M`, and bare numbers as minutes.
+
 ### Customize serialization with a Jackson module
 
 Configura now uses Jackson modules directly for custom serialization behavior.
