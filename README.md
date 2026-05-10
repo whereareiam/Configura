@@ -18,6 +18,7 @@ helpers, and pluggable formats (YAML/JSON).
 - **Versioned migrations**: Register class-per-step migrations with `ConfigDocument` or `@SchemaVersion` support.
 - **Post-processing**: Use `@PostProcess` to run validation, compute derived fields, or initialize state after loading.
 - **Multiple formats**: YAML and JSON supported out of the box.
+- **Readable durations**: `java.time.Duration` fields use config-friendly strings such as `10m` or `2h30m`.
 - **Jackson-native & extensible**: Pluggable readers/writers and custom Jackson modules.
 
 ### Installation
