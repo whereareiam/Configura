@@ -44,7 +44,6 @@ public final class MergeContext {
 	 *
 	 * @param source source object node
 	 * @param defaults default object node
-	 * @param ownerType owner type for child strategy resolution
 	 * @return merged object node
 	 */
 	public @NotNull JsonNode mergeChildren(@Nullable JsonNode source, @Nullable JsonNode defaults) {
@@ -56,7 +55,6 @@ public final class MergeContext {
 	 *
 	 * @param source source object node
 	 * @param defaults default object node
-	 * @param ownerType owner type for child strategy resolution
 	 * @return merged object node containing only source-declared keys
 	 */
 	public @NotNull JsonNode mergeDeclaredChildren(@Nullable JsonNode source, @Nullable JsonNode defaults) {
