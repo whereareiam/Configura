@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.annotation.SchemaVersion;
-import me.whereareiam.configura.common.merge.MergePolicyResolver;
+import me.whereareiam.configura.common.merge.MergeFieldResolver;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.migration.ConfigMigrationContext;
 import me.whereareiam.configura.migration.MigrationDefinition;
@@ -148,11 +148,11 @@ public final class SchemaMigrationEngine {
 	private ResolvedVersionField resolveVersionField(Class<?> type, String fallbackField, boolean sourceContainsFallback) {
 		Field annotated = resolveAnnotatedField(type);
 		if (annotated != null)
-			return new ResolvedVersionField(MergePolicyResolver.resolveFieldName(annotated), true);
+			return new ResolvedVersionField(MergeFieldResolver.resolveFieldName(annotated), true);
 
 		Field matching = resolveMatchingSerializedField(type, fallbackField);
 		if (matching != null)
-			return new ResolvedVersionField(MergePolicyResolver.resolveFieldName(matching), true);
+			return new ResolvedVersionField(MergeFieldResolver.resolveFieldName(matching), true);
 
 		if (sourceContainsFallback)
 			return new ResolvedVersionField(fallbackField, true);
@@ -175,7 +175,7 @@ public final class SchemaMigrationEngine {
 	private Field resolveMatchingSerializedField(Class<?> type, String fallbackField) {
 		for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
 			for (Field field : current.getDeclaredFields()) {
-				if (fallbackField.equals(MergePolicyResolver.resolveFieldName(field)))
+				if (fallbackField.equals(MergeFieldResolver.resolveFieldName(field)))
 					return field;
 			}
 		}

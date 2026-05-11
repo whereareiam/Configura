@@ -1,7 +1,6 @@
 package me.whereareiam.configura.reader;
 
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 
 import java.io.InputStream;
@@ -21,16 +20,7 @@ public interface ConfigReader {
 	 */
 	ConfigReader withFormat(Format format);
 
-    /**
-     * Configure the template registry used when constructing default instances during decoding.
-     * No templates are applied on file reads.
-     *
-     * @param templateRegistry registry that maps model types to {@code TemplateProvider}s
-     * @return this reader for chaining
-     */
-	ConfigReader withTemplateRegistry(TemplateRegistry templateRegistry);
-
-    /**
+	/**
      * Get the configured file format (YAML/JSON).
      *
      * @return the configured format
@@ -64,7 +54,7 @@ public interface ConfigReader {
 
     /**
      * Strict read from a file path (string). Fails if the file is missing or invalid.
-     * No templates are applied on read.
+     * Merge defaults are not applied on read.
      *
      * @param file        name of file (without extension if format is configured)
      * @param configClass the configuration class
@@ -76,7 +66,7 @@ public interface ConfigReader {
 
     /**
      * Strict read from a file path. Fails if the file is missing or invalid.
-     * No templates are applied on read.
+     * Merge defaults are not applied on read.
      *
      * @param path        the file path to read from
      * @param configClass the configuration class
@@ -138,5 +128,4 @@ public interface ConfigReader {
      * @throws ConfigException if deserialization fails
      */
 	<T> T load(InputStream inputStream, Class<T> configClass);
-
 }

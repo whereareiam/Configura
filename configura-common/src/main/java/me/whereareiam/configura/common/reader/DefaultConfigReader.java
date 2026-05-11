@@ -7,7 +7,6 @@ import me.whereareiam.configura.common.processor.PostProcessor;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.reader.ConfigReader;
-import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 
 import java.io.BufferedReader;
@@ -18,31 +17,21 @@ import java.nio.file.Path;
 
 public class DefaultConfigReader implements ConfigReader {
 	private final Format format;
-	private final TemplateRegistry templateRegistry;
 	private final ObjectMapper mapper;
 
 	public DefaultConfigReader() {
-		this(null);
-	}
-
-	public DefaultConfigReader(TemplateRegistry templateRegistry) {
 		this.format = Format.YAML;
-		this.templateRegistry = templateRegistry;
 		this.mapper = MapperFactory.buildReaderMapper(this.format);
 	}
 
-	private DefaultConfigReader(
-			Format format,
-			TemplateRegistry templateRegistry
-	) {
+	private DefaultConfigReader(Format format) {
 		this.format = format;
-		this.templateRegistry = templateRegistry;
 		this.mapper = MapperFactory.buildReaderMapper(this.format);
 	}
 
 	@Override
 	public ConfigReader withFormat(Format format) {
-		return new DefaultConfigReader(format, this.templateRegistry);
+		return new DefaultConfigReader(format);
 	}
 
 	@Override
@@ -161,7 +150,4 @@ public class DefaultConfigReader implements ConfigReader {
 		return decode(inputStream, configClass);
 	}
 
-	public ConfigReader withTemplateRegistry(TemplateRegistry templateRegistry) {
-		return new DefaultConfigReader(this.format, templateRegistry);
-	}
 }

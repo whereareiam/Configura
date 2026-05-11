@@ -1,7 +1,6 @@
 package me.whereareiam.configura.writer;
 
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.template.TemplateRegistry;
 import me.whereareiam.configura.type.Format;
 
 import java.nio.file.Path;
@@ -10,7 +9,7 @@ import java.nio.file.Path;
  * Writes configuration to files.
  * <p>
  * Configure once and reuse for multiple files. The writer supports both "smart" writes (that apply
- * templates and honor per-field merge policies) and "exact" writes that simply overwrite the file.
+ * merge defaults and honor per-field merge strategies) and "exact" writes that simply overwrite the file.
  */
 public interface ConfigWriter {
 	/**
@@ -20,14 +19,6 @@ public interface ConfigWriter {
 	 * @return this writer for chaining
 	 */
 	ConfigWriter withFormat(Format format);
-
-	/**
-	 * Configure the template registry used to seed default values during smart writes.
-	 *
-	 * @param templateRegistry registry that maps model types to {@code TemplateProvider}s
-	 * @return this writer for chaining
-	 */
-	ConfigWriter withTemplateRegistry(TemplateRegistry templateRegistry);
 
 	/**
 	 * Get the configured file format for serialization (YAML/JSON).
@@ -41,8 +32,8 @@ public interface ConfigWriter {
 	 *
 	 * <p>Behavior:
 	 * <ul>
-	 *   <li>Seeds missing fields using registered templates</li>
-	 *   <li>Preserves existing values for fields annotated with {@code @Policy(mergeOnUpdate = false)}</li>
+	 *   <li>Applies missing values from merge defaults declared with {@code @Defaults}</li>
+	 *   <li>Preserves existing values according to selected merge strategies</li>
 	 *   <li>Creates parent directories and the file if they do not exist</li>
 	 *   <li>If {@code file} omits an extension, an extension matching {@link Format} is appended</li>
 	 * </ul>
@@ -59,8 +50,8 @@ public interface ConfigWriter {
 	 *
 	 * <p>Behavior:
 	 * <ul>
-	 *   <li>Seeds missing fields using registered templates</li>
-	 *   <li>Preserves existing values for fields annotated with {@code @Policy(mergeOnUpdate = false)}</li>
+	 *   <li>Applies missing values from merge defaults declared with {@code @Defaults}</li>
+	 *   <li>Preserves existing values according to selected merge strategies</li>
 	 *   <li>Creates parent directories and the file if they do not exist</li>
 	 *   <li>If {@code path} omits an extension, an extension matching {@link Format} is appended</li>
 	 * </ul>
