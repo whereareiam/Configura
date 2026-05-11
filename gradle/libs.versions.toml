@@ -2,6 +2,7 @@
 
 # general
 lombok = "1.18.42"
+jetbrains-annotations = "26.0.2"
 jackson = "2.20.0"
 junit = "6.0.0"
 
@@ -9,6 +10,7 @@ junit = "6.0.0"
 
 # general
 lombok = { group = "org.projectlombok", name = "lombok", version.ref = "lombok" }
+jetbrains-annotations = { group = "org.jetbrains", name = "annotations", version.ref = "jetbrains-annotations" }
 
 # jackson
 jackson = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }

@@ -1,8 +1,8 @@
 ## Versioned Config Migrations
 
-Use versioned migrations when template defaults are not enough.
+Use versioned migrations when merge defaults are not enough.
 
-Templates are still the right tool when you only need to:
+Merge defaults are still the right tool when you only need to:
 - add a new field with a sensible default
 - fill in missing nested values
 - preserve explicit user values while enriching the model

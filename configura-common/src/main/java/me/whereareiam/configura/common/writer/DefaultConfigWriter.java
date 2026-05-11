@@ -3,11 +3,12 @@ package me.whereareiam.configura.common.writer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.common.MapperFactory;
-import me.whereareiam.configura.common.merge.ConfigMerger;
-import me.whereareiam.configura.common.template.TemplateSeeder;
+import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegistry;
+import me.whereareiam.configura.common.merge.MergeEngine;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.template.TemplateRegistry;
+import me.whereareiam.configura.merge.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.DeepDefaults;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 
@@ -17,41 +18,27 @@ import java.nio.file.Path;
 
 public class DefaultConfigWriter implements ConfigWriter {
 	private final Format format;
-	private final TemplateRegistry templateRegistry;
 	private final ObjectMapper mapper;
-	private final TemplateSeeder userSeeder;
-	private final TemplateSeeder defaultSeeder;
+	private final MergeEngine mergeEngine;
 
 	public DefaultConfigWriter() {
-		this(null);
+		this(Format.YAML);
 	}
 
-	public DefaultConfigWriter(TemplateRegistry templateRegistry) {
-		this.format = Format.YAML;
-		this.templateRegistry = templateRegistry;
-		this.mapper = MapperFactory.buildWriterMapper(this.format);
-		this.userSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.USER_MODEL);
-		this.defaultSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.DEFAULT_INSTANCE);
-	}
-
-	private DefaultConfigWriter(
-			Format format,
-			TemplateRegistry templateRegistry
-	) {
+	private DefaultConfigWriter(Format format) {
 		this.format = format;
-		this.templateRegistry = templateRegistry;
 		this.mapper = MapperFactory.buildWriterMapper(this.format);
-		this.userSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.USER_MODEL);
-		this.defaultSeeder = new TemplateSeeder(this.mapper, this.templateRegistry, TemplateSeeder.SeedingMode.DEFAULT_INSTANCE);
+		this.mergeEngine = new MergeEngine(
+				this.mapper,
+				new DefaultMergeDefaultsRegistry(),
+				MergeStrategyRegistry.standard(),
+				DeepDefaults.class
+		);
 	}
 
 	@Override
 	public ConfigWriter withFormat(Format format) {
-		return new DefaultConfigWriter(format, this.templateRegistry);
-	}
-
-	public ConfigWriter withTemplateRegistry(TemplateRegistry templateRegistry) {
-		return new DefaultConfigWriter(this.format, templateRegistry);
+		return new DefaultConfigWriter(format);
 	}
 
 	@Override
@@ -61,28 +48,17 @@ public class DefaultConfigWriter implements ConfigWriter {
 
 	@Override
 	public <T> void encode(String file, T config) {
-		Path path = FileUtil.resolvePathWithFormat(file, format);
-		try {
-			Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
-
-			T seeded = userSeeder.seed(config);
-			ObjectNode toWrite = ConfigMerger.buildMergedNodeFavorModel(path, seeded, mapper);
-
-			mapper.writeValue(path.toFile(), toWrite);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to save config file: " + path, e);
-		}
+		encode(FileUtil.resolvePathWithFormat(file, format), config);
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <T> void encode(Path path, T config) {
 		Path target = FileUtil.resolvePathWithFormat(path, format);
 		try {
 			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
-
-			T seeded = userSeeder.seed(config);
-			ObjectNode toWrite = ConfigMerger.buildMergedNodeFavorModel(target, seeded, mapper);
-
+			ObjectNode source = mapper.valueToTree(config);
+			ObjectNode toWrite = mergeEngine.merge(source, config, (Class<T>) config.getClass(), MergeEngine.Mode.USER_MODEL);
 			mapper.writeValue(target.toFile(), toWrite);
 		} catch (IOException e) {
 			throw new ConfigException("Failed to save config file: " + target, e);
@@ -100,13 +76,7 @@ public class DefaultConfigWriter implements ConfigWriter {
 
 	@Override
 	public <T> void write(String file, T config) {
-		Path path = FileUtil.resolvePathWithFormat(file, format);
-		try {
-			Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
-			mapper.writeValue(path.toFile(), config);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to write config file: " + path, e);
-		}
+		write(FileUtil.resolvePathWithFormat(file, format), config);
 	}
 
 	@Override
@@ -122,23 +92,25 @@ public class DefaultConfigWriter implements ConfigWriter {
 
 	@Override
 	public <T> T merge(String file, T config) {
-		Path path = FileUtil.resolvePathWithFormat(file, format);
-
-		T seeded = defaultSeeder.seed(config);
-		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(path, seeded, mapper);
-		return bindNode(merged, (Class<T>) seeded.getClass());
+		return merge(FileUtil.resolvePathWithFormat(file, format), config);
 	}
-
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <T> T merge(Path path, T config) {
 		Path target = FileUtil.resolvePathWithFormat(path, format);
+		ObjectNode existing = mapper.createObjectNode();
+		if (Files.exists(target)) {
+			try {
+				existing = (ObjectNode) mapper.readTree(target.toFile());
+			} catch (IOException e) {
+				throw new ConfigException("Failed to read config file before merge: " + target, e);
+			}
+		}
 
-		T seeded = defaultSeeder.seed(config);
-		ObjectNode merged = ConfigMerger.buildMergedNodeFavorExisting(target, seeded, mapper);
-		return bindNode(merged, (Class<T>) seeded.getClass());
+		ObjectNode merged = mergeEngine.merge(existing, config, (Class<T>) config.getClass(), MergeEngine.Mode.DEFAULT_INSTANCE);
+		return bindNode(merged, (Class<T>) config.getClass());
 	}
-
 
 	private <T> T bindNode(ObjectNode node, Class<T> type) {
 		try {

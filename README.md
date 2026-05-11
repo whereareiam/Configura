@@ -1,20 +1,20 @@
 ## Configura
 
-Lightweight, model‑driven configuration framework for Java with first‑class templating, zero‑boilerplate load/save
+Lightweight, model-driven configuration framework for Java with merge defaults, zero-boilerplate load/save
 helpers, and pluggable formats (YAML/JSON).
 
 ### Table of contents
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Versioned Config Migrations](docs/VERSIONING.md)
-- [Templating guide](docs/TEMPLATING.md)
+- [Merge defaults](docs/MERGE_DEFAULTS.md)
 - [Post-processing](docs/POST_PROCESSING.md)
 - [Polymorphic models](docs/POLYMORPHIC.md)
 
 ### Features
 
 - **Model‑driven**: Define plain Java classes as your config model; no frameworks required.
-- **Inline templating**: Use `@Template` to declare defaults for scalars, lists, and object‑like maps.
+- **Merge defaults**: Use `@Defaults` to declare defaults for scalars, lists, and object-like maps.
 - **Versioned migrations**: Register class-per-step migrations with `ConfigDocument` or `@SchemaVersion` support.
 - **Post-processing**: Use `@PostProcess` to run validation, compute derived fields, or initialize state after loading.
 - **Multiple formats**: YAML and JSON supported out of the box.
@@ -96,14 +96,14 @@ dependencies {
 
 ### Quick start
 
-1) Define a simple model with an inline template (defaults are materialized/merged as needed):
+1) Define a simple model with inline merge defaults:
 
 ```java
-import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.annotation.PostProcess;
 
 public class HelloConfig {
-	@Template(text = "world")
+	@Defaults(text = "world")
 	public String name;
 	
 	@PostProcess
@@ -129,17 +129,17 @@ System.out.println("Hello, " + cfg.name + "!");
 
 For the JVM-wide default engine, use `Config.defaults()` and `Config.reconfigureDefaults(...)`.
 
-3) Want object‑like defaults? Use `@Template(properties=...)`:
+3) Want object‑like defaults? Use `@Defaults(properties=...)`:
 
 ```java
-import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.annotation.Defaults;
 
 import java.util.Map;
 
 public class DbConfig {
-	@Template(properties = {
-			@Template.Property(name = "host", text = "localhost"),
-			@Template.Property(name = "port", number = "5432")
+	@Defaults(properties = {
+			@Defaults.Property(name = "host", text = "localhost"),
+			@Defaults.Property(name = "port", number = "5432")
 	})
 	public Map<String, Object> defaults;
 }

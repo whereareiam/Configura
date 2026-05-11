@@ -1,7 +1,7 @@
 ## Getting Started
 
 This guide walks beginners through the basics: prerequisites, adding the dependency, defining a model with Lombok,
-templating defaults, and reading/writing configs with YAML by default.
+merge defaults, and reading/writing configs with YAML by default.
 
 ### Prerequisites
 
@@ -112,11 +112,11 @@ We recommend a simple POJO model using Lombok for brevity.
 
 ```java
 import lombok.Data;
-import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.annotation.Defaults;
 
 @Data
 public class AppConfig {
-	@Template(text = "world")
+	@Defaults(text = "world")
 	private String name;
 }
 ```
@@ -187,48 +187,45 @@ Config config = Config.builder()
 
 ### Control merge behavior with @Merge
 
-By default, templates use the `DEEP_DEFAULTS` built-in merge preset. You can select a different preset per field, set a global default, or register named custom policies.
+By default, merge defaults declared with `@Defaults` use the `DeepDefaults` strategy. You can select a different strategy per field, set a global default, or register named custom strategies.
 
 ```java
 import me.whereareiam.configura.Config;
-import me.whereareiam.configura.merge.MergePolicy;
+import me.whereareiam.configura.merge.strategy.DeclaredKeysOnlyMap;
+import me.whereareiam.configura.merge.strategy.SourceOwnsField;
 import lombok.Data;
 import me.whereareiam.configura.annotation.Merge;
-import me.whereareiam.configura.type.MergePreset;
 
 @Data
 public class CommandsConfig {
-    @Merge(preset = MergePreset.SOURCE_OWNS_FIELD)
+    @Merge(SourceOwnsField.class)
     private Map<String, CommandDefinition> commands;
 }
 ```
 
 **Built-in presets:**
-- `DEEP_DEFAULTS`: Recursively fill missing values from templates
-- `SOURCE_OWNS_FIELD`: If the source provides a value, the source owns the field
-- `SOURCE_OWNS_MAP`: Source map entries are preserved as-is
-- `SOURCE_OWNS_LIST`: Source list is preserved as-is
-- `NEVER_TEMPLATE`: Do not apply template values
-- `DECLARED_KEYS_ONLY_MAP`: Only merge into map keys already declared by the source
+- `DeepDefaults`: Recursively fill missing values from merge defaults
+- `SourceOwnsField`: If the source provides a value, the source owns the field
+- `NeverDefaults`: Do not apply default values
+- `DeclaredKeysOnlyMap`: Only merge into map keys already declared by the source
+- `StructuralObject`: Keep an object present without deep-filling its declared children
 
 ```java
 Config config = Config.builder()
-        .defaultMergePreset(MergePreset.SOURCE_OWNS_FIELD)
-        .mergePolicy("declaredKeysOnly", MergePolicy.builder()
-                .mapMode(MergePolicy.MapMode.DECLARED_SOURCE_KEYS_ONLY)
-                .build())
+        .defaultMergeStrategy(SourceOwnsField.class)
+        .mergeStrategy("declaredKeysOnly", DeclaredKeysOnlyMap.class)
         .build();
 ```
 
 Explicit source `null` is preserved during merge/update by default.
 
-See [TEMPLATING.md](TEMPLATING.md#merge-policies-controlling-template-behavior) for detailed examples.
+See [MERGE_DEFAULTS.md](MERGE_DEFAULTS.md#merge-strategies) for detailed examples.
 When defaults are not enough and you need to rename, move, or restructure fields across releases, use
 [VERSIONING.md](VERSIONING.md).
 
 ### Read or create with defaults
 
-Build a configured `Config` engine. YAML is used by default. Templates are applied on save/update.
+Build a configured `Config` engine. YAML is used by default. Merge defaults are applied on save/update.
 
 ```java
 import me.whereareiam.configura.Config;
@@ -288,20 +285,20 @@ public class Settings {
 }
 ```
 
-### Templating examples
+### Merge default examples
 
-Templates let you declare default values for simple values, lists, and object-like maps.
+`@Defaults` declares merge defaults for simple values, lists, and object-like maps.
 
 <details>
   <summary>Simple value default</summary>
 
   ```java
   import lombok.Data;
-import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.annotation.Defaults;
 
 @Data
 public class GreetingConfig {
-	@Template(text = "world")
+	@Defaults(text = "world")
 	private String name;
 }
   ```
@@ -316,11 +313,11 @@ public class GreetingConfig {
 
 import java.util.List;
 
-import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.annotation.Defaults;
 
 @Data
 public class RolesConfig {
-	@Template(stringItems = {"user", "admin"})
+	@Defaults(stringItems = {"user", "admin"})
 	private List<String> roles;
 }
   ```
@@ -336,13 +333,13 @@ public class RolesConfig {
 import java.util.List;
 import java.util.Map;
 
-import me.whereareiam.configura.annotation.Template;
+import me.whereareiam.configura.annotation.Defaults;
 
 @Data
 public class DbConfig {
-	@Template(properties = {
-			@Template.Property(name = "host", text = "localhost"),
-			@Template.Property(name = "port", number = "5432")
+	@Defaults(properties = {
+			@Defaults.Property(name = "host", text = "localhost"),
+			@Defaults.Property(name = "port", number = "5432")
 	})
 	private Map<String, Object> defaults;
 }
