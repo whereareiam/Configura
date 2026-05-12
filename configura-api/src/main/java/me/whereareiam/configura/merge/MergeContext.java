@@ -34,9 +34,7 @@ public final class MergeContext {
 		if (sourceNode == null) return false;
 		if (!defaultInstance) return false;
 
-		return (sourceNode.isNumber() && sourceNode.asDouble() == 0.0)
-				|| (sourceNode.isBoolean() && !sourceNode.asBoolean())
-				|| (sourceNode.isArray() && sourceNode.isEmpty());
+		return sourceNode.isArray() && sourceNode.isEmpty();
 	}
 
 	/**

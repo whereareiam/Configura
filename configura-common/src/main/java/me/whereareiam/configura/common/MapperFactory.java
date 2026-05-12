@@ -97,7 +97,9 @@ public final class MapperFactory {
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+		mapper.enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
 		mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
+		mapper.configure(JsonParser.Feature.STRICT_DUPLICATE_DETECTION, true);
 		mapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
 		mapper.setVisibility(VisibilityChecker.Std.defaultInstance().withFieldVisibility(JsonAutoDetect.Visibility.ANY));
 
@@ -117,7 +119,9 @@ public final class MapperFactory {
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+		mapper.enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
 		mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
+		mapper.configure(JsonParser.Feature.STRICT_DUPLICATE_DETECTION, true);
 		mapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
 		mapper.setVisibility(VisibilityChecker.Std.defaultInstance().withFieldVisibility(JsonAutoDetect.Visibility.ANY));
 
