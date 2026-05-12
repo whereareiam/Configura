@@ -97,8 +97,6 @@ public final class MergeDefaultsResolver {
 	private boolean isMissing(JsonNode node, MergeEngine.Mode mode) {
 		if (node == null || node.isNull()) return true;
 		if (mode != MergeEngine.Mode.DEFAULT_INSTANCE) return false;
-		return (node.isNumber() && node.asDouble() == 0.0)
-				|| (node.isBoolean() && !node.asBoolean())
-				|| (node.isArray() && node.isEmpty());
+		return node.isArray() && node.isEmpty();
 	}
 }

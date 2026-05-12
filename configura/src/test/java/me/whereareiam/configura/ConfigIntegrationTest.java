@@ -2,9 +2,11 @@ package me.whereareiam.configura;
 
 import me.whereareiam.configura.annotation.Merge;
 import me.whereareiam.configura.annotation.PostProcess;
+import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.MergeDefaultsProvider;
 import me.whereareiam.configura.merge.strategy.DeclaredKeysOnlyMap;
 import me.whereareiam.configura.merge.strategy.StructuralObject;
+import me.whereareiam.configura.type.Format;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -18,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Config Integration")
@@ -26,7 +29,7 @@ class ConfigIntegrationTest {
 	@DisplayName("Update applies defaults and runs post-process hooks")
 	void updateAppliesDefaultsAndRunsPostProcess(@TempDir Path tempDir) {
 		Config configura = Config.builder()
-				.format(me.whereareiam.configura.type.Format.YAML)
+				.format(Format.YAML)
 				.defaults(BasicDefaults.class)
 				.build();
 
@@ -40,7 +43,7 @@ class ConfigIntegrationTest {
 	@DisplayName("Explicit null wins globally during update")
 	void explicitNullWinsGloballyDuringUpdate(@TempDir Path tempDir) throws Exception {
 		Config configura = Config.builder()
-				.format(me.whereareiam.configura.type.Format.YAML)
+				.format(Format.YAML)
 				.defaults(NullDefaults.class)
 				.build();
 
@@ -56,7 +59,7 @@ class ConfigIntegrationTest {
 	@DisplayName("Present keys merge only declared map entries")
 	void presentKeysMergeOnlyDeclaredMapEntries(@TempDir Path tempDir) throws Exception {
 		Config configura = Config.builder()
-				.format(me.whereareiam.configura.type.Format.YAML)
+				.format(Format.YAML)
 				.defaults(RoutingDefaults.class)
 				.build();
 
@@ -84,7 +87,7 @@ class ConfigIntegrationTest {
 	@DisplayName("Default merge strategy applies to unannotated fields")
 	void defaultMergeStrategyAppliesToUnannotatedFields(@TempDir Path tempDir) throws Exception {
 		Config configura = Config.builder()
-				.format(me.whereareiam.configura.type.Format.YAML)
+				.format(Format.YAML)
 				.defaults(DefaultRoutingDefaults.class)
 				.defaultMergeStrategy(DeclaredKeysOnlyMap.class)
 				.build();
@@ -106,7 +109,7 @@ class ConfigIntegrationTest {
 	@DisplayName("Named merge strategies can be registered and selected")
 	void namedMergeStrategiesCanBeRegisteredAndSelected(@TempDir Path tempDir) throws Exception {
 		Config configura = Config.builder()
-				.format(me.whereareiam.configura.type.Format.YAML)
+				.format(Format.YAML)
 				.defaults(NamedRoutingDefaults.class)
 				.mergeStrategy("declaredKeysOnly", DeclaredKeysOnlyMap.class)
 				.build();
@@ -130,7 +133,7 @@ class ConfigIntegrationTest {
 	@DisplayName("Structural object strategy restores the object without filling declared children")
 	void structuralObjectRestoresObjectWithoutFillingDeclaredChildren(@TempDir Path tempDir) throws Exception {
 		Config configura = Config.builder()
-				.format(me.whereareiam.configura.type.Format.YAML)
+				.format(Format.YAML)
 				.defaults(ProviderDefaults.class)
 				.build();
 
@@ -158,6 +161,98 @@ class ConfigIntegrationTest {
 		String persisted = Files.readString(declaredOverrides);
 		assertTrue(persisted.contains("overrides: {}"));
 		assertFalse(persisted.contains("sessionTtl"));
+	}
+
+	@Test
+	@DisplayName("Duplicate YAML keys fail fast during update")
+	void duplicateYamlKeysFailFastDuringUpdate(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(Format.YAML)
+				.build();
+
+		Path file = tempDir.resolve("duplicate.yml");
+		Files.writeString(file, """
+				scenario:
+				  registration:
+				    requireRepeat: false
+				scenario:
+				  registration:
+				    requireRepeat: true
+				""");
+
+		assertThrows(ConfigException.class, () -> configura.update(file, DuplicateScenarioConfig.class));
+	}
+
+	@Test
+	@DisplayName("Explicit false survives update defaults merge")
+	void explicitFalseSurvivesUpdateDefaultsMerge(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(me.whereareiam.configura.type.Format.YAML)
+				.defaults(BooleanDefaults.class)
+				.build();
+
+		Path file = tempDir.resolve("boolean.yml");
+		Files.writeString(file, "enabled: false\n");
+
+		BooleanConfig config = configura.update(file, BooleanConfig.class);
+		assertFalse(config.enabled);
+		assertTrue(Files.readString(file).contains("enabled: false"));
+	}
+
+	@Test
+	@DisplayName("Explicit zero survives update defaults merge")
+	void explicitZeroSurvivesUpdateDefaultsMerge(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(me.whereareiam.configura.type.Format.YAML)
+				.defaults(NumberDefaults.class)
+				.build();
+
+		Path file = tempDir.resolve("number.yml");
+		Files.writeString(file, "retries: 0\n");
+
+		NumberConfig config = configura.update(file, NumberConfig.class);
+		assertEquals(0, config.retries);
+		assertTrue(Files.readString(file).contains("retries: 0"));
+	}
+
+	@Test
+	@DisplayName("Nested explicit false survives update defaults merge")
+	void nestedExplicitFalseSurvivesUpdateDefaultsMerge(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(me.whereareiam.configura.type.Format.YAML)
+				.defaults(NestedBooleanDefaults.class)
+				.build();
+
+		Path file = tempDir.resolve("nested-boolean.yml");
+		Files.writeString(file, """
+				registration:
+				  requireRepeat: false
+				""");
+
+		NestedBooleanConfig config = configura.update(file, NestedBooleanConfig.class);
+		assertNotNull(config.registration);
+		assertFalse(config.registration.requireRepeat);
+		assertTrue(Files.readString(file).contains("requireRepeat: false"));
+	}
+
+	@Test
+	@DisplayName("Nested explicit zero survives update defaults merge")
+	void nestedExplicitZeroSurvivesUpdateDefaultsMerge(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(me.whereareiam.configura.type.Format.YAML)
+				.defaults(NestedNumberDefaults.class)
+				.build();
+
+		Path file = tempDir.resolve("nested-number.yml");
+		Files.writeString(file, """
+				limits:
+				  retries: 0
+				""");
+
+		NestedNumberConfig config = configura.update(file, NestedNumberConfig.class);
+		assertNotNull(config.limits);
+		assertEquals(0, config.limits.retries);
+		assertTrue(Files.readString(file).contains("retries: 0"));
 	}
 
 	public static class BasicConfig {
@@ -258,6 +353,76 @@ class ConfigIntegrationTest {
 		public static class Scenario {
 			public String step;
 			public String complete;
+		}
+	}
+
+	public static class DuplicateScenarioConfig {
+		public Scenario scenario;
+
+		public static class Scenario {
+			public Registration registration;
+		}
+
+		public static class Registration {
+			public boolean requireRepeat;
+		}
+	}
+
+	public static class BooleanConfig {
+		public boolean enabled;
+	}
+
+	public static class BooleanDefaults implements MergeDefaultsProvider<BooleanConfig> {
+		@Override
+		public BooleanConfig supply(BooleanConfig config) {
+			config.enabled = true;
+			return config;
+		}
+	}
+
+	public static class NumberConfig {
+		public int retries;
+	}
+
+	public static class NumberDefaults implements MergeDefaultsProvider<NumberConfig> {
+		@Override
+		public NumberConfig supply(NumberConfig config) {
+			config.retries = 3;
+			return config;
+		}
+	}
+
+	public static class NestedBooleanConfig {
+		public Registration registration;
+
+		public static class Registration {
+			public boolean requireRepeat;
+		}
+	}
+
+	public static class NestedBooleanDefaults implements MergeDefaultsProvider<NestedBooleanConfig> {
+		@Override
+		public NestedBooleanConfig supply(NestedBooleanConfig config) {
+			config.registration = new NestedBooleanConfig.Registration();
+			config.registration.requireRepeat = true;
+			return config;
+		}
+	}
+
+	public static class NestedNumberConfig {
+		public Limits limits;
+
+		public static class Limits {
+			public int retries;
+		}
+	}
+
+	public static class NestedNumberDefaults implements MergeDefaultsProvider<NestedNumberConfig> {
+		@Override
+		public NestedNumberConfig supply(NestedNumberConfig config) {
+			config.limits = new NestedNumberConfig.Limits();
+			config.limits.retries = 3;
+			return config;
 		}
 	}
 
