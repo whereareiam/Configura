@@ -1,11 +1,7 @@
-package me.whereareiam.configura.merge;
+package me.whereareiam.configura.merge.strategy;
 
 import lombok.Getter;
-import me.whereareiam.configura.merge.strategy.DeclaredKeysOnlyMap;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
-import me.whereareiam.configura.merge.strategy.NeverDefaults;
-import me.whereareiam.configura.merge.strategy.SourceOwnsField;
-import me.whereareiam.configura.merge.strategy.StructuralObject;
+import me.whereareiam.configura.merge.strategy.type.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

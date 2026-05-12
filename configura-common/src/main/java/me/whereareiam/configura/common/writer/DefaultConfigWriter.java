@@ -7,8 +7,8 @@ import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegist
 import me.whereareiam.configura.common.merge.MergeEngine;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.merge.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
 

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.merge.defaults.FieldDefaultsResolver;
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 
 import java.lang.reflect.Field;
 

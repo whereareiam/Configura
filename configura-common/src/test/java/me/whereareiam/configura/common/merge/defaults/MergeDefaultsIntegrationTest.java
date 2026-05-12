@@ -3,7 +3,7 @@ package me.whereareiam.configura.common.merge.defaults;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;

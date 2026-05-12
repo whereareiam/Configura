@@ -45,7 +45,7 @@ Register reusable model defaults through merge:
 
 ```java
 import me.whereareiam.configura.Config;
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 
 public class AppDefaults implements MergeDefaultsProvider<AppConfig> {
     @Override
@@ -83,8 +83,8 @@ Built-in strategies:
 
 ```java
 import me.whereareiam.configura.annotation.Merge;
-import me.whereareiam.configura.merge.strategy.DeclaredKeysOnlyMap;
-import me.whereareiam.configura.merge.strategy.SourceOwnsField;
+import me.whereareiam.configura.merge.strategy.type.DeclaredKeysOnlyMap;
+import me.whereareiam.configura.merge.strategy.type.SourceOwnsField;
 
 public class RoutingConfig {
     @Merge(DeclaredKeysOnlyMap.class)
@@ -102,7 +102,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.annotation.Merge;
 import me.whereareiam.configura.merge.MergeContext;
-import me.whereareiam.configura.merge.MergeStrategy;
+import me.whereareiam.configura.merge.strategy.MergeStrategy;
 
 public final class AlwaysDefault implements MergeStrategy {
     @Override

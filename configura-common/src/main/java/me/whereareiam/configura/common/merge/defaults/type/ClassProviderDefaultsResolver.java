@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegistry;
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 
 @RequiredArgsConstructor
 public final class ClassProviderDefaultsResolver {

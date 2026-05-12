@@ -1,10 +1,11 @@
-package me.whereareiam.configura.common.merge;
+package me.whereareiam.configura.common.merge.strategy;
 
 import me.whereareiam.configura.annotation.Merge;
+import me.whereareiam.configura.common.merge.MergeFieldResolver;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.merge.MergeStrategy;
-import me.whereareiam.configura.merge.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
+import me.whereareiam.configura.merge.strategy.MergeStrategy;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
 
 import java.lang.reflect.Field;
 

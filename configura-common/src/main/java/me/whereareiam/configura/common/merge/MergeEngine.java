@@ -5,10 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegistry;
 import me.whereareiam.configura.common.merge.defaults.MergeDefaultsResolver;
+import me.whereareiam.configura.common.merge.strategy.MergeStrategyFactory;
+import me.whereareiam.configura.common.merge.strategy.MergeStrategyResolver;
 import me.whereareiam.configura.merge.MergeContext;
-import me.whereareiam.configura.merge.MergeStrategy;
-import me.whereareiam.configura.merge.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
+import me.whereareiam.configura.merge.MergePolicy;
+import me.whereareiam.configura.merge.strategy.MergeStrategy;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
+import me.whereareiam.configura.type.PrimitiveDefaultPolicy;
 
 import java.lang.reflect.Field;
 import java.util.LinkedHashSet;
@@ -32,16 +36,24 @@ public final class MergeEngine {
 	}
 
 	public <T> ObjectNode defaultsNode(T model, Class<T> type, Mode mode) {
-		return defaultsResolver.resolve(model, type, mode);
+		return defaultsNode(model, type, resolvePolicy(mode));
 	}
 
 	public <T> ObjectNode merge(JsonNode source, T model, Class<T> type, Mode mode) {
-		ObjectNode defaults = defaultsNode(model, type, mode);
-		JsonNode merged = mergeObject(source, defaults, type, false, mode);
+		return merge(source, model, type, resolvePolicy(mode));
+	}
+
+	public <T> ObjectNode defaultsNode(T model, Class<T> type, MergePolicy policy) {
+		return defaultsResolver.resolve(model, type, policy.primitiveDefaultPolicy());
+	}
+
+	public <T> ObjectNode merge(JsonNode source, T model, Class<T> type, MergePolicy policy) {
+		ObjectNode defaults = defaultsNode(model, type, policy);
+		JsonNode merged = mergeObject(source, defaults, type, false, policy);
 		return merged instanceof ObjectNode objectNode ? objectNode : mapper.createObjectNode();
 	}
 
-	private JsonNode mergeObject(JsonNode source, JsonNode defaults, Class<?> ownerType, boolean declaredKeysOnly, Mode mode) {
+	private JsonNode mergeObject(JsonNode source, JsonNode defaults, Class<?> ownerType, boolean declaredKeysOnly, MergePolicy policy) {
 		ObjectNode result = mapper.createObjectNode();
 		ObjectNode sourceObject = source != null && source.isObject()
 				? (ObjectNode) source
@@ -78,8 +90,8 @@ public final class MergeEngine {
 					childType,
 					sourceValue,
 					defaultValue,
-					mode == Mode.DEFAULT_INSTANCE,
-					(childSource, childDefaults, childOwnerType, childDeclaredOnly) -> mergeObject(childSource, childDefaults, childOwnerType, childDeclaredOnly, mode)
+					policy.primitiveDefaultPolicy() == PrimitiveDefaultPolicy.AS_MISSING,
+					(childSource, childDefaults, childOwnerType, childDeclaredOnly) -> mergeObject(childSource, childDefaults, childOwnerType, childDeclaredOnly, policy)
 			);
 
 			JsonNode merged = strategyFactory.create(strategyClass != null ? strategyClass : DeepDefaults.class).merge(context);
@@ -87,6 +99,10 @@ public final class MergeEngine {
 		}
 
 		return result;
+	}
+
+	private MergePolicy resolvePolicy(Mode mode) {
+		return mode == Mode.DEFAULT_INSTANCE ? MergePolicy.update() : MergePolicy.save();
 	}
 
 	public enum Mode {

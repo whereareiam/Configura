@@ -1,4 +1,4 @@
-package me.whereareiam.configura.merge;
+package me.whereareiam.configura.merge.defaults;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

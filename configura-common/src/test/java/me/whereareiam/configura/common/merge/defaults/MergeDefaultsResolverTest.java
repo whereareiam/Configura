@@ -3,9 +3,9 @@ package me.whereareiam.configura.common.merge.defaults;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.merge.MergeEngine;
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
-import me.whereareiam.configura.merge.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

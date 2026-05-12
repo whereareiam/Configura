@@ -11,10 +11,10 @@ import me.whereareiam.configura.common.migration.SchemaMigrationEngine;
 import me.whereareiam.configura.common.processor.PostProcessor;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
-import me.whereareiam.configura.merge.MergeStrategy;
-import me.whereareiam.configura.merge.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.strategy.MergeStrategy;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
 import me.whereareiam.configura.migration.MigrationDefinition;
 
 import java.io.IOException;

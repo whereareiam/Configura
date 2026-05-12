@@ -1,6 +1,6 @@
 package me.whereareiam.configura.annotation;
 
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

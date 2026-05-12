@@ -191,8 +191,8 @@ By default, merge defaults declared with `@Defaults` use the `DeepDefaults` stra
 
 ```java
 import me.whereareiam.configura.Config;
-import me.whereareiam.configura.merge.strategy.DeclaredKeysOnlyMap;
-import me.whereareiam.configura.merge.strategy.SourceOwnsField;
+import me.whereareiam.configura.merge.strategy.type.DeclaredKeysOnlyMap;
+import me.whereareiam.configura.merge.strategy.type.SourceOwnsField;
 import lombok.Data;
 import me.whereareiam.configura.annotation.Merge;
 

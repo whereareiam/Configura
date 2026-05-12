@@ -2,8 +2,8 @@ package me.whereareiam.configura;
 
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
-import me.whereareiam.configura.merge.strategy.DeclaredKeysOnlyMap;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.strategy.type.DeclaredKeysOnlyMap;
 import me.whereareiam.configura.type.Format;
 import org.junit.jupiter.api.Test;
 

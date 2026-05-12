@@ -1,6 +1,6 @@
 package me.whereareiam.configura.common.merge.defaults;
 
-import me.whereareiam.configura.merge.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;

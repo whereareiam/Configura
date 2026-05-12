@@ -3,8 +3,8 @@ package me.whereareiam.configura.common.merge;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegistry;
-import me.whereareiam.configura.merge.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

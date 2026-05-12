@@ -1,6 +1,6 @@
-package me.whereareiam.configura.common.merge;
+package me.whereareiam.configura.common.merge.strategy;
 
-import me.whereareiam.configura.merge.MergeStrategy;
+import me.whereareiam.configura.merge.strategy.MergeStrategy;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

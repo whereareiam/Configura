@@ -1,7 +1,7 @@
 package me.whereareiam.configura.annotation;
 
-import me.whereareiam.configura.merge.MergeStrategy;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
+import me.whereareiam.configura.merge.strategy.MergeStrategy;
+import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
