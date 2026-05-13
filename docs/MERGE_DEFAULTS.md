@@ -78,6 +78,7 @@ Built-in strategies:
 - `DeepDefaults`: recursively fill missing values from defaults.
 - `SourceOwnsField`: if the source provides a value, source owns the whole field.
 - `NeverDefaults`: never apply defaults for this field.
+- `DefaultKeysOnlyMap`: keep only keys declared by defaults and deep-merge those keys.
 - `DeclaredKeysOnlyMap`: only merge into map keys already declared by source.
 - `StructuralObject`: keep an object present without deep-filling declared children.
 

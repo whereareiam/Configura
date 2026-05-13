@@ -1,9 +1,11 @@
 package me.whereareiam.configura.common.merge.defaults;
 
 import me.whereareiam.configura.annotation.Defaults;
+import me.whereareiam.configura.annotation.Merge;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.strategy.type.DefaultKeysOnlyMap;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
@@ -11,12 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MergeDefaultsIntegrationTest {
 
@@ -94,6 +94,34 @@ public class MergeDefaultsIntegrationTest {
 	static class ProviderConfig {
 		@Defaults(provider = @Defaults.Provider(CorsProvider.class))
 		public Cors cors;
+	}
+
+	public static class ListenerRegistration {
+		public boolean register;
+		public String priority;
+	}
+
+	public static class ListenerSettingsProvider implements MergeDefaultsProvider<ListenerSettings> {
+		@Override
+		public ListenerSettings supply(ListenerSettings settings) {
+			settings.events = new LinkedHashMap<>();
+			settings.events.put("velocity.PreLoginEvent", listener(true, "NORMAL"));
+			settings.events.put("velocity.LoginEvent", listener(true, "HIGH"));
+			return settings;
+		}
+
+		private ListenerRegistration listener(boolean register, String priority) {
+			ListenerRegistration listener = new ListenerRegistration();
+			listener.register = register;
+			listener.priority = priority;
+			return listener;
+		}
+	}
+
+	@Defaults(provider = @Defaults.Provider(ListenerSettingsProvider.class))
+	public static class ListenerSettings {
+		@Merge(DefaultKeysOnlyMap.class)
+		public Map<String, ListenerRegistration> events;
 	}
 
 	@Test
@@ -254,5 +282,37 @@ public class MergeDefaultsIntegrationTest {
 		assertEquals("svc", config.name);
 		assertNotNull(config.policy);
 		assertEquals(3, config.policy.retries);
+	}
+
+	@Test
+	void defaultKeysOnlyMapDropsStaleKeysWhilePreservingDeclaredOverrides(@TempDir Path dir) {
+		Path file = dir.resolve("listeners.yml");
+		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
+		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
+
+		ListenerSettings existing = new ListenerSettings();
+		existing.events = new LinkedHashMap<>();
+		ListenerRegistration preLogin = new ListenerRegistration();
+		preLogin.register = false;
+		existing.events.put("velocity.PreLoginEvent", preLogin);
+		ListenerRegistration stale = new ListenerRegistration();
+		stale.priority = "LOW";
+		existing.events.put("bungeecord.PostLoginEvent", stale);
+		writer.write(file, existing);
+
+		ListenerSettings defaultInstance = reader.load(new byte[0], ListenerSettings.class);
+		ListenerSettings merged = writer.merge(file, defaultInstance);
+		writer.write(file, merged);
+
+		ListenerSettings loaded = reader.load(file, ListenerSettings.class);
+		assertNotNull(loaded.events);
+		assertEquals(2, loaded.events.size());
+		assertTrue(loaded.events.containsKey("velocity.PreLoginEvent"));
+		assertTrue(loaded.events.containsKey("velocity.LoginEvent"));
+		assertFalse(loaded.events.containsKey("bungeecord.PostLoginEvent"));
+		assertFalse(loaded.events.get("velocity.PreLoginEvent").register);
+		assertEquals("NORMAL", loaded.events.get("velocity.PreLoginEvent").priority);
+		assertTrue(loaded.events.get("velocity.LoginEvent").register);
+		assertEquals("HIGH", loaded.events.get("velocity.LoginEvent").priority);
 	}
 }

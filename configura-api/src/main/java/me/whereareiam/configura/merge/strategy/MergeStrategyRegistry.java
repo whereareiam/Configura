@@ -44,6 +44,7 @@ public final class MergeStrategyRegistry {
 		register("deepDefaults", DeepDefaults.class);
 		register("sourceOwnsField", SourceOwnsField.class);
 		register("neverDefaults", NeverDefaults.class);
+		register("defaultKeysOnlyMap", DefaultKeysOnlyMap.class);
 		register("declaredKeysOnlyMap", DeclaredKeysOnlyMap.class);
 		register("structuralObject", StructuralObject.class);
 		return this;

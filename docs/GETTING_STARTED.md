@@ -207,6 +207,7 @@ public class CommandsConfig {
 - `DeepDefaults`: Recursively fill missing values from merge defaults
 - `SourceOwnsField`: If the source provides a value, the source owns the field
 - `NeverDefaults`: Do not apply default values
+- `DefaultKeysOnlyMap`: Keep only keys declared by defaults and deep-merge those keys
 - `DeclaredKeysOnlyMap`: Only merge into map keys already declared by the source
 - `StructuralObject`: Keep an object present without deep-filling its declared children
 
