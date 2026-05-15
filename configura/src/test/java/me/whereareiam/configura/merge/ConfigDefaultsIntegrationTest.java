@@ -5,11 +5,10 @@ import me.whereareiam.configura.annotation.Defaults;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigDefaultsIntegrationTest {
 	static class AppConfig {
@@ -83,5 +82,22 @@ class ConfigDefaultsIntegrationTest {
 		Config.defaults().save(file, afterSecondLoad);
 		AppConfig afterThirdLoad = Config.defaults().read(file, AppConfig.class);
 		assertEquals(true, afterThirdLoad.database.ssl);
+	}
+
+	@Test
+	void saveDropsFieldsMissingFromCurrentModel(@TempDir Path dir) throws Exception {
+		Path file = dir.resolve("app.yml");
+		Files.writeString(file, """
+				service:
+				  name: kept
+				legacy: true
+				""");
+
+		AppConfig config = Config.defaults().read(file, AppConfig.class);
+		Config.defaults().save(file, config);
+
+		String persisted = Files.readString(file);
+		assertEquals("kept", Config.defaults().read(file, AppConfig.class).service.name);
+		assertFalse(persisted.contains("legacy:"));
 	}
 }

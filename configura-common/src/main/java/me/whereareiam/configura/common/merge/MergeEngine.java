@@ -7,12 +7,12 @@ import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegist
 import me.whereareiam.configura.common.merge.defaults.MergeDefaultsResolver;
 import me.whereareiam.configura.common.merge.strategy.MergeStrategyFactory;
 import me.whereareiam.configura.common.merge.strategy.MergeStrategyResolver;
+import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.MergeContext;
-import me.whereareiam.configura.merge.MergePolicy;
 import me.whereareiam.configura.merge.strategy.MergeStrategy;
 import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
 import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
-import me.whereareiam.configura.type.PrimitiveDefaultPolicy;
+import me.whereareiam.configura.type.UnknownFieldPolicy;
 
 import java.lang.reflect.Field;
 import java.util.LinkedHashSet;
@@ -23,37 +23,52 @@ public final class MergeEngine {
 	private final MergeDefaultsResolver defaultsResolver;
 	private final MergeStrategyResolver strategyResolver;
 	private final MergeStrategyFactory strategyFactory = new MergeStrategyFactory();
+	private final MergeBehaviorResolver behaviorResolver = new MergeBehaviorResolver();
+	private final MergeBehavior behavior;
 
 	public MergeEngine(
 			ObjectMapper mapper,
 			DefaultMergeDefaultsRegistry defaultsRegistry,
 			MergeStrategyRegistry strategyRegistry,
-			Class<? extends MergeStrategy> defaultStrategy
+			Class<? extends MergeStrategy> defaultStrategy,
+			MergeBehavior behavior
 	) {
 		this.mapper = mapper;
 		this.defaultsResolver = new MergeDefaultsResolver(mapper, defaultsRegistry);
 		this.strategyResolver = new MergeStrategyResolver(defaultStrategy, strategyRegistry);
+		this.behavior = behavior != null ? behavior : MergeBehavior.defaults();
 	}
 
-	public <T> ObjectNode defaultsNode(T model, Class<T> type, Mode mode) {
-		return defaultsNode(model, type, resolvePolicy(mode));
+	public <T> ObjectNode defaultsNode(T model, Class<T> type) {
+		return defaultsNodeInternal(model, type, MergeOperation.userModel());
 	}
 
-	public <T> ObjectNode merge(JsonNode source, T model, Class<T> type, Mode mode) {
-		return merge(source, model, type, resolvePolicy(mode));
+	public <T> ObjectNode mergeUserModel(JsonNode source, T model, Class<T> type) {
+		return mergeInternal(source, model, type, MergeOperation.userModel());
 	}
 
-	public <T> ObjectNode defaultsNode(T model, Class<T> type, MergePolicy policy) {
-		return defaultsResolver.resolve(model, type, policy.primitiveDefaultPolicy());
+	public <T> ObjectNode mergeDefaults(JsonNode source, T model, Class<T> type) {
+		return mergeInternal(source, model, type, MergeOperation.syntheticDefaults(behavior));
 	}
 
-	public <T> ObjectNode merge(JsonNode source, T model, Class<T> type, MergePolicy policy) {
-		ObjectNode defaults = defaultsNode(model, type, policy);
-		JsonNode merged = mergeObject(source, defaults, type, false, policy);
+	private <T> ObjectNode defaultsNodeInternal(T model, Class<T> type, MergeOperation operation) {
+		return defaultsResolver.resolve(model, type, operation.defaultsPolicy());
+	}
+
+	private <T> ObjectNode mergeInternal(JsonNode source, T model, Class<T> type, MergeOperation operation) {
+		ObjectNode defaults = defaultsNodeInternal(model, type, operation);
+		JsonNode merged = mergeObject(source, defaults, type, false, behaviorResolver.resolve(behavior, type), operation);
 		return merged instanceof ObjectNode objectNode ? objectNode : mapper.createObjectNode();
 	}
 
-	private JsonNode mergeObject(JsonNode source, JsonNode defaults, Class<?> ownerType, boolean declaredKeysOnly, MergePolicy policy) {
+	private JsonNode mergeObject(
+			JsonNode source,
+			JsonNode defaults,
+			Class<?> ownerType,
+			boolean declaredKeysOnly,
+			MergeBehavior currentBehavior,
+			MergeOperation operation
+	) {
 		ObjectNode result = mapper.createObjectNode();
 		ObjectNode sourceObject = source != null && source.isObject()
 				? (ObjectNode) source
@@ -70,17 +85,23 @@ public final class MergeEngine {
 		for (String key : keys) {
 			JsonNode sourceValue = sourceObject.get(key);
 			JsonNode defaultValue = defaultObject.get(key);
+			Field field = MergeFieldResolver.resolveField(ownerType, key);
 			if (sourceValue != null && sourceValue.isNull()) {
 				result.set(key, sourceValue.deepCopy());
 				continue;
 			}
 			if (defaultValue == null) {
-				if (sourceValue != null) result.set(key, sourceValue.deepCopy());
+				if (field != null && sourceValue != null) {
+					result.set(key, sourceValue.deepCopy());
+					continue;
+				}
+				if (currentBehavior.getUnknownFieldPolicy() == UnknownFieldPolicy.PRESERVE && sourceValue != null)
+					result.set(key, sourceValue.deepCopy());
 				continue;
 			}
 
-			Field field = MergeFieldResolver.resolveField(ownerType, key);
 			Class<?> childType = MergeFieldResolver.resolveChildType(field, ownerType);
+			MergeBehavior childBehavior = behaviorResolver.resolve(currentBehavior, field, childType);
 			Class<? extends MergeStrategy> strategyClass = strategyResolver.resolve(field);
 			MergeContext context = new MergeContext(
 					mapper,
@@ -90,8 +111,10 @@ public final class MergeEngine {
 					childType,
 					sourceValue,
 					defaultValue,
-					policy.primitiveDefaultPolicy() == PrimitiveDefaultPolicy.AS_MISSING,
-					(childSource, childDefaults, childOwnerType, childDeclaredOnly) -> mergeObject(childSource, childDefaults, childOwnerType, childDeclaredOnly, policy)
+					operation.sourceDefaultsAsMissing(),
+					childBehavior,
+					(childSource, childDefaults, childOwnerType, childDeclaredOnly, childBehaviorOverride) ->
+							mergeObject(childSource, childDefaults, childOwnerType, childDeclaredOnly, childBehaviorOverride, operation)
 			);
 
 			JsonNode merged = strategyFactory.create(strategyClass != null ? strategyClass : DeepDefaults.class).merge(context);
@@ -99,14 +122,5 @@ public final class MergeEngine {
 		}
 
 		return result;
-	}
-
-	private MergePolicy resolvePolicy(Mode mode) {
-		return mode == Mode.DEFAULT_INSTANCE ? MergePolicy.update() : MergePolicy.save();
-	}
-
-	public enum Mode {
-		DEFAULT_INSTANCE,
-		USER_MODEL
 	}
 }

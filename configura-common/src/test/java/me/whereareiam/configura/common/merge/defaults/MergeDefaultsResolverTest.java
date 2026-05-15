@@ -3,6 +3,7 @@ package me.whereareiam.configura.common.merge.defaults;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.merge.MergeEngine;
+import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
 import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
@@ -60,11 +61,12 @@ class MergeDefaultsResolverTest {
 				mapper,
 				new DefaultMergeDefaultsRegistry(),
 				MergeStrategyRegistry.standard(),
-				DeepDefaults.class
+				DeepDefaults.class,
+				MergeBehavior.defaults()
 		);
 		try {
 			return (T) mapper.treeToValue(
-					engine.defaultsNode(value, (Class<T>) value.getClass(), MergeEngine.Mode.USER_MODEL),
+					engine.defaultsNode(value, (Class<T>) value.getClass()),
 					value.getClass()
 			);
 		} catch (Exception e) {

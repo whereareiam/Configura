@@ -2,6 +2,7 @@ package me.whereareiam.configura.merge;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import me.whereareiam.configura.merge.strategy.MergeStrategy;
@@ -23,17 +24,19 @@ public final class MergeContext {
 	private final @NotNull Class<?> childType;
 	private final @Nullable JsonNode sourceNode;
 	private final @Nullable JsonNode defaultNode;
-	private final boolean defaultInstance;
+	@Getter(AccessLevel.NONE)
+	private final boolean sourceDefaultsAsMissing;
+	private final @NotNull MergeBehavior behavior;
 	private final @NotNull RecursiveMerge recursiveMerge;
 
 	/**
-	 * Returns whether the source field should be treated as missing for default-instance merging.
+	 * Returns whether the current source field should be treated as missing.
 	 *
-	 * @return {@code true} when Configura should apply defaults over Java primitive defaults
+	 * @return {@code true} when the active merge operation should apply defaults over source defaults
 	 */
 	public boolean sourceTreatsDefaultAsMissing() {
 		if (sourceNode == null) return false;
-		if (!defaultInstance) return false;
+		if (!sourceDefaultsAsMissing) return false;
 
 		return sourceNode.isArray() && sourceNode.isEmpty();
 	}
@@ -46,7 +49,7 @@ public final class MergeContext {
 	 * @return merged object node
 	 */
 	public @NotNull JsonNode mergeChildren(@Nullable JsonNode source, @Nullable JsonNode defaults) {
-		return recursiveMerge.merge(source, defaults, childType, false);
+		return recursiveMerge.merge(source, defaults, childType, false, behavior);
 	}
 
 	/**
@@ -57,7 +60,7 @@ public final class MergeContext {
 	 * @return merged object node containing only source-declared keys
 	 */
 	public @NotNull JsonNode mergeDeclaredChildren(@Nullable JsonNode source, @Nullable JsonNode defaults) {
-		return recursiveMerge.merge(source, defaults, childType, true);
+		return recursiveMerge.merge(source, defaults, childType, true, behavior);
 	}
 
 	/**
@@ -65,6 +68,12 @@ public final class MergeContext {
 	 */
 	@FunctionalInterface
 	public interface RecursiveMerge {
-		@NotNull JsonNode merge(@Nullable JsonNode source, @Nullable JsonNode defaults, @NotNull Class<?> ownerType, boolean declaredKeysOnly);
+		@NotNull JsonNode merge(
+				@Nullable JsonNode source,
+				@Nullable JsonNode defaults,
+				@NotNull Class<?> ownerType,
+				boolean declaredKeysOnly,
+				@NotNull MergeBehavior behavior
+		);
 	}
 }

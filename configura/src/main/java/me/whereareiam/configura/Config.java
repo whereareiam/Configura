@@ -11,6 +11,7 @@ import me.whereareiam.configura.common.migration.MigrationDefinitionRegistry;
 import me.whereareiam.configura.common.polymorphic.PolymorphicRegistry;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
+import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 import me.whereareiam.configura.merge.strategy.MergeStrategy;
 import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
@@ -41,6 +42,7 @@ public final class Config {
 	private final MergeStrategyRegistry strategyRegistry;
 	private final MigrationDefinitionRegistry versionedRegistry;
 	private final Class<? extends MergeStrategy> defaultMergeStrategy;
+	private final MergeBehavior mergeBehavior;
 	private final boolean backupOnMigration;
 	private final Configura runtime;
 
@@ -52,6 +54,7 @@ public final class Config {
 			MergeStrategyRegistry strategyRegistry,
 			MigrationDefinitionRegistry versionedRegistry,
 			Class<? extends MergeStrategy> defaultMergeStrategy,
+			MergeBehavior mergeBehavior,
 			boolean backupOnMigration
 	) {
 		this.extension = extension;
@@ -61,6 +64,7 @@ public final class Config {
 		this.strategyRegistry = strategyRegistry.copy();
 		this.versionedRegistry = versionedRegistry.copy();
 		this.defaultMergeStrategy = defaultMergeStrategy;
+		this.mergeBehavior = mergeBehavior != null ? mergeBehavior : MergeBehavior.defaults();
 		this.backupOnMigration = backupOnMigration;
 		this.runtime = new Configura(
 				extension,
@@ -70,6 +74,7 @@ public final class Config {
 				this.strategyRegistry,
 				this.versionedRegistry,
 				this.defaultMergeStrategy,
+				this.mergeBehavior,
 				this.backupOnMigration
 		);
 	}
@@ -237,27 +242,31 @@ public final class Config {
 	public Config withModule(Module module) {
 		List<Module> next = new ArrayList<>(modules);
 		if (module != null) next.add(module);
-		return new Config(extension, mapperFactory, next, defaultsRegistry, strategyRegistry, versionedRegistry, defaultMergeStrategy, backupOnMigration);
+		return new Config(extension, mapperFactory, next, defaultsRegistry, strategyRegistry, versionedRegistry, defaultMergeStrategy, mergeBehavior, backupOnMigration);
 	}
 
 	public <T, P extends MergeDefaultsProvider<T>> Config withDefaults(Class<P> providerClass) {
 		DefaultMergeDefaultsRegistry registry = defaultsRegistry.copy();
 		registry.registerDefaults(providerClass);
-		return new Config(extension, mapperFactory, modules, registry, strategyRegistry, versionedRegistry, defaultMergeStrategy, backupOnMigration);
+		return new Config(extension, mapperFactory, modules, registry, strategyRegistry, versionedRegistry, defaultMergeStrategy, mergeBehavior, backupOnMigration);
 	}
 
 	public Config withMergeStrategy(String name, Class<? extends MergeStrategy> strategy) {
 		MergeStrategyRegistry next = strategyRegistry.copy();
 		next.register(name, strategy);
-		return new Config(extension, mapperFactory, modules, defaultsRegistry, next, versionedRegistry, defaultMergeStrategy, backupOnMigration);
+		return new Config(extension, mapperFactory, modules, defaultsRegistry, next, versionedRegistry, defaultMergeStrategy, mergeBehavior, backupOnMigration);
 	}
 
 	public Config withDefaultMergeStrategy(Class<? extends MergeStrategy> strategy) {
-		return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, versionedRegistry, strategy, backupOnMigration);
+		return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, versionedRegistry, strategy, mergeBehavior, backupOnMigration);
+	}
+
+	public Config withMergeBehavior(MergeBehavior mergeBehavior) {
+		return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, versionedRegistry, defaultMergeStrategy, mergeBehavior, backupOnMigration);
 	}
 
 	public Config withBackupOnMigration(boolean backupOnMigration) {
-		return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, versionedRegistry, defaultMergeStrategy, backupOnMigration);
+		return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, versionedRegistry, defaultMergeStrategy, mergeBehavior, backupOnMigration);
 	}
 
 	public <T> Config withVersioned(Class<T> type, Consumer<MigrationDefinition<T>> customizer) {
@@ -266,7 +275,7 @@ public final class Config {
 			customizer.accept(definition);
 		MigrationDefinitionRegistry next = versionedRegistry.copy();
 		next.register(definition);
-		return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, next, defaultMergeStrategy, backupOnMigration);
+		return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, next, defaultMergeStrategy, mergeBehavior, backupOnMigration);
 	}
 
 	public String extension() {
@@ -293,6 +302,10 @@ public final class Config {
 		return defaultMergeStrategy;
 	}
 
+	public MergeBehavior mergeBehavior() {
+		return mergeBehavior;
+	}
+
 	public boolean backupOnMigration() {
 		return backupOnMigration;
 	}
@@ -305,6 +318,7 @@ public final class Config {
 		private final MergeStrategyRegistry strategyRegistry;
 		private final MigrationDefinitionRegistry versionedRegistry;
 		private Class<? extends MergeStrategy> defaultMergeStrategy;
+		private MergeBehavior mergeBehavior;
 		private boolean backupOnMigration;
 
 		private Builder() {
@@ -316,6 +330,7 @@ public final class Config {
 				this.strategyRegistry = MergeStrategyRegistry.standard();
 				this.versionedRegistry = new MigrationDefinitionRegistry();
 				this.defaultMergeStrategy = DeepDefaults.class;
+				this.mergeBehavior = MergeBehavior.defaults();
 				this.backupOnMigration = true;
 				return;
 			}
@@ -327,6 +342,7 @@ public final class Config {
 			this.strategyRegistry = defaults.strategyRegistry.copy();
 			this.versionedRegistry = defaults.versionedRegistry.copy();
 			this.defaultMergeStrategy = defaults.defaultMergeStrategy;
+			this.mergeBehavior = defaults.mergeBehavior;
 			this.backupOnMigration = defaults.backupOnMigration;
 		}
 
@@ -338,6 +354,7 @@ public final class Config {
 			this.strategyRegistry = source.strategyRegistry.copy();
 			this.versionedRegistry = source.versionedRegistry.copy();
 			this.defaultMergeStrategy = source.defaultMergeStrategy;
+			this.mergeBehavior = source.mergeBehavior;
 			this.backupOnMigration = source.backupOnMigration;
 		}
 
@@ -386,6 +403,11 @@ public final class Config {
 			return this;
 		}
 
+		public Builder mergeBehavior(MergeBehavior mergeBehavior) {
+			this.mergeBehavior = mergeBehavior;
+			return this;
+		}
+
 		public Builder backupOnMigration(boolean backupOnMigration) {
 			this.backupOnMigration = backupOnMigration;
 			return this;
@@ -399,7 +421,7 @@ public final class Config {
 		}
 
 		public Config build() {
-			return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, versionedRegistry, defaultMergeStrategy, backupOnMigration);
+			return new Config(extension, mapperFactory, modules, defaultsRegistry, strategyRegistry, versionedRegistry, defaultMergeStrategy, mergeBehavior, backupOnMigration);
 		}
 	}
 }

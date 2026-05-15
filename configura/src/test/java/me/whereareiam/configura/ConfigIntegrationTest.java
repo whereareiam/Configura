@@ -2,11 +2,14 @@ package me.whereareiam.configura;
 
 import me.whereareiam.configura.annotation.Merge;
 import me.whereareiam.configura.annotation.PostProcess;
+import me.whereareiam.configura.annotation.PreserveUnknownFields;
 import me.whereareiam.configura.exception.ConfigException;
+import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
 import me.whereareiam.configura.merge.strategy.type.DeclaredKeysOnlyMap;
 import me.whereareiam.configura.merge.strategy.type.StructuralObject;
 import me.whereareiam.configura.type.Format;
+import me.whereareiam.configura.type.UnknownFieldPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -16,12 +19,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Config Integration")
 class ConfigIntegrationTest {
@@ -37,6 +35,114 @@ class ConfigIntegrationTest {
 
 		assertEquals("service", config.name);
 		assertTrue(config.processed);
+	}
+
+	@Test
+	@DisplayName("Update drops fields missing from the current model")
+	void updateDropsFieldsMissingFromCurrentModel(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(Format.YAML)
+				.build();
+
+		Path file = tempDir.resolve("legacy.yml");
+		Files.writeString(file, """
+				name: service
+				legacy: true
+				""");
+
+		BasicConfig config = configura.update(file, BasicConfig.class);
+
+		assertEquals("service", config.name);
+		assertFalse(Files.readString(file).contains("legacy:"));
+	}
+
+	@Test
+	@DisplayName("Instance behavior preserves unknown keys during update")
+	void instanceBehaviorPreservesUnknownKeysDuringUpdate(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(Format.YAML)
+				.mergeBehavior(MergeBehavior.builder()
+						.unknownFields(UnknownFieldPolicy.PRESERVE)
+						.build())
+				.build();
+
+		Path file = tempDir.resolve("preserve-instance.yml");
+		Files.writeString(file, """
+				name: service
+				legacy: true
+				""");
+
+		BasicConfig config = configura.update(file, BasicConfig.class);
+
+		assertEquals("service", config.name);
+		assertTrue(configura.readNode(file).path("legacy").asBoolean());
+	}
+
+	@Test
+	@DisplayName("Copied config behavior preserves unknown keys during update")
+	void copiedConfigBehaviorPreservesUnknownKeysDuringUpdate(@TempDir Path tempDir) throws Exception {
+		Config base = Config.builder()
+				.format(Format.YAML)
+				.build();
+		Config configura = base.withMergeBehavior(MergeBehavior.builder()
+				.unknownFields(UnknownFieldPolicy.PRESERVE)
+				.build());
+
+		Path file = tempDir.resolve("preserve-copy.yml");
+		Files.writeString(file, """
+				name: service
+				legacy: true
+				""");
+
+		BasicConfig config = configura.update(file, BasicConfig.class);
+
+		assertEquals("service", config.name);
+		assertTrue(configura.readNode(file).path("legacy").asBoolean());
+	}
+
+	@Test
+	@DisplayName("Field annotation preserves unknown keys while deep defaults still apply")
+	void fieldAnnotationPreservesUnknownKeysWhileDeepDefaultsStillApply(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(Format.YAML)
+				.defaults(PreservedSectionDefaults.class)
+				.build();
+
+		Path file = tempDir.resolve("preserved-field.yml");
+		Files.writeString(file, """
+				section:
+				  custom: keep
+				""");
+
+		PreservedSectionConfig config = configura.update(file, PreservedSectionConfig.class);
+
+		assertNotNull(config.section);
+		assertEquals("default-name", config.section.name);
+		assertEquals("default-name", configura.readNode(file).path("section").path("name").asText());
+		assertEquals("keep", configura.readNode(file).path("section").path("custom").asText());
+	}
+
+	@Test
+	@DisplayName("Class annotation preserves unknown keys for the annotated subtree")
+	void classAnnotationPreservesUnknownKeysForAnnotatedSubtree(@TempDir Path tempDir) throws Exception {
+		Config configura = Config.builder()
+				.format(Format.YAML)
+				.defaults(ClassPreservedDefaults.class)
+				.build();
+
+		Path file = tempDir.resolve("preserved-class.yml");
+		Files.writeString(file, """
+				section:
+				  custom: keep
+				legacy: drop
+				""");
+
+		ClassPreservedConfig config = configura.update(file, ClassPreservedConfig.class);
+
+		assertNotNull(config.section);
+		assertEquals("default-name", config.section.name);
+		assertEquals("keep", configura.readNode(file).path("section").path("custom").asText());
+		assertFalse(configura.readNode(file).has("legacy"));
 	}
 
 	@Test
@@ -275,6 +381,42 @@ class ConfigIntegrationTest {
 
 	public static class NullConfig {
 		public String value;
+	}
+
+	public static class PreservedSectionConfig {
+		@PreserveUnknownFields
+		public PreservedSection section;
+
+		public static class PreservedSection {
+			public String name;
+		}
+	}
+
+	public static class PreservedSectionDefaults implements MergeDefaultsProvider<PreservedSectionConfig> {
+		@Override
+		public PreservedSectionConfig supply(PreservedSectionConfig config) {
+			config.section = new PreservedSectionConfig.PreservedSection();
+			config.section.name = "default-name";
+			return config;
+		}
+	}
+
+	public static class ClassPreservedConfig {
+		public ClassPreservedSection section;
+	}
+
+	@PreserveUnknownFields
+	public static class ClassPreservedSection {
+		public String name;
+	}
+
+	public static class ClassPreservedDefaults implements MergeDefaultsProvider<ClassPreservedConfig> {
+		@Override
+		public ClassPreservedConfig supply(ClassPreservedConfig config) {
+			config.section = new ClassPreservedSection();
+			config.section.name = "default-name";
+			return config;
+		}
 	}
 
 	public static class NullDefaults implements MergeDefaultsProvider<NullConfig> {

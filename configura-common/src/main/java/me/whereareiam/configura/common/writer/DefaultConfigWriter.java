@@ -3,10 +3,11 @@ package me.whereareiam.configura.common.writer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.common.MapperFactory;
-import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegistry;
 import me.whereareiam.configura.common.merge.MergeEngine;
+import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegistry;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.exception.ConfigException;
+import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
 import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
 import me.whereareiam.configura.type.Format;
@@ -32,7 +33,8 @@ public class DefaultConfigWriter implements ConfigWriter {
 				this.mapper,
 				new DefaultMergeDefaultsRegistry(),
 				MergeStrategyRegistry.standard(),
-				DeepDefaults.class
+				DeepDefaults.class,
+				MergeBehavior.defaults()
 		);
 	}
 
@@ -58,7 +60,7 @@ public class DefaultConfigWriter implements ConfigWriter {
 		try {
 			Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
 			ObjectNode source = mapper.valueToTree(config);
-			ObjectNode toWrite = mergeEngine.merge(source, config, (Class<T>) config.getClass(), MergeEngine.Mode.USER_MODEL);
+			ObjectNode toWrite = mergeEngine.mergeUserModel(source, config, (Class<T>) config.getClass());
 			mapper.writeValue(target.toFile(), toWrite);
 		} catch (IOException e) {
 			throw new ConfigException("Failed to save config file: " + target, e);
@@ -108,7 +110,7 @@ public class DefaultConfigWriter implements ConfigWriter {
 			}
 		}
 
-		ObjectNode merged = mergeEngine.merge(existing, config, (Class<T>) config.getClass(), MergeEngine.Mode.DEFAULT_INSTANCE);
+		ObjectNode merged = mergeEngine.mergeDefaults(existing, config, (Class<T>) config.getClass());
 		return bindNode(merged, (Class<T>) config.getClass());
 	}
 

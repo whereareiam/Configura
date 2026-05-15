@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.merge.MergeFieldResolver;
 import me.whereareiam.configura.common.merge.defaults.type.ClassProviderDefaultsResolver;
-import me.whereareiam.configura.type.PrimitiveDefaultPolicy;
 import me.whereareiam.configura.common.util.PathNavigator;
+import me.whereareiam.configura.type.PrimitiveDefaultPolicy;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -23,10 +23,10 @@ public final class MergeDefaultsResolver {
 		this.fieldResolvers = FieldDefaultsResolver.standard(defaultsRegistry);
 	}
 
-	public <T> ObjectNode resolve(T model, Class<T> type, PrimitiveDefaultPolicy policy) {
+	public <T> ObjectNode resolve(T model, Class<T> type, PrimitiveDefaultPolicy primitiveDefaultPolicy) {
 		ObjectNode node = mapper.valueToTree(model);
-		applyClassDefaults(node, type, policy);
-		applyFieldDefaults(node, type, policy);
+		applyClassDefaults(node, type, primitiveDefaultPolicy);
+		applyFieldDefaults(node, type, primitiveDefaultPolicy);
 		return node;
 	}
 
