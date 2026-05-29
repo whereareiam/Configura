@@ -62,6 +62,7 @@ public final class MapMergePlugin implements MergePlugin {
 				field,
 				context.getSourceNode(),
 				context.getDefaultNode(),
+				context.resolveModelDefaults(context.getChildType()),
 				context.getChildType(),
 				context.getStrategyClass(),
 				context.getBehavior(),

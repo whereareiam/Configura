@@ -96,7 +96,7 @@ public final class ListMergeCoordinator {
 				JsonNode merged = mergeEntryDefaults(genericDefaults, entry.getValue(), entryType, propertyBehavior, recursiveMerge);
 				if (!(merged instanceof ObjectNode))
 					throw new ConfigException("Field " + describe(property) + " requires object-like keyed list entries");
-				result.add(merged);
+				result.add(recursiveMerge.merge(null, merged, entryType, false, propertyBehavior));
 			}
 		}
 

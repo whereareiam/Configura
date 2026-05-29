@@ -6,6 +6,7 @@ import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.annotation.Merge;
 import me.whereareiam.configura.merge.annotation.MergeList;
 import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
 import me.whereareiam.configura.merge.strategy.SourceOwnsField;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.type.merge.tree.list.ListMode;
@@ -120,6 +121,24 @@ class ListMergeIntegrationTest {
 		assertEquals(2, config.providers.size());
 		assertEquals("premium", config.providers.get(0).id);
 		assertEquals("credential", config.providers.get(1).id);
+	}
+
+	@Test
+	@DisplayName("Seeded keyed entries are materialized through object merge")
+	void seededKeyedEntriesAreMaterializedThroughObjectMerge(@TempDir Path tempDir) {
+		Path file = tempDir.resolve("providers.yml");
+
+		DeclaredProviderListConfig config = yaml(DeclaredProviderListDefaults.class).update(file, DeclaredProviderListConfig.class);
+
+		assertEquals(2, config.providers.size());
+		DeclaredProviderEntry premium = config.providers.get(0);
+		assertEquals("premium", premium.id);
+		assertFalse(premium.enabled);
+		assertEquals(100, premium.priority);
+		assertTrue(premium.entrypoints.isEmpty());
+		assertNull(premium.session);
+		assertNull(premium.verification);
+		assertNull(premium.joinRestriction);
 	}
 
 	@Test
@@ -279,6 +298,17 @@ class ListMergeIntegrationTest {
 		public List<ProviderEntry> providers = new ArrayList<>();
 	}
 
+	public static class DeclaredProviderListConfig {
+		@Merge
+		@MergeList(
+				mode = ListMode.KEYED,
+				key = "id",
+				presence = ListPresence.SEED_DEFAULTS,
+				unknownEntries = ListUnknownEntries.ALLOW
+		)
+		public List<DeclaredProviderEntry> providers = new ArrayList<>();
+	}
+
 	public static class ProviderEntry {
 		public String id;
 		public String displayName = "";
@@ -322,6 +352,19 @@ class ListMergeIntegrationTest {
 		public boolean allowOnUntrustedIps;
 	}
 
+	public static class DeclaredProviderEntry {
+		public String id;
+		public boolean enabled;
+		public int priority;
+		public List<String> entrypoints = new ArrayList<>();
+		@Merge(DeclaredObjectDefaults.class)
+		public Session session;
+		@Merge(DeclaredObjectDefaults.class)
+		public Verification verification;
+		@Merge(DeclaredObjectDefaults.class)
+		public JoinRestriction joinRestriction;
+	}
+
 	public static class ProviderListDefaults implements MergeDefaultsProvider<ProviderListConfig> {
 		@Override
 		public ProviderListConfig supply(ProviderListConfig config) {
@@ -335,6 +378,27 @@ class ListMergeIntegrationTest {
 		public SeededProviderListConfig supply(SeededProviderListConfig config) {
 			config.providers = defaultProviders();
 			return config;
+		}
+	}
+
+	public static class DeclaredProviderListDefaults implements MergeDefaultsProvider<DeclaredProviderListConfig> {
+		@Override
+		public DeclaredProviderListConfig supply(DeclaredProviderListConfig config) {
+			config.providers = new ArrayList<>();
+			config.providers.add(declared("premium", 100));
+			config.providers.add(declared("credential", 50));
+			return config;
+		}
+
+		private DeclaredProviderEntry declared(String id, int priority) {
+			DeclaredProviderEntry entry = new DeclaredProviderEntry();
+			entry.id = id;
+			entry.enabled = false;
+			entry.priority = priority;
+			entry.session = new Session();
+			entry.verification = new Verification();
+			entry.joinRestriction = new JoinRestriction();
+			return entry;
 		}
 	}
 
@@ -357,36 +421,36 @@ class ListMergeIntegrationTest {
 	public static class DuplicateProviderListDefaults implements MergeDefaultsProvider<ProviderListConfig> {
 		@Override
 		public ProviderListConfig supply(ProviderListConfig config) {
-			config.providers = List.of(provider("premium", true, 100), provider("premium", true, 90));
+			config.providers = List.of(provider("premium", 100), provider("premium", 90));
 			return config;
 		}
 	}
 
 	private static List<ProviderEntry> defaultProviders() {
-		ProviderEntry premium = provider("premium", true, 100);
+		ProviderEntry premium = provider("premium", 100);
 		premium.verification.enabled = true;
-		premium.verification.methods = List.of(method("totp", true, 100));
+		premium.verification.methods = List.of(method());
 
-		ProviderEntry credential = provider("credential", true, 50);
+		ProviderEntry credential = provider("credential", 50);
 		credential.verification.enabled = true;
-		credential.verification.methods = List.of(method("totp", true, 100));
+		credential.verification.methods = List.of(method());
 
 		return List.of(premium, credential);
 	}
 
-	private static ProviderEntry provider(String id, boolean enabled, int priority) {
+	private static ProviderEntry provider(String id, int priority) {
 		ProviderEntry entry = new ProviderEntry();
 		entry.id = id;
-		entry.enabled = enabled;
+		entry.enabled = true;
 		entry.priority = priority;
 		return entry;
 	}
 
-	private static MethodEntry method(String id, boolean enabled, int priority) {
+	private static MethodEntry method() {
 		MethodEntry entry = new MethodEntry();
-		entry.id = id;
-		entry.enabled = enabled;
-		entry.priority = priority;
+		entry.id = "totp";
+		entry.enabled = true;
+		entry.priority = 100;
 		return entry;
 	}
 }

@@ -104,7 +104,8 @@ public final class MergeCoordinator {
 							mergeObject(childSource, childDefaults, childOwnerType, childDeclaredOnly, childBehaviorOverride, operation),
 					type -> defaultsResolver.resolveInternal(type, operation.defaultsPolicy())
 			));
-			result.set(key, merged);
+
+            result.set(key, merged);
 		}
 
 		return result;

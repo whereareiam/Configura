@@ -5,7 +5,9 @@ import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.exception.ConfigException;
+import me.whereareiam.configura.merge.annotation.Merge;
 import me.whereareiam.configura.merge.annotation.MergeMap;
+import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.type.merge.tree.map.MapPresence;
@@ -149,6 +151,44 @@ public class MergeDefaultsIntegrationTest {
 		public RuntimePolicy policy;
 	}
 
+	public static class ScenarioPolicy {
+		public String mode;
+	}
+
+	public static class ScenarioSettings {
+		public boolean enabled;
+		public int timeout;
+		@Merge(DeclaredObjectDefaults.class)
+		public ScenarioPolicy policy;
+	}
+
+	public static class ScenarioSettingsProvider implements MergeDefaultsProvider<ScenarioConfig> {
+		@Override
+		public ScenarioConfig supply(ScenarioConfig config) {
+			config.scenarios = new LinkedHashMap<>();
+			config.scenarios.put("authentication", authentication());
+			return config;
+		}
+
+		private ScenarioSettings authentication() {
+			ScenarioSettings settings = new ScenarioSettings();
+			settings.enabled = true;
+			settings.timeout = 30;
+			settings.policy = new ScenarioPolicy();
+			settings.policy.mode = "strict";
+			return settings;
+		}
+	}
+
+	@Defaults(provider = @Defaults.Provider(ScenarioSettingsProvider.class))
+	public static class ScenarioConfig {
+		@MergeMap(
+				presence = MapPresence.SEED_DEFAULTS,
+				unknownEntries = MapUnknownEntries.ALLOW
+		)
+		public Map<String, ScenarioSettings> scenarios;
+	}
+
 	@Test
 	void classLevelDefaultsAppliesDefaults(@TempDir Path tempDir) {
 		ServerConfigProvider.wasCalled = false;
@@ -249,6 +289,24 @@ public class MergeDefaultsIntegrationTest {
 		assertNotNull(loaded.policy);
 		assertEquals(Duration.ofMinutes(5), loaded.policy.ttl);
 		assertNull(loaded.policy.callback);
+	}
+
+	@Test
+	void seededMapEntriesAreMaterializedThroughObjectMerge(@TempDir Path tempDir) {
+		Path configFile = tempDir.resolve("scenarios.yml");
+
+		ScenarioConfig loaded = Config.builder()
+				.format(Format.YAML)
+				.build()
+				.update(configFile, ScenarioConfig.class);
+
+		assertNotNull(loaded.scenarios);
+		assertTrue(loaded.scenarios.containsKey("authentication"));
+		ScenarioSettings authentication = loaded.scenarios.get("authentication");
+		assertNotNull(authentication);
+		assertTrue(authentication.enabled);
+		assertEquals(30, authentication.timeout);
+		assertNull(authentication.policy);
 	}
 
 	public static class NestedConfigProvider implements MergeDefaultsProvider<ConfigWithNested> {
