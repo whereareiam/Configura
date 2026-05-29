@@ -294,7 +294,7 @@ public class MergeDefaultsIntegrationTest {
 	@Test
 	void providerDefaultsPopulateMissingFieldOnSave(@TempDir Path dir) {
 		Path file = dir.resolve("provider.yml");
-		Config.defaults().save(file, new ProviderConfig());
+		Config.configured().save(file, new ProviderConfig());
 
 		ProviderConfig config = new DefaultConfigReader().read(file, ProviderConfig.class);
 
@@ -305,7 +305,7 @@ public class MergeDefaultsIntegrationTest {
 	@Test
 	void inlineDefaultsFillMissingValuesOnSave(@TempDir Path dir) {
 		Path file = dir.resolve("save.yml");
-		Config.defaults().save(file, new SaveConfig());
+		Config.configured().save(file, new SaveConfig());
 
 		SaveConfig config = new DefaultConfigReader().read(file, SaveConfig.class);
 

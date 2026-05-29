@@ -162,32 +162,32 @@ class ConfigTest {
 
 	@Test
 	void configureReplacesDefaultHelper() {
-		Configura original = Config.defaults();
+		Configura original = Config.configured();
 		try {
 			Config.configure(builder -> builder.format(Format.JSON));
 
-			assertEquals(".yml", Config.defaults().extension());
+			assertEquals(".yml", Config.configured().extension());
 			assertEquals(".json", Config.json().extension());
 		} finally {
-			Config.setDefaults(original);
+			Config.setConfigured(original);
 		}
 	}
 
 	@Test
 	void builtInstancesStayIndependentFromLaterDefaultChanges() {
-		Configura original = Config.defaults();
+		Configura original = Config.configured();
 		try {
 			Configura built = Config.builder().format(Format.YAML).build();
 
 			Config.configure(builder -> builder.format(Format.JSON));
 
 			assertEquals(".yml", built.extension());
-			assertEquals(".yml", Config.defaults().extension());
+			assertEquals(".yml", Config.configured().extension());
 			SampleConfig sample = new SampleConfig();
 			sample.value = "sample";
 			assertTrue(new String(Config.writeBytes(sample)).trim().startsWith("{"));
 		} finally {
-			Config.setDefaults(original);
+			Config.setConfigured(original);
 		}
 	}
 }

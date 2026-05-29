@@ -54,9 +54,9 @@ class TreeDefaultsIntegrationTest {
 		initial.service = null;
 		initial.database = null;
 
-		Config.defaults().save(file, initial);
+		Config.configured().save(file, initial);
 
-		AppConfig afterFirstLoad = Config.defaults().read(file, AppConfig.class);
+		AppConfig afterFirstLoad = Config.configured().read(file, AppConfig.class);
 		assertNotNull(afterFirstLoad.service);
 		assertEquals("svc", afterFirstLoad.service.name);
 		assertNotNull(afterFirstLoad.service.retry);
@@ -70,17 +70,17 @@ class TreeDefaultsIntegrationTest {
 		afterFirstLoad.database.url = "jdbc:postgresql://db/prod";
 		afterFirstLoad.service.retry.retries = 5;
 		afterFirstLoad.database.ssl = true;
-		Config.defaults().save(file, afterFirstLoad);
+		Config.configured().save(file, afterFirstLoad);
 
-		AppConfig afterSecondLoad = Config.defaults().read(file, AppConfig.class);
+		AppConfig afterSecondLoad = Config.configured().read(file, AppConfig.class);
 		assertEquals("jdbc:postgresql://db/prod", afterSecondLoad.database.url);
 		assertEquals(5, afterSecondLoad.service.retry.retries);
 		assertEquals("svc", afterSecondLoad.service.name);
 		assertEquals(10, afterSecondLoad.database.pool.size);
 		assertEquals(true, afterSecondLoad.database.ssl);
 
-		Config.defaults().save(file, afterSecondLoad);
-		AppConfig afterThirdLoad = Config.defaults().read(file, AppConfig.class);
+		Config.configured().save(file, afterSecondLoad);
+		AppConfig afterThirdLoad = Config.configured().read(file, AppConfig.class);
 		assertEquals(true, afterThirdLoad.database.ssl);
 	}
 
@@ -93,11 +93,11 @@ class TreeDefaultsIntegrationTest {
 				legacy: true
 				""");
 
-		AppConfig config = Config.defaults().read(file, AppConfig.class);
-		Config.defaults().save(file, config);
+		AppConfig config = Config.configured().read(file, AppConfig.class);
+		Config.configured().save(file, config);
 
 		String persisted = Files.readString(file);
-		assertEquals("kept", Config.defaults().read(file, AppConfig.class).service.name);
+		assertEquals("kept", Config.configured().read(file, AppConfig.class).service.name);
 		assertFalse(persisted.contains("legacy:"));
 	}
 }

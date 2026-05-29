@@ -43,14 +43,14 @@ public final class Config {
 		return new Builder();
 	}
 
-	public static Configura defaults() {
+	public static Configura configured() {
 		return bootstrapConfig;
 	}
 
-	public static void setDefaults(Configura config) {
-		Configura defaults = Objects.requireNonNull(config, "config");
-		bootstrapConfig = defaults;
-		configuredConfig = defaults;
+	public static void setConfigured(Configura config) {
+		Configura configured = Objects.requireNonNull(config, "config");
+		bootstrapConfig = configured;
+		configuredConfig = configured;
 	}
 
 	public static void configure(Consumer<Builder> customizer) {
