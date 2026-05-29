@@ -1,16 +1,13 @@
 package me.whereareiam.configura.common.reader;
 
-import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.type.Format;
-import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class DefaultConfigReaderIntegrationTest {
 	static class AppConfig {
@@ -20,22 +17,19 @@ class DefaultConfigReaderIntegrationTest {
 
 	@Test
 	void readsYamlAndJsonFiles(@TempDir Path dir) {
-		AppConfig cfg = new AppConfig();
-		cfg.name = "svc";
-		cfg.port = 8080;
-
 		Path yaml = dir.resolve("app.yml");
 		Path json = dir.resolve("app.json");
+		try {
+			Files.writeString(yaml, "name: svc\nport: 8080\n");
+			Files.writeString(json, "{\n  \"name\": \"svc\",\n  \"port\": 8080\n}\n");
+		} catch (Exception e) {
+			throw new AssertionError(e);
+		}
 
-		ConfigWriter yamlWriter = new DefaultConfigWriter().withFormat(Format.YAML);
-		ConfigWriter jsonWriter = new DefaultConfigWriter().withFormat(Format.JSON);
-		yamlWriter.encode(yaml, cfg);
-		jsonWriter.encode(json, cfg);
-
-		DefaultConfigReader yamlReader = (DefaultConfigReader) new DefaultConfigReader().withFormat(Format.YAML);
-		DefaultConfigReader jsonReader = (DefaultConfigReader) new DefaultConfigReader().withFormat(Format.JSON);
-		AppConfig yamlConfig = yamlReader.load(yaml, AppConfig.class);
-		AppConfig jsonConfig = jsonReader.load(json, AppConfig.class);
+		DefaultConfigReader yamlReader = new DefaultConfigReader(Format.YAML);
+		DefaultConfigReader jsonReader = new DefaultConfigReader(Format.JSON);
+		AppConfig yamlConfig = yamlReader.read(yaml, AppConfig.class);
+		AppConfig jsonConfig = jsonReader.read(json, AppConfig.class);
 
 		assertEquals("svc", yamlConfig.name);
 		assertEquals(8080, yamlConfig.port);
@@ -47,7 +41,7 @@ class DefaultConfigReaderIntegrationTest {
 	void readsEmptyByteArrayAsDefaultInstance() {
 		DefaultConfigReader reader = new DefaultConfigReader();
 
-		AppConfig restored = reader.load(new byte[0], AppConfig.class);
+		AppConfig restored = reader.read(new byte[0], AppConfig.class);
 
 		assertNotNull(restored);
 		assertNull(restored.name);

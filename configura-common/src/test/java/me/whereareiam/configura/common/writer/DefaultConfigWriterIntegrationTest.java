@@ -9,10 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class DefaultConfigWriterIntegrationTest {
 	static class AppConfig {
@@ -39,15 +36,15 @@ class DefaultConfigWriterIntegrationTest {
 		Path yaml = dir.resolve("app.yml");
 		Path json = dir.resolve("app.json");
 
-		DefaultConfigWriter yamlWriter = (DefaultConfigWriter) new DefaultConfigWriter().withFormat(Format.YAML);
-		DefaultConfigWriter jsonWriter = (DefaultConfigWriter) new DefaultConfigWriter().withFormat(Format.JSON);
-		yamlWriter.encode(yaml, cfg);
-		jsonWriter.encode(json, cfg);
+		DefaultConfigWriter yamlWriter = new DefaultConfigWriter(Format.YAML);
+		DefaultConfigWriter jsonWriter = new DefaultConfigWriter(Format.JSON);
+		yamlWriter.write(yaml, cfg);
+		jsonWriter.write(json, cfg);
 
-		DefaultConfigReader yamlReader = (DefaultConfigReader) new DefaultConfigReader().withFormat(Format.YAML);
-		DefaultConfigReader jsonReader = (DefaultConfigReader) new DefaultConfigReader().withFormat(Format.JSON);
-		assertEquals(8080, yamlReader.load(yaml, AppConfig.class).port);
-		assertEquals(8080, jsonReader.load(json, AppConfig.class).port);
+		DefaultConfigReader yamlReader = new DefaultConfigReader(Format.YAML);
+		DefaultConfigReader jsonReader = new DefaultConfigReader(Format.JSON);
+		assertEquals(8080, yamlReader.read(yaml, AppConfig.class).port);
+		assertEquals(8080, jsonReader.read(json, AppConfig.class).port);
 	}
 
 	@Test
@@ -59,10 +56,10 @@ class DefaultConfigWriterIntegrationTest {
 		Path yaml = dir.resolve("app.yml");
 		Path json = dir.resolve("app.json");
 
-		DefaultConfigWriter yamlWriter = (DefaultConfigWriter) new DefaultConfigWriter().withFormat(Format.YAML);
-		DefaultConfigWriter jsonWriter = (DefaultConfigWriter) new DefaultConfigWriter().withFormat(Format.JSON);
-		yamlWriter.encode(yaml, cfg);
-		jsonWriter.encode(json, cfg);
+		DefaultConfigWriter yamlWriter = new DefaultConfigWriter(Format.YAML);
+		DefaultConfigWriter jsonWriter = new DefaultConfigWriter(Format.JSON);
+		yamlWriter.write(yaml, cfg);
+		jsonWriter.write(json, cfg);
 
 		assertTrue(Files.exists(yaml));
 		assertTrue(Files.exists(json));
@@ -75,23 +72,23 @@ class DefaultConfigWriterIntegrationTest {
 		cfg.port = 8080;
 
 		DefaultConfigWriter writer = new DefaultConfigWriter();
-		byte[] bytes = writer.encode(cfg);
+		byte[] bytes = writer.writeBytes(cfg);
 
 		assertNotNull(bytes);
 		assertTrue(bytes.length > 0);
-		assertEquals("service", new DefaultConfigReader().load(bytes, AppConfig.class).name);
+		assertEquals("service", new DefaultConfigReader().read(bytes, AppConfig.class).name);
 	}
 
 	@Test
-	void encodePrunesUnknownPropertiesDuringRewrite(@TempDir Path dir) throws Exception {
+	void writePrunesUnknownPropertiesDuringRewrite(@TempDir Path dir) throws Exception {
 		String base = dir.resolve("app").toString();
 
 		OldConfig oldConfig = new OldConfig();
 		oldConfig.host = "0.0.0.0";
 		oldConfig.port = 9000;
 
-		DefaultConfigWriter writer = (DefaultConfigWriter) new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.encode(base + ".yml", oldConfig);
+		DefaultConfigWriter writer = new DefaultConfigWriter(Format.YAML);
+		writer.write(Path.of(base + ".yml"), oldConfig);
 
 		Path yaml = Path.of(base + ".yml");
 		Files.writeString(yaml, Files.readString(yaml) + "\nunknown: 1\n", StandardCharsets.UTF_8);
@@ -100,8 +97,8 @@ class DefaultConfigWriterIntegrationTest {
 		newConfig.host = "0.0.0.0";
 		newConfig.port = 9000;
 
-		writer.encode(base + ".yml", newConfig);
-		NewConfig after = new DefaultConfigReader().withFormat(Format.YAML).load(base + ".yml", NewConfig.class);
+		writer.write(Path.of(base + ".yml"), newConfig);
+		NewConfig after = new DefaultConfigReader(Format.YAML).read(Path.of(base + ".yml"), NewConfig.class);
 
 		assertFalse(Files.readString(yaml).contains("unknown:"));
 		assertEquals("0.0.0.0", after.host);

@@ -113,21 +113,23 @@ public class HelloConfig {
 }
 ```
 
-2) Build a configured `Config` engine and update without specifying an extension (defaults to YAML):
+2) Use the static `Config` facade directly, or build a configured `Configura` instance when you want your own reusable setup:
 
 ```java
 import me.whereareiam.configura.Config;
+import me.whereareiam.configura.Configura;
 
-Config config = Config.builder().build();
-// Writes defaults if needed and then re‑reads from disk
-HelloConfig cfg = config.update("config/hello", HelloConfig.class);
+// Uses the active configured helper
+HelloConfig cfg = Config.update("config/hello", HelloConfig.class);
 // afterLoad() has been called automatically
 
-// Use it in your code
-System.out.println("Hello, " + cfg.name + "!");
+// Or build your own configured instance
+Configura yaml = Config.builder().build();
+HelloConfig other = yaml.update("config/hello-other", HelloConfig.class);
 ```
 
-For the JVM-wide default engine, use `Config.defaults()` and `Config.reconfigureDefaults(...)`.
+`Config.configure(...)` changes the active configured helper used by static `Config.*(...)` methods.
+`Config.defaults()` returns the bootstrap default `Configura` instance.
 
 3) Want object‑like defaults? Use `@Defaults(properties=...)`:
 

@@ -1,15 +1,18 @@
 package me.whereareiam.configura;
 
-import me.whereareiam.configura.annotation.Merge;
 import me.whereareiam.configura.annotation.PostProcess;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.MergeBehavior;
+import me.whereareiam.configura.merge.annotation.Merge;
+import me.whereareiam.configura.merge.annotation.MergeMap;
 import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
-import me.whereareiam.configura.merge.strategy.type.DeclaredKeysOnlyMap;
-import me.whereareiam.configura.merge.strategy.type.StructuralObject;
+import me.whereareiam.configura.merge.strategy.DeepDefaults;
+import me.whereareiam.configura.merge.strategy.StructuralObject;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.type.UnknownFieldPolicy;
+import me.whereareiam.configura.type.merge.tree.map.MapPresence;
+import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -26,7 +29,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Update applies defaults and runs post-process hooks")
 	void updateAppliesDefaultsAndRunsPostProcess(@TempDir Path tempDir) {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.defaults(BasicDefaults.class)
 				.build();
@@ -40,7 +43,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Update drops fields missing from the current model")
 	void updateDropsFieldsMissingFromCurrentModel(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.build();
 
@@ -59,7 +62,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Instance behavior preserves unknown keys during update")
 	void instanceBehaviorPreservesUnknownKeysDuringUpdate(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.mergeBehavior(MergeBehavior.builder()
 						.unknownFields(UnknownFieldPolicy.PRESERVE)
@@ -81,10 +84,10 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Copied config behavior preserves unknown keys during update")
 	void copiedConfigBehaviorPreservesUnknownKeysDuringUpdate(@TempDir Path tempDir) throws Exception {
-		Config base = Config.builder()
+		Configura base = Config.builder()
 				.format(Format.YAML)
 				.build();
-		Config configura = base.withMergeBehavior(MergeBehavior.builder()
+		Configura configura = base.withMergeBehavior(MergeBehavior.builder()
 				.unknownFields(UnknownFieldPolicy.PRESERVE)
 				.build());
 
@@ -103,7 +106,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Field annotation preserves unknown keys while deep defaults still apply")
 	void fieldAnnotationPreservesUnknownKeysWhileDeepDefaultsStillApply(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.defaults(PreservedSectionDefaults.class)
 				.build();
@@ -125,7 +128,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Class annotation preserves unknown keys for the annotated subtree")
 	void classAnnotationPreservesUnknownKeysForAnnotatedSubtree(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.defaults(ClassPreservedDefaults.class)
 				.build();
@@ -148,7 +151,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Explicit null wins globally during update")
 	void explicitNullWinsGloballyDuringUpdate(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.defaults(NullDefaults.class)
 				.build();
@@ -164,7 +167,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Present keys merge only declared map entries")
 	void presentKeysMergeOnlyDeclaredMapEntries(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.defaults(RoutingDefaults.class)
 				.build();
@@ -190,55 +193,9 @@ class ConfigIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("Default merge strategy applies to unannotated fields")
-	void defaultMergeStrategyAppliesToUnannotatedFields(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
-				.format(Format.YAML)
-				.defaults(DefaultRoutingDefaults.class)
-				.defaultMergeStrategy(DeclaredKeysOnlyMap.class)
-				.build();
-
-		Path file = tempDir.resolve("routing-default.yml");
-		Files.writeString(file, """
-				scenarios:
-				  authentication:
-				    complete: ""
-				""");
-
-		DefaultRoutingConfig config = configura.update(file, DefaultRoutingConfig.class);
-		assertEquals(1, config.scenarios.size());
-		assertTrue(config.scenarios.containsKey("authentication"));
-		assertFalse(config.scenarios.containsKey("registration"));
-	}
-
-	@Test
-	@DisplayName("Named merge strategies can be registered and selected")
-	void namedMergeStrategiesCanBeRegisteredAndSelected(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
-				.format(Format.YAML)
-				.defaults(NamedRoutingDefaults.class)
-				.mergeStrategy("declaredKeysOnly", DeclaredKeysOnlyMap.class)
-				.build();
-
-		Path file = tempDir.resolve("routing-custom.yml");
-		Files.writeString(file, """
-				routing:
-				  scenarios:
-				    authentication:
-				      complete: ""
-				""");
-
-		NamedRoutingConfig config = configura.update(file, NamedRoutingConfig.class);
-		assertNotNull(config.routing);
-		assertEquals(1, config.routing.scenarios.size());
-		assertTrue(config.routing.scenarios.containsKey("authentication"));
-		assertFalse(config.routing.scenarios.containsKey("registration"));
-	}
-
-	@Test
 	@DisplayName("Structural object strategy restores the object without filling declared children")
 	void structuralObjectRestoresObjectWithoutFillingDeclaredChildren(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.defaults(ProviderDefaults.class)
 				.build();
@@ -272,7 +229,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Duplicate YAML keys fail fast during update")
 	void duplicateYamlKeysFailFastDuringUpdate(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.build();
 
@@ -292,7 +249,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Explicit false survives update defaults merge")
 	void explicitFalseSurvivesUpdateDefaultsMerge(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(me.whereareiam.configura.type.Format.YAML)
 				.defaults(BooleanDefaults.class)
 				.build();
@@ -308,7 +265,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Explicit zero survives update defaults merge")
 	void explicitZeroSurvivesUpdateDefaultsMerge(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(me.whereareiam.configura.type.Format.YAML)
 				.defaults(NumberDefaults.class)
 				.build();
@@ -324,7 +281,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Nested explicit false survives update defaults merge")
 	void nestedExplicitFalseSurvivesUpdateDefaultsMerge(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(me.whereareiam.configura.type.Format.YAML)
 				.defaults(NestedBooleanDefaults.class)
 				.build();
@@ -344,7 +301,7 @@ class ConfigIntegrationTest {
 	@Test
 	@DisplayName("Nested explicit zero survives update defaults merge")
 	void nestedExplicitZeroSurvivesUpdateDefaultsMerge(@TempDir Path tempDir) throws Exception {
-		Config configura = Config.builder()
+		Configura configura = Config.builder()
 				.format(me.whereareiam.configura.type.Format.YAML)
 				.defaults(NestedNumberDefaults.class)
 				.build();
@@ -431,7 +388,11 @@ class ConfigIntegrationTest {
 		public Routing routing;
 
 		public static class Routing {
-			@Merge(DeclaredKeysOnlyMap.class)
+			@Merge(DeepDefaults.class)
+			@MergeMap(
+					presence = MapPresence.DECLARED_ONLY,
+					unknownEntries = MapUnknownEntries.ALLOW
+			)
 			public Map<String, Scenario> scenarios = new LinkedHashMap<>();
 		}
 
@@ -456,45 +417,6 @@ class ConfigIntegrationTest {
 			registration.complete = "lobby";
 			config.routing.scenarios.put("registration", registration);
 			return config;
-		}
-	}
-
-	public static class DefaultRoutingConfig {
-		public Map<String, Scenario> scenarios = new LinkedHashMap<>();
-
-		public static class Scenario {
-			public String step;
-			public String complete;
-		}
-	}
-
-	public static class DefaultRoutingDefaults implements MergeDefaultsProvider<DefaultRoutingConfig> {
-		@Override
-		public DefaultRoutingConfig supply(DefaultRoutingConfig config) {
-			DefaultRoutingConfig.Scenario authentication = new DefaultRoutingConfig.Scenario();
-			authentication.step = "auth";
-			authentication.complete = "lobby";
-			config.scenarios.put("authentication", authentication);
-
-			DefaultRoutingConfig.Scenario registration = new DefaultRoutingConfig.Scenario();
-			registration.step = "register";
-			registration.complete = "lobby";
-			config.scenarios.put("registration", registration);
-			return config;
-		}
-	}
-
-	public static class NamedRoutingConfig {
-		public NamedRouting routing;
-
-		public static class NamedRouting {
-				@Merge(named = "declaredKeysOnly")
-				public Map<String, Scenario> scenarios = new LinkedHashMap<>();
-		}
-
-		public static class Scenario {
-			public String step;
-			public String complete;
 		}
 	}
 
@@ -564,24 +486,6 @@ class ConfigIntegrationTest {
 		public NestedNumberConfig supply(NestedNumberConfig config) {
 			config.limits = new NestedNumberConfig.Limits();
 			config.limits.retries = 3;
-			return config;
-		}
-	}
-
-	public static class NamedRoutingDefaults implements MergeDefaultsProvider<NamedRoutingConfig> {
-		@Override
-		public NamedRoutingConfig supply(NamedRoutingConfig config) {
-			config.routing = new NamedRoutingConfig.NamedRouting();
-
-			NamedRoutingConfig.Scenario authentication = new NamedRoutingConfig.Scenario();
-			authentication.step = "auth";
-			authentication.complete = "lobby";
-			config.routing.scenarios.put("authentication", authentication);
-
-			NamedRoutingConfig.Scenario registration = new NamedRoutingConfig.Scenario();
-			registration.step = "register";
-			registration.complete = "lobby";
-			config.routing.scenarios.put("registration", registration);
 			return config;
 		}
 	}

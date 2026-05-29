@@ -2,14 +2,12 @@ package me.whereareiam.configura.common.processor;
 
 import me.whereareiam.configura.annotation.PostProcess;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
-import me.whereareiam.configura.common.writer.DefaultConfigWriter;
 import me.whereareiam.configura.reader.ConfigReader;
-import me.whereareiam.configura.type.Format;
-import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -79,8 +77,8 @@ public class PostProcessIntegrationTest {
 				enabled: true
 				""";
 
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
-		Settings settings = reader.load(yaml.getBytes(), Settings.class);
+		ConfigReader reader = new DefaultConfigReader();
+		Settings settings = reader.read(yaml.getBytes(), Settings.class);
 
 		assertTrue(settings.wasProcessed);
 		assertEquals(5, settings.level);
@@ -89,16 +87,15 @@ public class PostProcessIntegrationTest {
 
 	@Test
 	void postProcessIsCalledAfterLoadingFromFile() {
-		Settings toWrite = new Settings();
-		toWrite.level = 3;
-		toWrite.enabled = false;
-
 		Path configFile = tempDir.resolve("settings.yml");
-		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.encode(configFile, toWrite);
+		try {
+			Files.writeString(configFile, "level: 3\nenabled: false\n");
+		} catch (Exception e) {
+			throw new AssertionError(e);
+		}
 
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
-		Settings settings = reader.load(configFile, Settings.class);
+		ConfigReader reader = new DefaultConfigReader();
+		Settings settings = reader.read(configFile, Settings.class);
 
 		assertTrue(settings.wasProcessed);
 		assertEquals(3, settings.level);
@@ -107,8 +104,8 @@ public class PostProcessIntegrationTest {
 
 	@Test
 	void postProcessIsCalledOnEmptyConfig() {
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
-		Settings settings = reader.load(new byte[0], Settings.class);
+		ConfigReader reader = new DefaultConfigReader();
+		Settings settings = reader.read(new byte[0], Settings.class);
 
 		assertTrue(settings.wasProcessed);
 		assertEquals(0, settings.level);
@@ -122,8 +119,8 @@ public class PostProcessIntegrationTest {
 				host: localhost
 				""";
 
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
-		ValidationConfig config = reader.load(validYaml.getBytes(), ValidationConfig.class);
+		ConfigReader reader = new DefaultConfigReader();
+		ValidationConfig config = reader.read(validYaml.getBytes(), ValidationConfig.class);
 
 		assertTrue(config.validated);
 		assertEquals(8080, config.port);
@@ -137,10 +134,10 @@ public class PostProcessIntegrationTest {
 				host: localhost
 				""";
 
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
+		ConfigReader reader = new DefaultConfigReader();
 
 		Exception exception = assertThrows(Exception.class, () -> {
-			reader.load(invalidYaml.getBytes(), ValidationConfig.class);
+			reader.read(invalidYaml.getBytes(), ValidationConfig.class);
 		});
 
 		// The validation exception gets wrapped in ConfigException
@@ -159,12 +156,12 @@ public class PostProcessIntegrationTest {
 		String yaml1 = "size: 100";
 		String yaml2 = "size: 200";
 
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
+		ConfigReader reader = new DefaultConfigReader();
 
-		CacheConfig config1 = reader.load(yaml1.getBytes(), CacheConfig.class);
+		CacheConfig config1 = reader.read(yaml1.getBytes(), CacheConfig.class);
 		assertEquals(1, CacheConfig.instanceCount);
 
-		CacheConfig config2 = reader.load(yaml2.getBytes(), CacheConfig.class);
+		CacheConfig config2 = reader.read(yaml2.getBytes(), CacheConfig.class);
 		// Still 1 because once = true
 		assertEquals(1, CacheConfig.instanceCount);
 
@@ -175,18 +172,15 @@ public class PostProcessIntegrationTest {
 	@Test
 	void postProcessIsCalledAfterReadingMergedConfig() {
 		Path configFile = tempDir.resolve("settings.yml");
-
-		// Create initial config file
-		Settings toWrite = new Settings();
-		toWrite.level = 7;
-		toWrite.enabled = true;
-		
-		ConfigWriter writer = new DefaultConfigWriter().withFormat(Format.YAML);
-		writer.encode(configFile, toWrite);
+		try {
+			Files.writeString(configFile, "level: 7\nenabled: true\n");
+		} catch (Exception e) {
+			throw new AssertionError(e);
+		}
 
 		// Read the config - PostProcess should be called
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
-		Settings loaded = reader.load(configFile, Settings.class);
+		ConfigReader reader = new DefaultConfigReader();
+		Settings loaded = reader.read(configFile, Settings.class);
 
 		assertTrue(loaded.wasProcessed);
 		assertEquals(7, loaded.level);
@@ -215,8 +209,8 @@ public class PostProcessIntegrationTest {
 				lastName: Doe
 				""";
 
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
-		DerivedStateConfig config = reader.load(yaml.getBytes(), DerivedStateConfig.class);
+		ConfigReader reader = new DefaultConfigReader();
+		DerivedStateConfig config = reader.read(yaml.getBytes(), DerivedStateConfig.class);
 
 		assertEquals("John", config.firstName);
 		assertEquals("Doe", config.lastName);
@@ -244,8 +238,8 @@ public class PostProcessIntegrationTest {
 	void multiplePostProcessMethodsAreAllExecuted() {
 		String yaml = "value: 42";
 
-		ConfigReader reader = new DefaultConfigReader().withFormat(Format.YAML);
-		MultiStageConfig config = reader.load(yaml.getBytes(), MultiStageConfig.class);
+		ConfigReader reader = new DefaultConfigReader();
+		MultiStageConfig config = reader.read(yaml.getBytes(), MultiStageConfig.class);
 
 		assertEquals("Stage1:42", config.stage1Result);
 		assertEquals("Stage2:42", config.stage2Result);

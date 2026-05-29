@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.annotation.SchemaVersion;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.migration.ConfigMigrationStep;
 import me.whereareiam.configura.migration.ConfigMigrationContext;
+import me.whereareiam.configura.migration.ConfigMigrationStep;
 import me.whereareiam.configura.type.Format;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,11 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Config Migration Integration")
 class ConfigMigrationIntegrationTest {
@@ -33,7 +29,7 @@ class ConfigMigrationIntegrationTest {
 				    defaultProxy: proxy-auth
 				""");
 
-		Config config = versionedSettingsConfig();
+		Configura config = versionedSettingsConfig();
 		SettingsConfig settings = config.read(file, SettingsConfig.class);
 
 		assertEquals(1, settings.getVersion());
@@ -46,10 +42,10 @@ class ConfigMigrationIntegrationTest {
 		JsonNode rawTree = config.readNode(file);
 		assertTrue(rawTree.path("_version").isMissingNode());
 
-		JsonNode migratedTree = config.readMigratedNode(file, SettingsConfig.class);
-		assertEquals(1, migratedTree.path("_version").asInt());
-		assertEquals("proxy-auth", migratedTree.path("connection").path("routing").path("defaults").path("step").path("target").asText());
-		assertTrue(migratedTree.path("connection").path("routing").path("defaultProxy").isMissingNode());
+		JsonNode resolvedTree = config.readResolvedNode(file, SettingsConfig.class);
+		assertEquals(1, resolvedTree.path("_version").asInt());
+		assertEquals("proxy-auth", resolvedTree.path("connection").path("routing").path("defaults").path("step").path("target").asText());
+		assertTrue(resolvedTree.path("connection").path("routing").path("defaultProxy").isMissingNode());
 	}
 
 	@Test
@@ -62,7 +58,7 @@ class ConfigMigrationIntegrationTest {
 				    defaultProxy: proxy-auth
 				""");
 
-		Config config = versionedSettingsConfig();
+		Configura config = versionedSettingsConfig();
 		SettingsConfig settings = config.update(file, SettingsConfig.class);
 
 		assertEquals(1, settings.getVersion());
@@ -85,7 +81,7 @@ class ConfigMigrationIntegrationTest {
 				    defaultProxy: proxy-auth
 				""");
 
-		Config config = versionedSettingsConfig();
+		Configura config = versionedSettingsConfig();
 		config.update(file, SettingsConfig.class);
 
 		Path backup = file.resolveSibling("settings.yml.bak");
@@ -106,7 +102,7 @@ class ConfigMigrationIntegrationTest {
 				    defaultProxy: proxy-auth
 				""");
 
-		Config config = Config.builder()
+		Configura config = Config.builder()
 				.format(Format.YAML)
 				.backupOnMigration(false)
 				.versioned(SettingsConfig.class, spec -> spec
@@ -122,7 +118,7 @@ class ConfigMigrationIntegrationTest {
 	@Test
 	@DisplayName("Custom @SchemaVersion field is picked up automatically")
 	void customConfigVersionFieldIsPickedUpAutomatically(@TempDir Path tempDir) {
-		Config config = versionedCustomVersionConfig();
+		Configura config = versionedCustomVersionConfig();
 		Path file = tempDir.resolve("custom-settings");
 
 		CustomVersionConfig settings = new CustomVersionConfig();
@@ -147,7 +143,7 @@ class ConfigMigrationIntegrationTest {
 				    defaultProxy: proxy-auth
 				""");
 
-		Config config = versionedPlainSettingsConfig();
+		Configura config = versionedPlainSettingsConfig();
 		PlainSettingsConfig settings = config.update(file, PlainSettingsConfig.class);
 
 		assertEquals("proxy-auth", settings.connection.routing.defaults.step.target);
@@ -166,7 +162,7 @@ class ConfigMigrationIntegrationTest {
 				label: legacy-user
 				""");
 
-		Config config = versionedFallbackConfig();
+		Configura config = versionedFallbackConfig();
 		FallbackProfileConfig profile = config.update(file, FallbackProfileConfig.class);
 
 		assertEquals("legacy-user", profile.profile.displayName);
@@ -185,7 +181,7 @@ class ConfigMigrationIntegrationTest {
 				name: legacy-user
 				""");
 
-		Config config = Config.builder()
+		Configura config = Config.builder()
 				.format(Format.YAML)
 				.versioned(ProfileConfig.class, spec -> spec
 						.currentVersion(2)
@@ -208,7 +204,7 @@ class ConfigMigrationIntegrationTest {
 	@Test
 	@DisplayName("Exact writes stamp the current version for ConfigDocument types")
 	void exactWritesStampCurrentVersion(@TempDir Path tempDir) {
-		Config config = versionedSettingsConfig();
+		Configura config = versionedSettingsConfig();
 		Path file = tempDir.resolve("written-settings");
 
 		SettingsConfig settings = new SettingsConfig();
@@ -232,7 +228,7 @@ class ConfigMigrationIntegrationTest {
 				    defaultProxy: proxy-auth
 				""");
 
-		Config config = versionedSettingsConfig();
+		Configura config = versionedSettingsConfig();
 		SettingsConfig merged = config.merge(file, new SettingsConfig());
 
 		assertEquals(1, merged.getVersion());
@@ -253,7 +249,7 @@ class ConfigMigrationIntegrationTest {
 				    defaultProxy: proxy-auth
 				""");
 
-		Config config = versionedSettingsConfig();
+		Configura config = versionedSettingsConfig();
 		SettingsConfig settings = new SettingsConfig();
 		settings.connection.routing.defaults.step.target = "proxy-auth";
 
@@ -300,7 +296,7 @@ class ConfigMigrationIntegrationTest {
 				  routing: {}
 				""");
 
-		Config config = versionedSettingsConfig();
+		Configura config = versionedSettingsConfig();
 
 		assertThrows(ConfigException.class, () -> config.read(file, SettingsConfig.class));
 	}
@@ -315,7 +311,7 @@ class ConfigMigrationIntegrationTest {
 				  routing: {}
 				""");
 
-		Config config = versionedSettingsConfig();
+		Configura config = versionedSettingsConfig();
 
 		assertThrows(ConfigException.class, () -> config.read(file, SettingsConfig.class));
 	}
@@ -330,14 +326,14 @@ class ConfigMigrationIntegrationTest {
 				    defaultProxy: proxy-auth
 				""");
 
-		Config config = versionedPlainSettingsConfig();
+		Configura config = versionedPlainSettingsConfig();
 		PlainSettingsConfig settings = config.read(file, PlainSettingsConfig.class);
 
 		assertEquals("proxy-auth", settings.connection.routing.defaults.step.target);
-		assertNull(config.readMigratedNode(file, PlainSettingsConfig.class).get("_version"));
+		assertNull(config.readResolvedNode(file, PlainSettingsConfig.class).get("_version"));
 	}
 
-	private Config versionedSettingsConfig() {
+	private Configura versionedSettingsConfig() {
 		return Config.builder()
 				.format(Format.YAML)
 				.versioned(SettingsConfig.class, spec -> spec
@@ -346,7 +342,7 @@ class ConfigMigrationIntegrationTest {
 				.build();
 	}
 
-	private Config versionedCustomVersionConfig() {
+	private Configura versionedCustomVersionConfig() {
 		return Config.builder()
 				.format(Format.YAML)
 				.versioned(CustomVersionConfig.class, spec -> spec
@@ -355,7 +351,7 @@ class ConfigMigrationIntegrationTest {
 				.build();
 	}
 
-	private Config versionedPlainSettingsConfig() {
+	private Configura versionedPlainSettingsConfig() {
 		return Config.builder()
 				.format(Format.YAML)
 				.versioned(PlainSettingsConfig.class, spec -> spec
@@ -364,7 +360,7 @@ class ConfigMigrationIntegrationTest {
 				.build();
 	}
 
-	private Config versionedFallbackConfig() {
+	private Configura versionedFallbackConfig() {
 		return Config.builder()
 				.format(Format.YAML)
 				.versioned(FallbackProfileConfig.class, spec -> spec
@@ -638,7 +634,7 @@ class ConfigMigrationIntegrationTest {
 		}
 	}
 
-	private static String readWritten(Config config, Path file) {
+	private static String readWritten(Configura config, Path file) {
 		try {
 			return Files.readString(file.resolveSibling(file.getFileName() + config.extension()));
 		} catch (Exception e) {

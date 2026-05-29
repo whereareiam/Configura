@@ -1,23 +1,17 @@
 package me.whereareiam.configura.common.writer;
 
-import me.whereareiam.configura.type.Format;
-import me.whereareiam.configura.writer.ConfigWriter;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DefaultConfigWriterTest {
 	@Test
-	void withFormatReturnsNewWriter() {
-		ConfigWriter writer = new DefaultConfigWriter();
+	void writeNodeBytesSerializesTree() {
+		DefaultConfigWriter writer = new DefaultConfigWriter();
 
-		ConfigWriter updated = writer.withFormat(Format.JSON);
+		byte[] bytes = writer.writeNodeBytes(JsonNodeFactory.instance.objectNode().put("name", "svc"));
 
-		assertNotSame(writer, updated);
-		assertEquals(Format.YAML, writer.getFormat());
-		assertEquals(Format.JSON, updated.getFormat());
-		assertTrue(updated instanceof DefaultConfigWriter);
+		assertTrue(bytes.length > 0);
 	}
 }

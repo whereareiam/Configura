@@ -5,14 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.configura.merge.strategy.MergeStrategy;
+import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
 
 /**
- * Immutable inputs passed to a {@link MergeStrategy}.
+ * Immutable inputs passed to a {@link FieldMergeStrategy}.
  */
 @Getter
 @RequiredArgsConstructor
@@ -66,7 +66,6 @@ public final class MergeContext {
 	/**
 	 * Callback used by strategies that delegate nested field merging back to the engine.
 	 */
-	@FunctionalInterface
 	public interface RecursiveMerge {
 		@NotNull JsonNode merge(
 				@Nullable JsonNode source,

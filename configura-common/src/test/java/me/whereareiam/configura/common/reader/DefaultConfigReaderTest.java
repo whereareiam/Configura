@@ -1,23 +1,29 @@
 package me.whereareiam.configura.common.reader;
 
-import me.whereareiam.configura.reader.ConfigReader;
-import me.whereareiam.configura.type.Format;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DefaultConfigReaderTest {
 	@Test
-	void withFormatReturnsNewReader() {
-		ConfigReader reader = new DefaultConfigReader();
+	void readNodeFromBytesReturnsParsedTree() {
+		DefaultConfigReader reader = new DefaultConfigReader();
 
-		ConfigReader updated = reader.withFormat(Format.JSON);
+		JsonNode node = reader.readNode("name: svc\nport: 8080\n".getBytes());
 
-		assertNotSame(reader, updated);
-		assertEquals(Format.YAML, reader.getFormat());
-		assertEquals(Format.JSON, updated.getFormat());
-		assertTrue(updated instanceof DefaultConfigReader);
+		assertEquals("svc", node.path("name").asText());
+		assertEquals(8080, node.path("port").asInt());
+	}
+
+	@Test
+	void readEmptyBytesReturnsEmptyObjectNode() {
+		DefaultConfigReader reader = new DefaultConfigReader();
+
+		JsonNode node = reader.readNode(new byte[0]);
+
+		assertTrue(node.isObject());
+		assertTrue(node.isEmpty());
 	}
 }

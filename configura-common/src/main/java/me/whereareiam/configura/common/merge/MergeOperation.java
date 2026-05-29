@@ -4,7 +4,7 @@ import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.type.PrimitiveDefaultPolicy;
 import org.jetbrains.annotations.NotNull;
 
-final class MergeOperation {
+public final class MergeOperation {
 	private final @NotNull PrimitiveDefaultPolicy defaultsPolicy;
 	private final boolean sourceDefaultsAsMissing;
 
@@ -13,20 +13,20 @@ final class MergeOperation {
 		this.sourceDefaultsAsMissing = sourceDefaultsAsMissing;
 	}
 
-	static @NotNull MergeOperation userModel() {
+	public static @NotNull MergeOperation userModel() {
 		return new MergeOperation(PrimitiveDefaultPolicy.PRESERVE, false);
 	}
 
-	static @NotNull MergeOperation syntheticDefaults(@NotNull MergeBehavior behavior) {
+	public static @NotNull MergeOperation syntheticDefaults(@NotNull MergeBehavior behavior) {
 		PrimitiveDefaultPolicy policy = behavior.getPrimitiveDefaultPolicy();
 		return new MergeOperation(policy, policy == PrimitiveDefaultPolicy.AS_MISSING);
 	}
 
-	@NotNull PrimitiveDefaultPolicy defaultsPolicy() {
+	public @NotNull PrimitiveDefaultPolicy defaultsPolicy() {
 		return defaultsPolicy;
 	}
 
-	boolean sourceDefaultsAsMissing() {
+	public boolean sourceDefaultsAsMissing() {
 		return sourceDefaultsAsMissing;
 	}
 }

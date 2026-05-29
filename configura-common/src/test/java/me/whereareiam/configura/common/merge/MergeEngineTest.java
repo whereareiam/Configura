@@ -3,11 +3,13 @@ package me.whereareiam.configura.common.merge;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
-import me.whereareiam.configura.common.merge.defaults.DefaultMergeDefaultsRegistry;
+import me.whereareiam.configura.common.merge.defaults.MergeDefaultsProviderRegistry;
 import me.whereareiam.configura.merge.MergeBehavior;
-import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
+import me.whereareiam.configura.merge.MergeContext;
+import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
+import me.whereareiam.configura.merge.strategy.FieldMergeStrategyRegistry;
 import me.whereareiam.configura.type.UnknownFieldPolicy;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -15,6 +17,13 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MergeEngineTest {
+	static final class TestDefaultStrategy implements FieldMergeStrategy {
+		@Override
+		public com.fasterxml.jackson.databind.JsonNode merge(@NonNull MergeContext context) {
+			return context.mergeChildren(context.getSourceNode(), context.getDefaultNode());
+		}
+	}
+
 	static class Retry {
 		public int retries;
 		public Backoff backoff;
@@ -94,7 +103,7 @@ class MergeEngineTest {
 		), SimpleHolder.class);
 
 		assertEquals("user", merged.value);
-        assertFalse(mapper.valueToTree(merged).has("legacy"));
+		assertFalse(mapper.valueToTree(merged).has("legacy"));
 	}
 
 	@Test
@@ -154,9 +163,11 @@ class MergeEngineTest {
 	private static MergeEngine engine(ObjectMapper mapper, MergeBehavior behavior) {
 		return new MergeEngine(
 				mapper,
-				new DefaultMergeDefaultsRegistry(),
-				MergeStrategyRegistry.standard(),
-				DeepDefaults.class,
+				new MergeDefaultsProviderRegistry(),
+				FieldMergeStrategyRegistry.standard(),
+				TestMergeProperties.pluginRegistry(),
+				TestMergeProperties.policyResolverRegistry(),
+				TestDefaultStrategy.class,
 				behavior
 		);
 	}

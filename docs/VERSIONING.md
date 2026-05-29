@@ -35,12 +35,12 @@ but does not persist a version field back to disk.
 - `save(...)` upgrades existing on-disk content before saving
 - by default, `update(...)` and `save(...)` back up an existing file to `your-config.ext.bak` before persisting a migrated version
 - `readNode(...)` stays raw
-- `readMigratedNode(..., Type.class)` returns the upgraded tree without writing it
+- `readResolvedNode(..., Type.class)` returns the resolved current tree without writing it
 
 If you want to skip the backup step:
 
 ```java
-Config config = Config.builder()
+Configura config = Config.builder()
 		.format(Format.YAML)
 		.backupOnMigration(false)
 		.versioned(Settings.class, spec -> spec
@@ -118,7 +118,7 @@ public final class Settings extends ConfigDocument {
 	public Connection connection = new Connection();
 }
 
-Config config = Config.builder()
+Configura config = Config.builder()
 		.format(Format.YAML)
 		.versioned(Settings.class, spec -> spec
 				.currentVersion(1)
@@ -151,7 +151,7 @@ public final class Settings {
 For long-lived configs, keep one class per historical step and register the whole chain.
 
 ```java
-Config config = Config.builder()
+Configura config = Config.builder()
 		.format(Format.YAML)
 		.versioned(Settings.class, spec -> spec
 				.currentVersion(3)

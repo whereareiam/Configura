@@ -180,43 +180,79 @@ SimpleModule module = new SimpleModule("duration-module", Version.unknownVersion
 module.addSerializer(MyType.class, new MyTypeSerializer());
 module.addDeserializer(MyType.class, new MyTypeDeserializer());
 
-Config config = Config.builder()
+Configura config = Config.builder()
 		.module(module)
 		.build();
 ```
 
-### Control merge behavior with @Merge
+### Control tree merge behavior
 
-By default, merge defaults declared with `@Defaults` use the `DeepDefaults` strategy. You can select a different strategy per field, set a global default, or register named custom strategies.
+Configura merges a serialized tree. Every property in that tree can participate in merge defaults.
+
+- `@Merge(...)` controls the default-ownership behavior of the property itself
+- `@MergeMap(...)` controls how map entries under that property are merged
+- `@MergeList(...)` controls how list items under that property are merged
+
+For ordinary object properties, `@Merge(...)` is enough:
 
 ```java
-import me.whereareiam.configura.Config;
-import me.whereareiam.configura.merge.strategy.type.DeclaredKeysOnlyMap;
-import me.whereareiam.configura.merge.strategy.type.SourceOwnsField;
-import lombok.Data;
-import me.whereareiam.configura.annotation.Merge;
+import me.whereareiam.configura.merge.annotation.Merge;
+import me.whereareiam.configura.merge.strategy.SourceOwnsField;
 
-@Data
 public class CommandsConfig {
     @Merge(SourceOwnsField.class)
-    private Map<String, CommandDefinition> commands;
+    public Map<String, CommandDefinition> commands;
 }
 ```
 
-**Built-in presets:**
-- `DeepDefaults`: Recursively fill missing values from merge defaults
-- `SourceOwnsField`: If the source provides a value, the source owns the field
-- `NeverDefaults`: Do not apply default values
-- `DefaultKeysOnlyMap`: Keep only keys declared by defaults and deep-merge those keys
-- `DeclaredKeysOnlyMap`: Only merge into map keys already declared by the source
-- `StructuralObject`: Keep an object present without deep-filling its declared children
+Built-in `@Merge(...)` strategies:
+- `DeepDefaults`: recursively fill missing values from merge defaults
+- `SourceOwnsField`: if the source provides a value, the source owns the whole property
+- `NeverDefaults`: do not apply defaults for this property
+- `StructuralObject`: keep an object present without deep-filling declared children
+
+For map and list properties, use the tree-specific annotations:
 
 ```java
-Config config = Config.builder()
-        .defaultMergeStrategy(SourceOwnsField.class)
-        .mergeStrategy("declaredKeysOnly", DeclaredKeysOnlyMap.class)
-        .build();
+import me.whereareiam.configura.merge.annotation.MergeList;
+import me.whereareiam.configura.type.merge.tree.list.ListMode;
+import me.whereareiam.configura.type.merge.tree.list.ListPresence;
+import me.whereareiam.configura.type.merge.tree.list.ListUnknownEntries;
+
+public class ProvidersConfig {
+    @MergeList(
+            mode = ListMode.KEYED,
+            key = "id",
+            presence = ListPresence.DECLARED_ONLY,
+            unknownEntries = ListUnknownEntries.ALLOW
+    )
+    public List<ProviderEntry> providers;
+}
 ```
+
+```java
+import me.whereareiam.configura.merge.annotation.MergeMap;
+import me.whereareiam.configura.type.merge.tree.map.MapPresence;
+import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
+
+public class RoutingConfig {
+    @MergeMap(
+            presence = MapPresence.DECLARED_ONLY,
+            unknownEntries = MapUnknownEntries.ALLOW
+    )
+    public Map<String, Scenario> scenarios;
+}
+```
+
+List/map tree behavior:
+- `@MergeList(mode = KEYED)`: merge list items by a stable key such as `id`
+- `@MergeList(mode = PLAIN)`: seed the list when missing, otherwise keep the declared list
+- `@MergeMap`: merge map entries by map key
+- `DECLARED_ONLY`: seed when missing and merge only declared entries
+- `SEED_DEFAULTS`: also append default-only entries after declared ones
+- `DEFAULT_DOMAIN_ONLY`: reject unknown source entries
+
+You can still combine `@Merge(...)` with `@MergeMap(...)` or `@MergeList(...)` when the property should not use the default `DeepDefaults` ownership behavior. For example, `@Merge(SourceOwnsField.class)` makes the declared map/list fully source-owned even if a tree merge annotation is present.
 
 Explicit source `null` is preserved during merge/update by default.
 
@@ -226,12 +262,13 @@ When defaults are not enough and you need to rename, move, or restructure fields
 
 ### Read or create with defaults
 
-Build a configured `Config` engine. YAML is used by default. Merge defaults are applied on save/update.
+Build a configured `Configura` instance when you want an explicit reusable setup. YAML is used by default. Merge defaults are applied on save/update.
 
 ```java
 import me.whereareiam.configura.Config;
+import me.whereareiam.configura.Configura;
 
-Config config = Config.builder().build();
+Configura config = Config.builder().build();
 AppConfig appConfig = new AppConfig();
 config.save("app-config", appConfig);
 appConfig = config.read("app-config", AppConfig.class);
@@ -241,20 +278,21 @@ System.out.println("Hello, " + appConfig.getName() + "!");
 
 ### Alternatives: explicit read/write
 
-You can also use the JVM-wide default engine via `Config.defaults()`, or use a built `Config` for an explicit format.
+You can also use the active static helper via `Config.save(...)` / `Config.read(...)`, or use a built `Configura` for an explicit format.
 Omit extensions; the configured format determines the output.
 
 ```java
 import me.whereareiam.configura.Config;
+import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.type.Format;
 
 AppConfig cfg = new AppConfig();
 cfg.setName("world");
 
-Config.defaults().save("app-config", cfg);
-AppConfig fromYaml = Config.defaults().read("app-config", AppConfig.class);
+Config.save("app-config", cfg);
+AppConfig fromYaml = Config.read("app-config", AppConfig.class);
 
-Config json = Config.builder().format(Format.JSON).build();
+Configura json = Config.builder().format(Format.JSON).build();
 json.write("app-config", cfg);
 AppConfig fromJson = json.read("app-config", AppConfig.class);
 ```

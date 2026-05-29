@@ -3,15 +3,25 @@ package me.whereareiam.configura.common.merge.defaults;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.merge.MergeEngine;
+import me.whereareiam.configura.common.merge.TestMergeProperties;
 import me.whereareiam.configura.merge.MergeBehavior;
+import me.whereareiam.configura.merge.MergeContext;
 import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
-import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.strategy.type.DeepDefaults;
+import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
+import me.whereareiam.configura.merge.strategy.FieldMergeStrategyRegistry;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class MergeDefaultsResolverTest {
+	static final class TestDefaultStrategy implements FieldMergeStrategy {
+		@Override
+		public com.fasterxml.jackson.databind.JsonNode merge(@NonNull MergeContext context) {
+			return context.mergeChildren(context.getSourceNode(), context.getDefaultNode());
+		}
+	}
+
 	public static class Foo {
 		public String value;
 	}
@@ -59,9 +69,11 @@ class MergeDefaultsResolverTest {
 		ObjectMapper mapper = new ObjectMapper();
 		MergeEngine engine = new MergeEngine(
 				mapper,
-				new DefaultMergeDefaultsRegistry(),
-				MergeStrategyRegistry.standard(),
-				DeepDefaults.class,
+				new MergeDefaultsProviderRegistry(),
+				FieldMergeStrategyRegistry.standard(),
+				TestMergeProperties.pluginRegistry(),
+				TestMergeProperties.policyResolverRegistry(),
+				TestDefaultStrategy.class,
 				MergeBehavior.defaults()
 		);
 		try {

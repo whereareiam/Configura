@@ -32,8 +32,8 @@ class CommandTrigger extends TriggerBase { public String command; }
 Read/write usage:
 
 ```java
-TriggerBase cfg = Config.defaults().read("trigger", TriggerBase.class);
-Config.defaults().save("trigger", cfg);
+TriggerBase cfg = Config.read("trigger", TriggerBase.class);
+Config.save("trigger", cfg);
 ```
 
 Example YAML:

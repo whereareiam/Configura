@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.annotation.SchemaVersion;
-import me.whereareiam.configura.common.merge.MergeFieldResolver;
+import me.whereareiam.configura.common.util.SerializedFieldResolver;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.migration.ConfigMigrationContext;
 import me.whereareiam.configura.migration.MigrationDefinition;
@@ -147,15 +147,11 @@ public final class SchemaMigrationEngine {
 
 	private ResolvedVersionField resolveVersionField(Class<?> type, String fallbackField, boolean sourceContainsFallback) {
 		Field annotated = resolveAnnotatedField(type);
-		if (annotated != null)
-			return new ResolvedVersionField(MergeFieldResolver.resolveFieldName(annotated), true);
+		if (annotated != null) return new ResolvedVersionField(SerializedFieldResolver.resolveSerializedName(annotated), true);
 
 		Field matching = resolveMatchingSerializedField(type, fallbackField);
-		if (matching != null)
-			return new ResolvedVersionField(MergeFieldResolver.resolveFieldName(matching), true);
-
-		if (sourceContainsFallback)
-			return new ResolvedVersionField(fallbackField, true);
+		if (matching != null) return new ResolvedVersionField(SerializedFieldResolver.resolveSerializedName(matching), true);
+		if (sourceContainsFallback) return new ResolvedVersionField(fallbackField, true);
 
 		return new ResolvedVersionField(fallbackField, false);
 	}
@@ -175,7 +171,7 @@ public final class SchemaMigrationEngine {
 	private Field resolveMatchingSerializedField(Class<?> type, String fallbackField) {
 		for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
 			for (Field field : current.getDeclaredFields()) {
-				if (fallbackField.equals(MergeFieldResolver.resolveFieldName(field)))
+				if (fallbackField.equals(SerializedFieldResolver.resolveSerializedName(field)))
 					return field;
 			}
 		}

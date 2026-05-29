@@ -5,8 +5,9 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import me.whereareiam.configura.annotation.Polymorphic;
+import me.whereareiam.configura.common.MapperFactory;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
-import me.whereareiam.configura.common.writer.DefaultConfigWriter;
+import me.whereareiam.configura.type.Format;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -93,7 +94,7 @@ public class PolymorphicIntegrationTest {
 				strip: true
 				radius: 10
 				""";
-		TriggerBase t = new DefaultConfigReader().load(yaml.getBytes(), TriggerBase.class);
+		TriggerBase t = new DefaultConfigReader().read(yaml.getBytes(), TriggerBase.class);
 		assertInstanceOf(SymbolTrigger.class, t);
 		assertEquals("#", ((SymbolTrigger) t).getSymbol());
 	}
@@ -107,7 +108,12 @@ public class PolymorphicIntegrationTest {
 				.radius(null)
 				.build();
 
-		byte[] out = new DefaultConfigWriter().encode(t);
+		byte[] out;
+		try {
+			out = MapperFactory.buildWriterMapper(Format.JSON).writeValueAsBytes(t);
+		} catch (Exception e) {
+			throw new AssertionError(e);
+		}
 		String text = new String(out);
 
 		assertTrue(text.contains("type"));
@@ -133,7 +139,7 @@ public class PolymorphicIntegrationTest {
 				radius: 0
 				""";
 
-		BuilderBase t = new DefaultConfigReader().load(yaml.getBytes(), BuilderBase.class);
+		BuilderBase t = new DefaultConfigReader().read(yaml.getBytes(), BuilderBase.class);
 		assertInstanceOf(BuilderCommand.class, t);
 		assertEquals("reply", ((BuilderCommand) t).command);
 	}
@@ -148,7 +154,7 @@ public class PolymorphicIntegrationTest {
 		String yaml = """
 				servers: ["s1", "s2"]
 				""";
-		InferBase v = new DefaultConfigReader().load(yaml.getBytes(), InferBase.class);
+		InferBase v = new DefaultConfigReader().read(yaml.getBytes(), InferBase.class);
 		assertInstanceOf(InferServers.class, v);
 	}
 }
