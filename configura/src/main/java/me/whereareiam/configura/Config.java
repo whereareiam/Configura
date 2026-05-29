@@ -223,6 +223,7 @@ public final class Config {
 				this.strategyRegistry = FieldMergeStrategyRegistry.standard();
 				this.strategyRegistry
 						.register("deepDefaults", DeepDefaults.class)
+						.register("declaredObjectDefaults", DeclaredObjectDefaults.class)
 						.register("sourceOwnsField", SourceOwnsField.class)
 						.register("neverDefaults", NeverDefaults.class)
 						.register("structuralObject", StructuralObject.class);

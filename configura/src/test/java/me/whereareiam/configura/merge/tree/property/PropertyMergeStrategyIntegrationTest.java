@@ -6,10 +6,7 @@ import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.merge.MergeContext;
 import me.whereareiam.configura.merge.annotation.Merge;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.NeverDefaults;
-import me.whereareiam.configura.merge.strategy.SourceOwnsField;
-import me.whereareiam.configura.merge.strategy.StructuralObject;
+import me.whereareiam.configura.merge.strategy.*;
 import me.whereareiam.configura.type.Format;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -71,6 +68,28 @@ class PropertyFieldMergeStrategyIntegrationTest {
 	}
 
 	@Test
+	void declaredObjectDefaultsKeepsMissingObjectAbsent(@TempDir Path tempDir) {
+		StrategyConfig config = yaml().update(tempDir.resolve("declared-missing.yml"), StrategyConfig.class);
+
+		assertNull(config.declared);
+	}
+
+	@Test
+	void declaredObjectDefaultsDeepFillsDeclaredObject(@TempDir Path tempDir) throws Exception {
+		Path file = tempDir.resolve("declared.yml");
+		Files.writeString(file, """
+				declared:
+				  host: example.com
+				""");
+
+		StrategyConfig config = yaml().update(file, StrategyConfig.class);
+
+		assertNotNull(config.declared);
+		assertEquals("example.com", config.declared.host);
+		assertEquals(8080, config.declared.port);
+	}
+
+	@Test
 	void namedCustomStrategyCanBeRegistered(@TempDir Path tempDir) {
 		NamedConfig config = Config.builder()
 				.format(Format.YAML)
@@ -110,6 +129,13 @@ class PropertyFieldMergeStrategyIntegrationTest {
 				@Defaults.Property(name = "port", number = "8080")
 		})
 		public Nested structural;
+
+		@Merge(DeclaredObjectDefaults.class)
+		@Defaults(properties = {
+				@Defaults.Property(name = "host", text = "localhost"),
+				@Defaults.Property(name = "port", number = "8080")
+		})
+		public Nested declared;
 	}
 
 	static class Nested {
