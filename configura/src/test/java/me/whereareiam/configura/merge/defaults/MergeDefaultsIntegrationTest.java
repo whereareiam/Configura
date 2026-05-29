@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -129,6 +130,25 @@ public class MergeDefaultsIntegrationTest {
 		public Map<String, ListenerRegistration> events;
 	}
 
+	public static class RuntimePolicy {
+		public Duration ttl;
+		public transient Runnable callback;
+	}
+
+	public static class RuntimePolicyDefaults implements MergeDefaultsProvider<RuntimeConfig> {
+		@Override
+		public RuntimeConfig supply(RuntimeConfig config) {
+			config.policy = new RuntimePolicy();
+			config.policy.ttl = Duration.ofMinutes(5);
+			return config;
+		}
+	}
+
+	@Defaults(provider = @Defaults.Provider(RuntimePolicyDefaults.class))
+	public static class RuntimeConfig {
+		public RuntimePolicy policy;
+	}
+
 	@Test
 	void classLevelDefaultsAppliesDefaults(@TempDir Path tempDir) {
 		ServerConfigProvider.wasCalled = false;
@@ -217,6 +237,18 @@ public class MergeDefaultsIntegrationTest {
 		assertEquals("localhost", loaded.host);
 		assertEquals(8080, loaded.port);
 		assertFalse(loaded.ssl);
+	}
+
+	@Test
+	void classLevelDefaultsSkipTransientFieldsAndNonInstantiableLeafTypes(@TempDir Path tempDir) {
+		Path configFile = tempDir.resolve("runtime.yml");
+
+		Configura facade = Config.builder().format(Format.YAML).build();
+		RuntimeConfig loaded = facade.update(configFile, RuntimeConfig.class);
+
+		assertNotNull(loaded.policy);
+		assertEquals(Duration.ofMinutes(5), loaded.policy.ttl);
+		assertNull(loaded.policy.callback);
 	}
 
 	public static class NestedConfigProvider implements MergeDefaultsProvider<ConfigWithNested> {

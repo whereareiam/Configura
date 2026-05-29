@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
@@ -69,13 +70,24 @@ public final class PropertyMergePlugin implements MergePlugin {
 
 	private static boolean supportsModelDefaults(Class<?> type) {
 		if (type.isPrimitive() || type.isEnum()) return false;
+		if (type.isInterface() || Modifier.isAbstract(type.getModifiers())) return false;
 		if (type == Object.class || type == String.class || type == Boolean.class || type == Character.class)
 			return false;
 
 		if (Number.class.isAssignableFrom(type)) return false;
 		if (CharSequence.class.isAssignableFrom(type)) return false;
 		if (JsonNode.class.isAssignableFrom(type)) return false;
+		if (!hasNoArgsConstructor(type)) return false;
 
 		return !List.class.isAssignableFrom(type) && !Map.class.isAssignableFrom(type);
+	}
+
+	private static boolean hasNoArgsConstructor(Class<?> type) {
+		try {
+			type.getDeclaredConstructor();
+			return true;
+		} catch (NoSuchMethodException exception) {
+			return false;
+		}
 	}
 }

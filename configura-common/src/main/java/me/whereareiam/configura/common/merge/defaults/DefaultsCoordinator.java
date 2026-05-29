@@ -13,6 +13,7 @@ import me.whereareiam.configura.merge.policy.MergePolicyResolverRegistry;
 import me.whereareiam.configura.type.PrimitiveDefaultPolicy;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 public final class DefaultsCoordinator {
 	private final ObjectMapper mapper;
@@ -32,6 +33,8 @@ public final class DefaultsCoordinator {
 
 	public void applyFieldDefaults(ObjectNode node, Class<?> type, PrimitiveDefaultPolicy policy) {
 		for (Field property : type.getDeclaredFields()) {
+			if (!isDefaultEligible(property)) continue;
+
 			String key = SerializedFieldResolver.resolveSerializedName(property);
 			MergePluginResolver.ResolvedField resolvedField = fieldPluginResolver.resolve(type, property);
 			JsonNode defaultValue = resolvedField.plugin().resolveDefaultValue(new MergePluginDefaultsContext(
@@ -64,10 +67,18 @@ public final class DefaultsCoordinator {
 
 	private boolean hasFieldDefaults(Class<?> type) {
 		for (Field property : type.getDeclaredFields()) {
+			if (!isDefaultEligible(property)) continue;
 			if (property.getAnnotation(Defaults.class) != null) return true;
 		}
 
 		return false;
+	}
+
+	private boolean isDefaultEligible(Field property) {
+		int modifiers = property.getModifiers();
+		return !property.isSynthetic()
+				&& !Modifier.isStatic(modifiers)
+				&& !Modifier.isTransient(modifiers);
 	}
 
 	private void deepFill(ObjectNode target, ObjectNode defaults, Class<?> type, PrimitiveDefaultPolicy policy) {
