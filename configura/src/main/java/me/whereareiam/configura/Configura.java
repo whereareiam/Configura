@@ -4,23 +4,29 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import me.whereareiam.configura.common.ConfiguraFeatureRegistry;
+import me.whereareiam.configura.common.document.DefaultDocumentProcessor;
 import me.whereareiam.configura.common.merge.MergeEngine;
-import me.whereareiam.configura.common.merge.defaults.MergeDefaultsProviderRegistry;
+import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
 import me.whereareiam.configura.common.migration.MigrationDefinitionRegistry;
 import me.whereareiam.configura.common.migration.SchemaMigrationEngine;
-import me.whereareiam.configura.common.processor.PostProcessor;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
+import me.whereareiam.configura.document.DocumentProcessor;
+import me.whereareiam.configura.document.DocumentTypeContext;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.MergeBehavior;
-import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
-import me.whereareiam.configura.merge.plugin.MergePlugin;
-import me.whereareiam.configura.merge.plugin.MergePluginRegistry;
+import me.whereareiam.configura.merge.defaults.DefaultsProvider;
+import me.whereareiam.configura.merge.defaults.DefaultsResolver;
+import me.whereareiam.configura.merge.defaults.DefaultsResolverRegistry;
 import me.whereareiam.configura.merge.policy.MergePolicyResolver;
 import me.whereareiam.configura.merge.policy.MergePolicyResolverRegistry;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.MergeStrategyDefinition;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.type.MergeTypeAdapter;
+import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
 import me.whereareiam.configura.migration.MigrationDefinition;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.writer.ConfigWriter;
@@ -43,18 +49,22 @@ public final class Configura {
 
 	private final Function<List<Module>, ObjectMapper> mapperFactory;
 	private final List<Module> modules;
+	private final List<ConfiguraFeature> features;
 
-	private final MergeDefaultsProviderRegistry defaultProviderRegistry;
-	private final FieldMergeStrategyRegistry strategyRegistry;
-	private final MergePluginRegistry pluginRegistry;
+	private final DefaultsProviderRegistry defaultProviderRegistry;
+	private final MergeStrategyRegistry strategyRegistry;
+	private final MergeTypeAdapterRegistry adapterRegistry;
+	private final DefaultsResolverRegistry defaultsResolverRegistry;
 	private final MergePolicyResolverRegistry policyResolverRegistry;
 	private final MigrationDefinitionRegistry versionedRegistry;
 
 	private final Class<? extends FieldMergeStrategy> defaultStrategy;
+	private final String defaultStrategyName;
 	private final MergeBehavior mergeBehavior;
 	private final boolean backupOnMigration;
 
 	private final ObjectMapper mapper;
+	private final DocumentProcessor documentRuntime;
 	private final SchemaMigrationEngine migrationRunner;
 	private final MergeEngine mergeEngine;
 	private final ConfigReader reader;
@@ -65,14 +75,17 @@ public final class Configura {
 
 			Function<List<Module>, ObjectMapper> mapperFactory,
 			List<Module> modules,
+			List<ConfiguraFeature> features,
 
-			MergeDefaultsProviderRegistry defaultProviderRegistry,
-			FieldMergeStrategyRegistry strategyRegistry,
-			MergePluginRegistry pluginRegistry,
+			DefaultsProviderRegistry defaultProviderRegistry,
+			MergeStrategyRegistry strategyRegistry,
+			MergeTypeAdapterRegistry adapterRegistry,
+			DefaultsResolverRegistry defaultsResolverRegistry,
 			MergePolicyResolverRegistry policyResolverRegistry,
 			MigrationDefinitionRegistry versionedRegistry,
 
 			Class<? extends FieldMergeStrategy> defaultStrategy,
+			String defaultStrategyName,
 			MergeBehavior mergeBehavior,
 			boolean backupOnMigration
 	) {
@@ -80,30 +93,43 @@ public final class Configura {
 
 		this.mapperFactory = mapperFactory;
 		this.modules = List.copyOf(modules);
+		this.features = List.copyOf(features);
 
 		this.defaultProviderRegistry = defaultProviderRegistry.copy();
 		this.strategyRegistry = strategyRegistry.copy();
-		this.pluginRegistry = pluginRegistry.copy();
+		this.adapterRegistry = adapterRegistry.copy();
+		this.defaultsResolverRegistry = defaultsResolverRegistry.copy();
 		this.policyResolverRegistry = policyResolverRegistry.copy();
 		this.versionedRegistry = versionedRegistry.copy();
 
 		this.defaultStrategy = defaultStrategy;
+		this.defaultStrategyName = defaultStrategyName;
 		this.mergeBehavior = mergeBehavior != null ? mergeBehavior : MergeBehavior.defaults();
 		this.backupOnMigration = backupOnMigration;
 
-		this.mapper = mapperFactory.apply(this.modules);
+		ConfiguraFeatureRegistry featureRegistry = new ConfiguraFeatureRegistry();
+		for (ConfiguraFeature feature : this.features)
+			featureRegistry.add(feature);
+		ObjectMapper plainMapper = mapperFactory.apply(this.modules);
+		List<Module> mapperModules = new ArrayList<>(this.modules);
+		mapperModules.addAll(featureRegistry.modules(plainMapper));
+		this.mapper = mapperFactory.apply(mapperModules);
+		this.documentRuntime = new DefaultDocumentProcessor(featureRegistry.typeResolvers(), featureRegistry.phases());
 		this.migrationRunner = new SchemaMigrationEngine(this.mapper, this.versionedRegistry);
 		this.mergeEngine = new MergeEngine(
 				this.mapper,
 				this.defaultProviderRegistry,
+				this.documentRuntime,
 				this.strategyRegistry,
-				this.pluginRegistry,
+				this.adapterRegistry,
+				this.defaultsResolverRegistry,
 				this.policyResolverRegistry,
 				this.defaultStrategy,
+				this.defaultStrategyName,
 				this.mergeBehavior
 		);
 
-		this.reader = new DefaultConfigReader(this.extension, this.mapper);
+		this.reader = new DefaultConfigReader(this.extension, this.mapper, this.documentRuntime);
 		this.writer = new DefaultConfigWriter(this.extension, this.mapper);
 	}
 
@@ -115,12 +141,16 @@ public final class Configura {
 		return mapperFactory;
 	}
 
-	FieldMergeStrategyRegistry strategyRegistry() {
+	MergeStrategyRegistry strategyRegistry() {
 		return strategyRegistry.copy();
 	}
 
-	MergePluginRegistry pluginRegistry() {
-		return pluginRegistry.copy();
+	MergeTypeAdapterRegistry typeAdapterRegistry() {
+		return adapterRegistry.copy();
+	}
+
+	DefaultsResolverRegistry defaultsResolverRegistry() {
+		return defaultsResolverRegistry.copy();
 	}
 
 	MergePolicyResolverRegistry policyResolverRegistry() {
@@ -284,43 +314,65 @@ public final class Configura {
 	public Configura withModule(Module module) {
 		List<Module> next = new ArrayList<>(modules);
 		if (module != null) next.add(module);
-		return new Configura(extension, mapperFactory, next, defaultProviderRegistry, strategyRegistry, pluginRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, next, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
 	}
 
-	public <T, P extends MergeDefaultsProvider<T>> Configura withDefaults(Class<P> providerClass) {
-		MergeDefaultsProviderRegistry registry = defaultProviderRegistry.copy();
+	public <T, P extends DefaultsProvider<T>> Configura withDefaults(Class<P> providerClass) {
+		DefaultsProviderRegistry registry = defaultProviderRegistry.copy();
 		registry.registerProvider(providerClass);
-		return new Configura(extension, mapperFactory, modules, registry, strategyRegistry, pluginRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, registry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+	}
+
+	public Configura withFeature(ConfiguraFeature feature) {
+		List<ConfiguraFeature> next = new ArrayList<>(features);
+		if (feature != null) next.add(feature);
+		return new Configura(extension(), mapperFactory, modules, next, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
 	}
 
 	public Configura withStrategy(String name, Class<? extends FieldMergeStrategy> strategy) {
-		FieldMergeStrategyRegistry next = strategyRegistry.copy();
-		next.register(name, strategy);
-		return new Configura(extension, mapperFactory, modules, defaultProviderRegistry, next, pluginRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, mergeBehavior, backupOnMigration);
+		MergeStrategyRegistry next = strategyRegistry.copy();
+		next.registerAlias(name, strategy);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, next, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
 	}
 
-	public Configura withPlugin(MergePlugin plugin) {
-		MergePluginRegistry next = pluginRegistry.copy();
-		next.register(plugin);
-		return new Configura(extension, mapperFactory, modules, defaultProviderRegistry, strategyRegistry, next, policyResolverRegistry, versionedRegistry, defaultStrategy, mergeBehavior, backupOnMigration);
+	public Configura withStrategy(MergeStrategyDefinition definition) {
+		MergeStrategyRegistry next = strategyRegistry.copy();
+		next.register(definition);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, next, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+	}
+
+	public Configura withTypeAdapter(MergeTypeAdapter adapter) {
+		MergeTypeAdapterRegistry next = adapterRegistry.copy();
+		next.register(adapter);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, next, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+	}
+
+	public Configura withDefaultsResolver(DefaultsResolver resolver) {
+		DefaultsResolverRegistry next = defaultsResolverRegistry.copy();
+		next.register(resolver);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, next, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
 	}
 
 	public Configura withPolicyResolver(MergePolicyResolver resolver) {
 		MergePolicyResolverRegistry next = policyResolverRegistry.copy();
 		next.register(resolver);
-		return new Configura(extension, mapperFactory, modules, defaultProviderRegistry, strategyRegistry, pluginRegistry, next, versionedRegistry, defaultStrategy, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, next, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
 	}
 
 	public Configura withDefaultStrategy(Class<? extends FieldMergeStrategy> strategy) {
-		return new Configura(extension, mapperFactory, modules, defaultProviderRegistry, strategyRegistry, pluginRegistry, policyResolverRegistry, versionedRegistry, strategy, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, strategy, null, mergeBehavior, backupOnMigration);
+	}
+
+	public Configura withDefaultStrategy(String strategyName) {
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, null, strategyName, mergeBehavior, backupOnMigration);
 	}
 
 	public Configura withMergeBehavior(MergeBehavior mergeBehavior) {
-		return new Configura(extension, mapperFactory, modules, defaultProviderRegistry, strategyRegistry, pluginRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
 	}
 
 	public Configura withBackupOnMigration(boolean backupOnMigration) {
-		return new Configura(extension, mapperFactory, modules, defaultProviderRegistry, strategyRegistry, pluginRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
 	}
 
 	public <T> Configura withVersioned(Class<T> type, Consumer<MigrationDefinition<T>> customizer) {
@@ -329,7 +381,7 @@ public final class Configura {
 			customizer.accept(definition);
 		MigrationDefinitionRegistry next = versionedRegistry.copy();
 		next.register(definition);
-		return new Configura(extension, mapperFactory, modules, defaultProviderRegistry, strategyRegistry, pluginRegistry, policyResolverRegistry, next, defaultStrategy, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, next, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
 	}
 
 	public String extension() {
@@ -340,16 +392,20 @@ public final class Configura {
 		return modules;
 	}
 
-	public MergeDefaultsProviderRegistry registeredDefaultProviders() {
+	public DefaultsProviderRegistry registeredDefaultProviders() {
 		return defaultProviderRegistry.copy();
 	}
 
-	public Map<String, Class<? extends FieldMergeStrategy>> mergeStrategies() {
-		return strategyRegistry.asMap();
+	List<ConfiguraFeature> features() {
+		return List.copyOf(features);
 	}
 
-	public List<MergePlugin> mergePlugins() {
-		return pluginRegistry.asList();
+	public Map<String, Class<? extends FieldMergeStrategy>> mergeStrategies() {
+		return strategyRegistry.aliases();
+	}
+
+	public List<MergeTypeAdapter> typeAdapters() {
+		return adapterRegistry.asList();
 	}
 
 	public List<MergePolicyResolver> policyResolvers() {
@@ -362,6 +418,10 @@ public final class Configura {
 
 	public Class<? extends FieldMergeStrategy> defaultStrategy() {
 		return defaultStrategy;
+	}
+
+	String defaultStrategyName() {
+		return defaultStrategyName;
 	}
 
 	public MergeBehavior mergeBehavior() {
@@ -445,7 +505,8 @@ public final class Configura {
 
 	private <T> T instantiate(Class<T> type) {
 		try {
-			return mapper.treeToValue(mapper.createObjectNode(), type);
+			Class<?> effectiveType = documentRuntime.resolveType(type, null);
+			return (T) mapper.treeToValue(mapper.createObjectNode(), effectiveType);
 		} catch (Exception e) {
 			throw new ConfigException("Failed to instantiate config type " + type.getName(), e);
 		}
@@ -453,8 +514,12 @@ public final class Configura {
 
 	private <T> T bind(JsonNode node, Class<T> type, String failureMessage) {
 		try {
-			T value = mapper.treeToValue(node != null ? node : mapper.createObjectNode(), type);
-			PostProcessor.process(value);
+			Class<?> effectiveType = documentRuntime.resolveType(
+					type,
+					new DocumentTypeContext(node != null ? node : mapper.createObjectNode(), null, null, null, null, null)
+			);
+			T value = (T) mapper.treeToValue(node != null ? node : mapper.createObjectNode(), effectiveType);
+			documentRuntime.afterBind(value);
 			return value;
 		} catch (Exception e) {
 			throw new ConfigException(failureMessage, e);

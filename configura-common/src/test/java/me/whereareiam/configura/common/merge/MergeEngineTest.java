@@ -3,7 +3,8 @@ package me.whereareiam.configura.common.merge;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
-import me.whereareiam.configura.common.merge.defaults.MergeDefaultsProviderRegistry;
+import me.whereareiam.configura.common.document.DefaultDocumentProcessor;
+import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
 import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.MergeContext;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
@@ -163,13 +164,23 @@ class MergeEngineTest {
 	private static MergeEngine engine(ObjectMapper mapper, MergeBehavior behavior) {
 		return new MergeEngine(
 				mapper,
-				new MergeDefaultsProviderRegistry(),
-				FieldMergeStrategyRegistry.standard(),
-				TestMergeProperties.pluginRegistry(),
+				new DefaultsProviderRegistry(),
+				new DefaultDocumentProcessor(List.of(), List.of()),
+				asDefinitions(),
+				TestMergeProperties.adapterRegistry(),
+				TestMergeProperties.defaultsResolverRegistry(),
 				TestMergeProperties.policyResolverRegistry(),
 				TestDefaultStrategy.class,
+				null,
 				behavior
 		);
+	}
+
+	private static me.whereareiam.configura.merge.strategy.MergeStrategyRegistry asDefinitions() {
+		me.whereareiam.configura.merge.strategy.MergeStrategyRegistry registry =
+				new me.whereareiam.configura.merge.strategy.MergeStrategyRegistry();
+		FieldMergeStrategyRegistry.standard().asMap().forEach(registry::registerAlias);
+		return registry;
 	}
 
 	private static <T> T bind(ObjectMapper mapper, com.fasterxml.jackson.databind.JsonNode node, Class<T> type) {

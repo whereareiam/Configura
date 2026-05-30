@@ -5,39 +5,48 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.common.merge.defaults.MergeDefaultsResolver;
 import me.whereareiam.configura.common.merge.resolver.MergeBehaviorResolver;
-import me.whereareiam.configura.common.merge.resolver.MergePluginResolver;
-import me.whereareiam.configura.common.merge.strategy.FieldMergeStrategyResolver;
+import me.whereareiam.configura.common.merge.resolver.MergeStrategyResolver;
+import me.whereareiam.configura.common.merge.resolver.MergeTypeAdapterResolver;
+import me.whereareiam.configura.common.merge.strategy.ResolvedMergeStrategy;
+import me.whereareiam.configura.document.DocumentProcessor;
+import me.whereareiam.configura.document.DocumentTypeContext;
 import me.whereareiam.configura.merge.MergeBehavior;
-import me.whereareiam.configura.merge.plugin.MergePluginRegistry;
-import me.whereareiam.configura.merge.plugin.context.MergePluginContext;
+import me.whereareiam.configura.merge.defaults.MergeModelDefaultsResolver;
 import me.whereareiam.configura.merge.policy.MergePolicyResolverRegistry;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
+import me.whereareiam.configura.merge.type.context.MergeTypeAdapterContext;
 import me.whereareiam.configura.type.UnknownFieldPolicy;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Field;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 public final class MergeCoordinator {
 	private final ObjectMapper mapper;
 	private final MergeBehaviorResolver behaviorResolver = new MergeBehaviorResolver();
-	private final FieldMergeStrategyResolver strategyResolver;
+	private final MergeStrategyResolver strategyResolver;
 	private final MergeDefaultsResolver defaultsResolver;
-	private final MergePluginResolver fieldPluginResolver;
+	private final DocumentProcessor documentRuntime;
+	private final MergeTypeAdapterResolver fieldAdapterResolver;
 
 	public MergeCoordinator(
 			ObjectMapper mapper,
-			FieldMergeStrategyRegistry strategyRegistry,
+			MergeStrategyRegistry strategyRegistry,
 			Class<? extends FieldMergeStrategy> defaultStrategy,
+			String defaultStrategyName,
 			MergeDefaultsResolver defaultsResolver,
-			MergePluginRegistry pluginRegistry,
+			DocumentProcessor documentRuntime,
+			MergeTypeAdapterRegistry adapterRegistry,
 			MergePolicyResolverRegistry policyResolverRegistry
 	) {
 		this.mapper = mapper;
-		this.strategyResolver = new FieldMergeStrategyResolver(defaultStrategy, strategyRegistry);
+		this.strategyResolver = new MergeStrategyResolver(defaultStrategy, defaultStrategyName, strategyRegistry);
 		this.defaultsResolver = defaultsResolver;
-		this.fieldPluginResolver = new MergePluginResolver(pluginRegistry, policyResolverRegistry);
+		this.documentRuntime = documentRuntime;
+		this.fieldAdapterResolver = new MergeTypeAdapterResolver(adapterRegistry, policyResolverRegistry);
 	}
 
 	public @NotNull JsonNode mergeObject(
@@ -55,6 +64,9 @@ public final class MergeCoordinator {
 		ObjectNode defaultObject = defaults != null && defaults.isObject()
 				? (ObjectNode) defaults
 				: mapper.createObjectNode();
+		JsonNode currentNode = !sourceObject.isEmpty()
+				? sourceObject
+				: defaultObject;
 
 		Set<String> keys = new LinkedHashSet<>();
 		sourceObject.fieldNames().forEachRemaining(keys::add);
@@ -69,51 +81,75 @@ public final class MergeCoordinator {
 				continue;
 			}
 
-			MergePluginResolver.ResolvedField resolvedField = fieldPluginResolver.resolve(ownerType, key);
+			MergeTypeAdapterResolver.ResolvedField resolvedField = fieldAdapterResolver.resolve(ownerType, key);
 			if (defaultValue == null) {
 				if (resolvedField.descriptor().getField() != null && sourceValue != null) {
 					result.set(key, sourceValue.deepCopy());
 					continue;
 				}
-				if (currentBehavior.getUnknownFieldPolicy() == UnknownFieldPolicy.PRESERVE && sourceValue != null)
+				if (currentBehavior.getUnknownFieldPolicy() == UnknownFieldPolicy.PRESERVE && sourceValue != null) {
 					result.set(key, sourceValue.deepCopy());
+				}
+
 				continue;
 			}
+
+			DocumentTypeContext childContext = new DocumentTypeContext(
+					sourceValue != null ? sourceValue : defaultValue,
+					currentNode,
+					resolvedField.descriptor().getField(),
+					key,
+					null,
+					null
+			);
+			Class<?> effectiveChildType = documentRuntime.resolveType(resolvedField.childType(), childContext);
 
 			MergeBehavior propertyBehavior = behaviorResolver.resolve(
 					currentBehavior,
 					resolvedField.descriptor().getField(),
-					resolvedField.childType()
+					effectiveChildType
 			);
 			if (resolvedField.policy().getBehaviorOverride() != null)
 				propertyBehavior = resolvedField.policy().getBehaviorOverride();
 
 			String fieldDescription = describe(ownerType, key, resolvedField.descriptor().getField());
-			Class<? extends FieldMergeStrategy> strategyClass = strategyResolver.resolve(resolvedField.policy(), fieldDescription);
-			JsonNode merged = resolvedField.plugin().merge(new MergePluginContext(
+			ResolvedMergeStrategy strategy = strategyResolver.resolve(resolvedField.policy(), fieldDescription);
+			JsonNode merged = resolvedField.adapter().merge(new MergeTypeAdapterContext(
 					mapper,
 					resolvedField.descriptor(),
 					resolvedField.policy(),
-					resolvedField.childType(),
+					effectiveChildType,
 					sourceValue,
 					defaultValue,
-					strategyClass,
+					strategy.getDefinition(),
+					strategy.getStrategy(),
 					operation.sourceDefaultsAsMissing(),
 					propertyBehavior,
 					(childSource, childDefaults, childOwnerType, childDeclaredOnly, childBehaviorOverride) ->
 							mergeObject(childSource, childDefaults, childOwnerType, childDeclaredOnly, childBehaviorOverride, operation),
-					type -> defaultsResolver.resolveInternal(type, operation.defaultsPolicy())
+					new MergeModelDefaultsResolver() {
+						@Override
+						public JsonNode resolve(@NotNull Class<?> type) {
+							return defaultsResolver.resolveInternal(type, operation.defaultsPolicy());
+						}
+
+						@Override
+						public JsonNode resolve(@NotNull Class<?> type, DocumentTypeContext context) {
+							return defaultsResolver.resolveInternal(type, operation.defaultsPolicy(), context);
+						}
+					},
+					documentRuntime::resolveType
 			));
 
-            result.set(key, merged);
+			if (merged != null && !merged.isNull())
+				result.set(key, merged);
 		}
 
 		return result;
 	}
 
-	private String describe(Class<?> ownerType, String key, java.lang.reflect.Field field) {
-		if (field != null)
-			return field.getDeclaringClass().getName() + "#" + field.getName();
+	private String describe(Class<?> ownerType, String key, Field field) {
+		if (field != null) return field.getDeclaringClass().getName() + "#" + field.getName();
 		return ownerType.getName() + "#" + key;
 	}
 }

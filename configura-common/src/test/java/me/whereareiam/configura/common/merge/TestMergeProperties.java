@@ -5,14 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.annotation.Defaults;
-import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
-import me.whereareiam.configura.merge.plugin.MergePlugin;
-import me.whereareiam.configura.merge.plugin.MergePluginRegistry;
-import me.whereareiam.configura.merge.plugin.context.MergePluginContext;
-import me.whereareiam.configura.merge.plugin.context.MergePluginDefaultsContext;
-import me.whereareiam.configura.merge.plugin.descriptor.MergeDescriptor;
+import me.whereareiam.configura.merge.defaults.DefaultsProvider;
+import me.whereareiam.configura.merge.defaults.DefaultsResolver;
+import me.whereareiam.configura.merge.defaults.DefaultsResolverRegistry;
 import me.whereareiam.configura.merge.policy.MergePolicy;
 import me.whereareiam.configura.merge.policy.MergePolicyResolverRegistry;
+import me.whereareiam.configura.merge.type.MergeTypeAdapter;
+import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
+import me.whereareiam.configura.merge.type.context.MergeTypeAdapterContext;
+import me.whereareiam.configura.merge.type.descriptor.MergeTypeDescriptor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,22 +28,26 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public final class TestMergeProperties {
-	public static @NotNull MergePluginRegistry pluginRegistry() {
-		return new MergePluginRegistry().register(new TestPropertyMergePlugin());
+	public static @NotNull MergeTypeAdapterRegistry adapterRegistry() {
+		return new MergeTypeAdapterRegistry().register(new TestPropertyTypeAdapter());
+	}
+
+	public static @NotNull DefaultsResolverRegistry defaultsResolverRegistry() {
+		return new DefaultsResolverRegistry().register(new TestDefaultsResolver());
 	}
 
 	public static @NotNull MergePolicyResolverRegistry policyResolverRegistry() {
 		return new MergePolicyResolverRegistry();
 	}
 
-	private static final class TestPropertyMergePlugin implements MergePlugin {
+	private static final class TestPropertyTypeAdapter implements MergeTypeAdapter {
 		@Override
-		public boolean supports(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public boolean supports(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return true;
 		}
 
 		@Override
-		public @NotNull Class<?> resolveChildType(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public @NotNull Class<?> resolveChildType(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			Field field = descriptor.getField();
 			if (field == null) return descriptor.getDeclaredType();
 			if (java.util.Collection.class.isAssignableFrom(field.getType())) return resolveCollectionEntryType(field, descriptor.getDeclaredType());
@@ -50,14 +55,7 @@ public final class TestMergeProperties {
 		}
 
 		@Override
-		public @Nullable JsonNode resolveDefaultValue(@NotNull MergePluginDefaultsContext context) {
-			Field field = context.getDescriptor().getField();
-			if (field == null) return null;
-			return resolveDefaults(context.getMapper(), context.getDescriptor().getDeclaredType(), field);
-		}
-
-		@Override
-		public @NotNull JsonNode merge(@NotNull MergePluginContext context) {
+		public @NotNull JsonNode merge(@NotNull MergeTypeAdapterContext context) {
 			JsonNode source = context.getSourceNode();
 			JsonNode defaults = context.getDefaultNode();
 			if (source == null || source.isNull() || context.sourceTreatsDefaultAsMissing())
@@ -75,6 +73,18 @@ public final class TestMergeProperties {
 			if (arguments.length < 1 || !(arguments[0] instanceof Class<?> entryType))
 				return fallback;
 			return entryType;
+		}
+	}
+
+	private static final class TestDefaultsResolver implements DefaultsResolver {
+		@Override
+		public @Nullable JsonNode resolve(
+				@NotNull me.whereareiam.configura.merge.defaults.descriptor.DefaultsDescriptor descriptor,
+				@NotNull me.whereareiam.configura.merge.defaults.context.DefaultsContext context
+		) {
+			Field field = descriptor.getField();
+			if (field == null) return null;
+			return resolveDefaults(context.getMapper(), descriptor.getDeclaredType(), field);
 		}
 	}
 
@@ -110,10 +120,10 @@ public final class TestMergeProperties {
 	private static @Nullable JsonNode resolveProvider(ObjectMapper mapper, Class<?> targetType, Defaults defaults) {
 		if (defaults.provider().value() == Defaults.Provider.None.class) return null;
 		try {
-			MergeDefaultsProvider<?> provider = defaults.provider().value().getDeclaredConstructor().newInstance();
+			DefaultsProvider<?> provider = defaults.provider().value().getDeclaredConstructor().newInstance();
 			Object instance = targetType.getDeclaredConstructor().newInstance();
 			@SuppressWarnings("rawtypes")
-			Object supplied = ((MergeDefaultsProvider) provider).supply(instance);
+			Object supplied = ((DefaultsProvider) provider).supply(instance);
 			return supplied == null ? null : mapper.valueToTree(supplied);
 		} catch (Exception e) {
 			throw new IllegalStateException("Cannot instantiate merge defaults provider: " + defaults.provider().value().getName(), e);

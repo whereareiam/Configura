@@ -6,15 +6,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.annotation.Defaults;
-import me.whereareiam.configura.merge.annotation.Merge;
-import me.whereareiam.configura.merge.annotation.MergeList;
-import me.whereareiam.configura.merge.plugin.context.MergePluginContext;
-import me.whereareiam.configura.merge.plugin.context.MergePluginDefaultsContext;
-import me.whereareiam.configura.merge.plugin.descriptor.MergeDescriptor;
+import me.whereareiam.configura.annotation.merge.Merge;
+import me.whereareiam.configura.annotation.merge.MergeList;
 import me.whereareiam.configura.merge.policy.MergePolicy;
 import me.whereareiam.configura.merge.policy.MergePolicyResolver;
 import me.whereareiam.configura.merge.strategy.NeverDefaults;
 import me.whereareiam.configura.merge.strategy.SourceOwnsField;
+import me.whereareiam.configura.merge.type.MergeTypeAdapter;
+import me.whereareiam.configura.merge.type.context.MergeTypeAdapterContext;
+import me.whereareiam.configura.merge.type.descriptor.MergeTypeDescriptor;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.type.merge.tree.list.ListMode;
 import org.jetbrains.annotations.NotNull;
@@ -32,7 +32,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("Merge Field Plugin Integration")
+@DisplayName("Merge Type Adapter Integration")
 class MergePluginIntegrationTest {
 	@Test
 	@DisplayName("Custom field plugin participates in defaults expansion and recursive merge")
@@ -40,7 +40,7 @@ class MergePluginIntegrationTest {
 		Configura configura = Config.builder()
 				.format(Format.YAML)
 				.policyResolver(new EnvelopePolicyResolver())
-				.mergePlugin(new EnvelopePlugin())
+				.mergeTypeAdapter(new EnvelopeAdapter())
 				.build();
 
 		Path file = tempDir.resolve("envelope.yml");
@@ -64,7 +64,7 @@ class MergePluginIntegrationTest {
 	void userPluginRegistrationOverridesBuiltInFieldPlugin(@TempDir Path tempDir) {
 		Configura configura = Config.builder()
 				.format(Format.YAML)
-				.mergePlugin(new OverrideListPlugin())
+				.mergeTypeAdapter(new OverrideListAdapter())
 				.build();
 
 		OverrideListConfig config = configura.update(tempDir.resolve("override-list"), OverrideListConfig.class);
@@ -101,7 +101,7 @@ class MergePluginIntegrationTest {
 
 	private static final class EnvelopePolicyResolver implements MergePolicyResolver {
 		@Override
-		public MergePolicy resolve(@NotNull MergeDescriptor descriptor) {
+		public MergePolicy resolve(@NotNull MergeTypeDescriptor descriptor) {
 			if (descriptor.getField() == null) return null;
 			MergeEnvelope annotation = descriptor.getField().getAnnotation(MergeEnvelope.class);
 			if (annotation == null) return null;
@@ -111,29 +111,19 @@ class MergePluginIntegrationTest {
 		}
 	}
 
-	private static final class EnvelopePlugin implements MergePlugin {
+	private static final class EnvelopeAdapter implements MergeTypeAdapter {
 		@Override
-		public boolean supports(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public boolean supports(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return descriptor.getDeclaredType() == Envelope.class && policy.hasHelper(EnvelopePluginConfig.class);
 		}
 
 		@Override
-		public @NotNull Class<?> resolveChildType(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public @NotNull Class<?> resolveChildType(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return EnvelopeValue.class;
 		}
 
 		@Override
-		public JsonNode resolveDefaultValue(@NotNull MergePluginDefaultsContext context) {
-			EnvelopePluginConfig config = context.getPolicy().helper(EnvelopePluginConfig.class);
-			JsonNode childDefaults = context.resolveModelDefaults(context.getChildType());
-			if (childDefaults == null) return null;
-			ObjectNode result = context.getMapper().createObjectNode();
-			result.set(config.key, childDefaults.deepCopy());
-			return result;
-		}
-
-		@Override
-		public @NotNull JsonNode merge(@NotNull MergePluginContext context) {
+		public @NotNull JsonNode merge(@NotNull MergeTypeAdapterContext context) {
 			EnvelopePluginConfig config = context.getPolicy().helper(EnvelopePluginConfig.class);
 			ObjectNode result = context.getMapper().createObjectNode();
 			JsonNode sourceChild = context.getSourceNode() != null && context.getSourceNode().isObject()
@@ -142,31 +132,26 @@ class MergePluginIntegrationTest {
 			JsonNode defaultChild = context.getDefaultNode() != null && context.getDefaultNode().isObject()
 					? context.getDefaultNode().get(config.key)
 					: null;
+			if (defaultChild == null)
+				defaultChild = context.resolveModelDefaults(context.getChildType());
 			result.set(config.key, context.mergeChildren(sourceChild, defaultChild));
 			return result;
 		}
 	}
 
-	private static final class OverrideListPlugin implements MergePlugin {
+	private static final class OverrideListAdapter implements MergeTypeAdapter {
 		@Override
-		public boolean supports(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public boolean supports(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return descriptor.getField() != null && List.class.isAssignableFrom(descriptor.getField().getType());
 		}
 
 		@Override
-		public @NotNull Class<?> resolveChildType(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public @NotNull Class<?> resolveChildType(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return descriptor.getDeclaredType();
 		}
 
 		@Override
-		public JsonNode resolveDefaultValue(@NotNull MergePluginDefaultsContext context) {
-			ArrayNode array = context.getMapper().createArrayNode();
-			array.add("override");
-			return array;
-		}
-
-		@Override
-		public @NotNull JsonNode merge(@NotNull MergePluginContext context) {
+		public @NotNull JsonNode merge(@NotNull MergeTypeAdapterContext context) {
 			ArrayNode array = context.getMapper().createArrayNode();
 			array.add("override");
 			return array;
@@ -175,7 +160,7 @@ class MergePluginIntegrationTest {
 
 	private static final class NeverDefaultsPolicyResolver implements MergePolicyResolver {
 		@Override
-		public MergePolicy resolve(@NotNull MergeDescriptor descriptor) {
+		public MergePolicy resolve(@NotNull MergeTypeDescriptor descriptor) {
 			if (!"mode".equals(descriptor.getSerializedName())) return null;
 			return MergePolicy.builder()
 					.strategy(NeverDefaults.class)

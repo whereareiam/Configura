@@ -3,14 +3,16 @@ package me.whereareiam.configura.common.merge;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import me.whereareiam.configura.common.merge.defaults.MergeDefaultsProviderRegistry;
+import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
 import me.whereareiam.configura.common.merge.defaults.MergeDefaultsResolver;
 import me.whereareiam.configura.common.merge.resolver.MergeBehaviorResolver;
+import me.whereareiam.configura.document.DocumentProcessor;
 import me.whereareiam.configura.merge.MergeBehavior;
-import me.whereareiam.configura.merge.plugin.MergePluginRegistry;
+import me.whereareiam.configura.merge.defaults.DefaultsResolverRegistry;
 import me.whereareiam.configura.merge.policy.MergePolicyResolverRegistry;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategyRegistry;
+import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
+import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
 
 public final class MergeEngine {
 	private final ObjectMapper mapper;
@@ -21,21 +23,33 @@ public final class MergeEngine {
 
 	public MergeEngine(
 			ObjectMapper mapper,
-			MergeDefaultsProviderRegistry defaultsRegistry,
-			FieldMergeStrategyRegistry strategyRegistry,
-			MergePluginRegistry pluginRegistry,
+			DefaultsProviderRegistry defaultsRegistry,
+			DocumentProcessor documentRuntime,
+			MergeStrategyRegistry strategyRegistry,
+			MergeTypeAdapterRegistry adapterRegistry,
+			DefaultsResolverRegistry defaultsResolverRegistry,
 			MergePolicyResolverRegistry policyResolverRegistry,
 			Class<? extends FieldMergeStrategy> defaultStrategy,
+			String defaultStrategyName,
 			MergeBehavior behavior
 	) {
 		this.mapper = mapper;
-		this.defaultsResolver = new MergeDefaultsResolver(mapper, defaultsRegistry, pluginRegistry, policyResolverRegistry);
+		this.defaultsResolver = new MergeDefaultsResolver(
+				mapper,
+				defaultsRegistry,
+				documentRuntime,
+				defaultsResolverRegistry,
+				adapterRegistry,
+				policyResolverRegistry
+		);
 		this.mergeCoordinator = new MergeCoordinator(
 				mapper,
 				strategyRegistry,
 				defaultStrategy,
+				defaultStrategyName,
 				defaultsResolver,
-				pluginRegistry,
+				documentRuntime,
+				adapterRegistry,
 				policyResolverRegistry
 		);
 		this.behavior = behavior != null ? behavior : MergeBehavior.defaults();

@@ -2,10 +2,10 @@ package me.whereareiam.configura.common.reader;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import me.whereareiam.configura.common.MapperFactory;
-import me.whereareiam.configura.common.processor.PostProcessor;
 import me.whereareiam.configura.common.util.FileUtil;
+import me.whereareiam.configura.document.DocumentProcessor;
+import me.whereareiam.configura.document.DocumentTypeContext;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
@@ -16,17 +16,27 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-@RequiredArgsConstructor
 public final class DefaultConfigReader implements ConfigReader {
 	private final String extension;
 	private final ObjectMapper mapper;
+	private final DocumentProcessor documentRuntime;
 
 	public DefaultConfigReader() {
 		this(Format.YAML);
 	}
 
 	public DefaultConfigReader(Format format) {
-		this(format.getExtension(), MapperFactory.buildReaderMapper(format));
+		this(format.getExtension(), MapperFactory.buildReaderMapper(format), null);
+	}
+
+	public DefaultConfigReader(
+			String extension,
+			ObjectMapper mapper,
+			DocumentProcessor documentRuntime
+	) {
+		this.extension = extension;
+		this.mapper = mapper;
+		this.documentRuntime = documentRuntime;
 	}
 
 	@Override
@@ -34,25 +44,19 @@ public final class DefaultConfigReader implements ConfigReader {
 		if (path == null) throw new ConfigException("path must not be null");
 		if (configClass == null) throw new ConfigException("configClass must not be null");
 
-		T config = bind(readNode(path), configClass, "Failed to bind config to " + configClass.getName());
-		PostProcessor.process(config);
-		return config;
+		return bind(readNode(path), configClass, "Failed to bind config to " + configClass.getName());
 	}
 
 	@Override
 	public <T> T read(byte[] bytes, Class<T> configClass) {
 		if (configClass == null) throw new ConfigException("configClass must not be null");
-		T config = bind(readNode(bytes), configClass, "Failed to read config bytes for " + configClass.getName());
-		PostProcessor.process(config);
-		return config;
+		return bind(readNode(bytes), configClass, "Failed to read config bytes for " + configClass.getName());
 	}
 
 	@Override
 	public <T> T read(InputStream inputStream, Class<T> configClass) {
 		if (configClass == null) throw new ConfigException("configClass must not be null");
-		T config = bind(readNode(inputStream), configClass, "Failed to read config stream for " + configClass.getName());
-		PostProcessor.process(config);
-		return config;
+		return bind(readNode(inputStream), configClass, "Failed to read config stream for " + configClass.getName());
 	}
 
 	@Override
@@ -106,7 +110,16 @@ public final class DefaultConfigReader implements ConfigReader {
 
 	private <T> T bind(JsonNode node, Class<T> configClass, String failureMessage) {
 		try {
-			return mapper.treeToValue(node != null ? node : mapper.createObjectNode(), configClass);
+			Class<?> effectiveType = documentRuntime != null
+					? documentRuntime.resolveType(
+							configClass,
+							new DocumentTypeContext(node != null ? node : mapper.createObjectNode(), null, null, null, null, null)
+					)
+					: configClass;
+			T value = (T) mapper.treeToValue(node != null ? node : mapper.createObjectNode(), effectiveType);
+			if (documentRuntime != null) documentRuntime.afterBind(value);
+
+			return value;
 		} catch (Exception e) {
 			throw new ConfigException(failureMessage, e);
 		}

@@ -1,6 +1,6 @@
 plugins {
-    id("configura.publish")
-    id("configura.java-library")
+    id("publish")
+    id("java-conventions")
 }
 
 dependencies {

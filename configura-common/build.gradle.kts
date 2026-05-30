@@ -1,5 +1,5 @@
 plugins {
-    id("configura.publish")
+    id("common")
 }
 
 dependencies {

@@ -3,14 +3,20 @@ package me.whereareiam.configura.merge.plugin.context;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.configura.document.DocumentTypeContext;
+import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.MergeContext;
 import me.whereareiam.configura.merge.defaults.MergeModelDefaultsResolver;
 import me.whereareiam.configura.merge.plugin.descriptor.MergeDescriptor;
 import me.whereareiam.configura.merge.policy.MergePolicy;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
+import me.whereareiam.configura.merge.strategy.MergeStrategyDefinition;
+import me.whereareiam.configura.merge.strategy.capability.StrategyCapabilityKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.function.BiFunction;
 
 /**
  * Runtime inputs passed to a merge field plugin.
@@ -23,11 +29,13 @@ public final class MergePluginContext {
 	private final @NotNull Class<?> childType;
 	private final @Nullable JsonNode sourceNode;
 	private final @Nullable JsonNode defaultNode;
-	private final @Nullable Class<? extends FieldMergeStrategy> strategyClass;
+	private final @NotNull MergeStrategyDefinition strategyDefinition;
+	private final @Nullable FieldMergeStrategy strategy;
 	private final boolean sourceDefaultsAsMissing;
 	private final @NotNull MergeBehavior behavior;
 	private final @NotNull MergeContext.RecursiveMerge recursiveMerge;
 	private final @NotNull MergeModelDefaultsResolver modelDefaultsResolver;
+	private final @NotNull BiFunction<Class<?>, DocumentTypeContext, Class<?>> documentTypeResolver;
 
 	/**
 	 * Returns the object mapper used by the engine.
@@ -84,12 +92,40 @@ public final class MergePluginContext {
 	}
 
 	/**
-	 * Returns the resolved merge strategy class.
+	 * Returns the resolved merge strategy definition.
 	 *
-	 * @return merge strategy class or {@code null}
+	 * @return strategy definition
 	 */
-	public @Nullable Class<? extends FieldMergeStrategy> getStrategyClass() {
-		return strategyClass;
+	public @NotNull MergeStrategyDefinition getStrategyDefinition() {
+		return strategyDefinition;
+	}
+
+	/**
+	 * Returns the resolved merge strategy instance.
+	 *
+	 * @return merge strategy instance or {@code null}
+	 */
+	public @Nullable FieldMergeStrategy getStrategy() {
+		return strategy;
+	}
+
+	/**
+	 * Returns the resolved merge strategy instance and fails when none is available.
+	 *
+	 * @return merge strategy instance
+	 */
+	public @NotNull FieldMergeStrategy requireStrategy() {
+		if (strategy == null)
+			throw new ConfigException("No merge strategy was resolved for " + descriptor.getOwnerType().getName() + "#" + descriptor.getSerializedName());
+		return strategy;
+	}
+
+	public <T> @Nullable T capability(@NotNull StrategyCapabilityKey<T> key) {
+		return strategyDefinition.capability(key);
+	}
+
+	public boolean hasCapability(@NotNull StrategyCapabilityKey<?> key) {
+		return strategyDefinition.hasCapability(key);
 	}
 
 	/**
@@ -152,5 +188,33 @@ public final class MergePluginContext {
 	 */
 	public @Nullable JsonNode resolveModelDefaults(@NotNull Class<?> type) {
 		return modelDefaultsResolver.resolve(type);
+	}
+
+	/**
+	 * Resolves registered defaults for the given model type in the supplied document context.
+	 *
+	 * @param type model type
+	 * @param context current document context
+	 * @return resolved defaults node, or {@code null} when none are registered
+	 */
+	public @Nullable JsonNode resolveModelDefaults(
+			@NotNull Class<?> type,
+			@Nullable DocumentTypeContext context
+	) {
+		return modelDefaultsResolver.resolve(type, context);
+	}
+
+	/**
+	 * Resolves the effective document type for the given declared type in the supplied context.
+	 *
+	 * @param type declared document type
+	 * @param context current document context
+	 * @return effective document type
+	 */
+	public @NotNull Class<?> resolveDocumentType(
+			@NotNull Class<?> type,
+			@NotNull DocumentTypeContext context
+	) {
+		return documentTypeResolver.apply(type, context);
 	}
 }

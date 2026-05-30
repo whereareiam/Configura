@@ -3,6 +3,7 @@ package me.whereareiam.configura.merge.plugin.context;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import me.whereareiam.configura.document.DocumentTypeContext;
 import me.whereareiam.configura.merge.defaults.MergeModelDefaultsResolver;
 import me.whereareiam.configura.merge.plugin.descriptor.MergeDescriptor;
 import me.whereareiam.configura.merge.policy.MergePolicy;
@@ -75,5 +76,19 @@ public final class MergePluginDefaultsContext {
 	 */
 	public @Nullable JsonNode resolveModelDefaults(@NotNull Class<?> type) {
 		return modelDefaultsResolver.resolve(type);
+	}
+
+	/**
+	 * Resolves registered defaults for the given model type in the supplied document context.
+	 *
+	 * @param type model type
+	 * @param context current document context
+	 * @return resolved defaults node, or {@code null} when none are registered
+	 */
+	public @Nullable JsonNode resolveModelDefaults(
+			@NotNull Class<?> type,
+			@Nullable DocumentTypeContext context
+	) {
+		return modelDefaultsResolver.resolve(type, context);
 	}
 }

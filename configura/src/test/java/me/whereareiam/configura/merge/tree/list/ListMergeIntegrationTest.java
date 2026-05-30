@@ -2,10 +2,10 @@ package me.whereareiam.configura.merge.tree.list;
 
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
+import me.whereareiam.configura.annotation.merge.Merge;
+import me.whereareiam.configura.annotation.merge.MergeList;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.merge.annotation.Merge;
-import me.whereareiam.configura.merge.annotation.MergeList;
-import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
 import me.whereareiam.configura.merge.strategy.SourceOwnsField;
 import me.whereareiam.configura.type.Format;
@@ -247,7 +247,7 @@ class ListMergeIntegrationTest {
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	private Configura yaml(Class<? extends MergeDefaultsProvider<?>> defaultsProvider) {
+	private Configura yaml(Class<? extends DefaultsProvider<?>> defaultsProvider) {
 		return Config.builder()
 				.format(Format.YAML)
 				.defaults((Class) defaultsProvider)
@@ -365,7 +365,7 @@ class ListMergeIntegrationTest {
 		public JoinRestriction joinRestriction;
 	}
 
-	public static class ProviderListDefaults implements MergeDefaultsProvider<ProviderListConfig> {
+	public static class ProviderListDefaults implements DefaultsProvider<ProviderListConfig> {
 		@Override
 		public ProviderListConfig supply(ProviderListConfig config) {
 			config.providers = defaultProviders();
@@ -373,7 +373,7 @@ class ListMergeIntegrationTest {
 		}
 	}
 
-	public static class SeededProviderListDefaults implements MergeDefaultsProvider<SeededProviderListConfig> {
+	public static class SeededProviderListDefaults implements DefaultsProvider<SeededProviderListConfig> {
 		@Override
 		public SeededProviderListConfig supply(SeededProviderListConfig config) {
 			config.providers = defaultProviders();
@@ -381,7 +381,7 @@ class ListMergeIntegrationTest {
 		}
 	}
 
-	public static class DeclaredProviderListDefaults implements MergeDefaultsProvider<DeclaredProviderListConfig> {
+	public static class DeclaredProviderListDefaults implements DefaultsProvider<DeclaredProviderListConfig> {
 		@Override
 		public DeclaredProviderListConfig supply(DeclaredProviderListConfig config) {
 			config.providers = new ArrayList<>();
@@ -402,7 +402,7 @@ class ListMergeIntegrationTest {
 		}
 	}
 
-	public static class LockedProviderListDefaults implements MergeDefaultsProvider<LockedProviderListConfig> {
+	public static class LockedProviderListDefaults implements DefaultsProvider<LockedProviderListConfig> {
 		@Override
 		public LockedProviderListConfig supply(LockedProviderListConfig config) {
 			config.providers = defaultProviders();
@@ -410,7 +410,7 @@ class ListMergeIntegrationTest {
 		}
 	}
 
-	public static class SourceOwnedProviderListDefaults implements MergeDefaultsProvider<SourceOwnedProviderListConfig> {
+	public static class SourceOwnedProviderListDefaults implements DefaultsProvider<SourceOwnedProviderListConfig> {
 		@Override
 		public SourceOwnedProviderListConfig supply(SourceOwnedProviderListConfig config) {
 			config.providers = defaultProviders();
@@ -418,7 +418,7 @@ class ListMergeIntegrationTest {
 		}
 	}
 
-	public static class DuplicateProviderListDefaults implements MergeDefaultsProvider<ProviderListConfig> {
+	public static class DuplicateProviderListDefaults implements DefaultsProvider<ProviderListConfig> {
 		@Override
 		public ProviderListConfig supply(ProviderListConfig config) {
 			config.providers = List.of(provider("premium", 100), provider("premium", 90));

@@ -1,6 +1,6 @@
 package me.whereareiam.configura.merge.policy;
 
-import me.whereareiam.configura.merge.plugin.descriptor.MergeDescriptor;
+import me.whereareiam.configura.merge.type.descriptor.MergeTypeDescriptor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,5 +14,5 @@ public interface MergePolicyResolver {
 	 * @param descriptor field descriptor
 	 * @return policy contribution, or {@code null} when this resolver does not contribute
 	 */
-	@Nullable MergePolicy resolve(@NotNull MergeDescriptor descriptor);
+	@Nullable MergePolicy resolve(@NotNull MergeTypeDescriptor descriptor);
 }

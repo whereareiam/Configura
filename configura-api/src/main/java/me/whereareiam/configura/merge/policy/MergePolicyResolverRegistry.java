@@ -1,6 +1,6 @@
 package me.whereareiam.configura.merge.policy;
 
-import me.whereareiam.configura.merge.plugin.descriptor.MergeDescriptor;
+import me.whereareiam.configura.merge.type.descriptor.MergeTypeDescriptor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public final class MergePolicyResolverRegistry {
 	 * @param descriptor field descriptor
 	 * @return resolved policy
 	 */
-	public @NotNull MergePolicy resolve(@NotNull MergeDescriptor descriptor) {
+	public @NotNull MergePolicy resolve(@NotNull MergeTypeDescriptor descriptor) {
 		MergePolicy.Builder builder = MergePolicy.builder();
 
 		for (MergePolicyResolver resolver : resolvers) {

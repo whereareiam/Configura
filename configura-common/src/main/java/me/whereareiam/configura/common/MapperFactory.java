@@ -3,23 +3,22 @@ package me.whereareiam.configura.common;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.Module;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.core.util.Separators;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.Module;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.introspect.VisibilityChecker;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import me.whereareiam.configura.common.duration.DurationModule;
-import me.whereareiam.configura.common.polymorphic.PolymorphicModule;
 import me.whereareiam.configura.type.Format;
 
-import java.util.Objects;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MapperFactory {
@@ -93,7 +92,6 @@ public final class MapperFactory {
 	private static ObjectMapper configureCommon(ObjectMapper mapper) {
 		mapper.registerModule(new JavaTimeModule());
 		mapper.registerModule(new DurationModule());
-		mapper.registerModule(new PolymorphicModule());
 
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -109,7 +107,6 @@ public final class MapperFactory {
 	private static ObjectMapper configureModern(ObjectMapper mapper, List<Module> modules) {
 		mapper.registerModule(new JavaTimeModule());
 		mapper.registerModule(new DurationModule());
-		mapper.registerModule(new PolymorphicModule());
 
 		if (modules != null) {
 			for (Module module : modules) {

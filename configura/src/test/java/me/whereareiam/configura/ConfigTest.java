@@ -2,18 +2,16 @@ package me.whereareiam.configura;
 
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.node.NullNode;
 import me.whereareiam.configura.merge.MergeBehavior;
-import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
-import me.whereareiam.configura.merge.plugin.MergePlugin;
-import me.whereareiam.configura.merge.plugin.MergePluginRegistry;
-import me.whereareiam.configura.merge.plugin.context.MergePluginContext;
-import me.whereareiam.configura.merge.plugin.context.MergePluginDefaultsContext;
-import me.whereareiam.configura.merge.plugin.descriptor.MergeDescriptor;
+import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.configura.merge.policy.MergePolicy;
 import me.whereareiam.configura.merge.policy.MergePolicyResolver;
 import me.whereareiam.configura.merge.policy.MergePolicyResolverRegistry;
 import me.whereareiam.configura.merge.strategy.StructuralObject;
+import me.whereareiam.configura.merge.type.MergeTypeAdapter;
+import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
+import me.whereareiam.configura.merge.type.context.MergeTypeAdapterContext;
+import me.whereareiam.configura.merge.type.descriptor.MergeTypeDescriptor;
 import me.whereareiam.configura.type.Format;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -25,7 +23,7 @@ class ConfigTest {
 		public String value;
 	}
 
-	public static class SampleDefaults implements MergeDefaultsProvider<SampleConfig> {
+	public static class SampleDefaults implements DefaultsProvider<SampleConfig> {
 		@Override
 		public SampleConfig supply(SampleConfig config) {
 			config.value = "sample";
@@ -33,47 +31,37 @@ class ConfigTest {
 		}
 	}
 
-	private static final MergePlugin TEST_PLUGIN = new MergePlugin() {
+	private static final MergeTypeAdapter TEST_ADAPTER = new MergeTypeAdapter() {
 		@Override
-		public boolean supports(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public boolean supports(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return false;
 		}
 
 		@Override
-		public @NotNull Class<?> resolveChildType(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public @NotNull Class<?> resolveChildType(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return descriptor.getDeclaredType();
 		}
 
 		@Override
-		public com.fasterxml.jackson.databind.JsonNode resolveDefaultValue(@NotNull MergePluginDefaultsContext context) {
-			return NullNode.instance;
-		}
-
-		@Override
-		public com.fasterxml.jackson.databind.@NotNull JsonNode merge(@NotNull MergePluginContext context) {
-			return NullNode.instance;
+		public com.fasterxml.jackson.databind.@NotNull JsonNode merge(@NotNull MergeTypeAdapterContext context) {
+			return context.getMapper().nullNode();
 		}
 	};
 
-	private static final MergePlugin SECOND_PLUGIN = new MergePlugin() {
+	private static final MergeTypeAdapter SECOND_ADAPTER = new MergeTypeAdapter() {
 		@Override
-		public boolean supports(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public boolean supports(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return false;
 		}
 
 		@Override
-		public @NotNull Class<?> resolveChildType(@NotNull MergeDescriptor descriptor, @NotNull MergePolicy policy) {
+		public @NotNull Class<?> resolveChildType(@NotNull MergeTypeDescriptor descriptor, @NotNull MergePolicy policy) {
 			return descriptor.getDeclaredType();
 		}
 
 		@Override
-		public com.fasterxml.jackson.databind.JsonNode resolveDefaultValue(@NotNull MergePluginDefaultsContext context) {
-			return NullNode.instance;
-		}
-
-		@Override
-		public com.fasterxml.jackson.databind.@NotNull JsonNode merge(@NotNull MergePluginContext context) {
-			return NullNode.instance;
+		public com.fasterxml.jackson.databind.@NotNull JsonNode merge(@NotNull MergeTypeAdapterContext context) {
+			return context.getMapper().nullNode();
 		}
 	};
 
@@ -107,20 +95,20 @@ class ConfigTest {
 	}
 
 	@Test
-	void builderRegistersBuiltInFieldPluginsAndPolicyResolvers() {
+	void builderRegistersBuiltInTypeAdaptersAndPolicyResolvers() {
 		Configura config = Config.builder().build();
 
-		assertFalse(config.mergePlugins().isEmpty());
+		assertFalse(config.typeAdapters().isEmpty());
 		assertFalse(config.policyResolvers().isEmpty());
 	}
 
 	@Test
-	void withPluginReturnsIndependentConfig() {
+	void withTypeAdapterReturnsIndependentConfig() {
 		Configura base = Config.yaml();
-		Configura configured = base.withPlugin(TEST_PLUGIN);
+		Configura configured = base.withTypeAdapter(TEST_ADAPTER);
 
-		assertFalse(base.mergePlugins().contains(TEST_PLUGIN));
-		assertTrue(configured.mergePlugins().contains(TEST_PLUGIN));
+		assertFalse(base.typeAdapters().contains(TEST_ADAPTER));
+		assertTrue(configured.typeAdapters().contains(TEST_ADAPTER));
 	}
 
 	@Test
@@ -133,13 +121,13 @@ class ConfigTest {
 	}
 
 	@Test
-	void mergePluginRegistryCopyIsIndependent() {
-		MergePluginRegistry registry = new MergePluginRegistry().register(TEST_PLUGIN);
-		MergePluginRegistry copy = registry.copy().register(SECOND_PLUGIN);
+	void mergeTypeAdapterRegistryCopyIsIndependent() {
+		MergeTypeAdapterRegistry registry = new MergeTypeAdapterRegistry().register(TEST_ADAPTER);
+		MergeTypeAdapterRegistry copy = registry.copy().register(SECOND_ADAPTER);
 
 		assertEquals(1, registry.asList().size());
 		assertEquals(2, copy.asList().size());
-		assertFalse(registry.asList().contains(SECOND_PLUGIN));
+		assertFalse(registry.asList().contains(SECOND_ADAPTER));
 	}
 
 	@Test

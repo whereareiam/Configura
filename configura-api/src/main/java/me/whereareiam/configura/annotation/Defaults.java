@@ -1,6 +1,6 @@
 package me.whereareiam.configura.annotation;
 
-import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -127,12 +127,12 @@ public @interface Defaults {
 	@Target(ElementType.FIELD)
 	@Retention(RetentionPolicy.RUNTIME)
 	@interface Provider {
-		Class<? extends MergeDefaultsProvider<?>> value();
+		Class<? extends DefaultsProvider<?>> value();
 
 		/**
 			 * Marker for default/none provider to allow an annotation default.
 		 */
-		final class None implements MergeDefaultsProvider<Object> {
+		final class None implements DefaultsProvider<Object> {
 			@Override
 			public Object supply(Object cfg) {
 				return cfg;

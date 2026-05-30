@@ -3,10 +3,10 @@ package me.whereareiam.configura.merge.defaults;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.annotation.Defaults;
+import me.whereareiam.configura.annotation.merge.Merge;
+import me.whereareiam.configura.annotation.merge.MergeMap;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.merge.annotation.Merge;
-import me.whereareiam.configura.merge.annotation.MergeMap;
 import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
@@ -19,13 +19,14 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MergeDefaultsIntegrationTest {
 
-	public static class ServerConfigProvider implements MergeDefaultsProvider<ServerConfig> {
+	public static class ServerConfigProvider implements DefaultsProvider<ServerConfig> {
 		public static boolean wasCalled = false;
 
 		@Override
@@ -45,7 +46,7 @@ public class MergeDefaultsIntegrationTest {
 		public boolean ssl;
 	}
 
-	public static class DatabaseConfigProvider implements MergeDefaultsProvider<DatabaseConfig> {
+	public static class DatabaseConfigProvider implements DefaultsProvider<DatabaseConfig> {
 		@Override
 		public DatabaseConfig supply(DatabaseConfig config) {
 			config.url = "jdbc:postgresql://localhost:5432/mydb";
@@ -88,7 +89,7 @@ public class MergeDefaultsIntegrationTest {
 		public boolean enabled;
 	}
 
-	public static class CorsProvider implements MergeDefaultsProvider<Cors> {
+	public static class CorsProvider implements DefaultsProvider<Cors> {
 		@Override
 		public Cors supply(Cors cors) {
 			cors.enabled = true;
@@ -101,12 +102,24 @@ public class MergeDefaultsIntegrationTest {
 		public Cors cors;
 	}
 
+	static class ExplicitModelDefaults {
+		@Defaults(text = "model")
+		public String mode;
+	}
+
+	static class ExplicitPropertyConfig {
+		@Defaults(properties = {
+				@Defaults.Property(name = "mode", text = "property")
+		})
+		public ExplicitModelDefaults nested;
+	}
+
 	public static class ListenerRegistration {
 		public boolean register;
 		public String priority;
 	}
 
-	public static class ListenerSettingsProvider implements MergeDefaultsProvider<ListenerSettings> {
+	public static class ListenerSettingsProvider implements DefaultsProvider<ListenerSettings> {
 		@Override
 		public ListenerSettings supply(ListenerSettings settings) {
 			settings.events = new LinkedHashMap<>();
@@ -137,7 +150,7 @@ public class MergeDefaultsIntegrationTest {
 		public transient Runnable callback;
 	}
 
-	public static class RuntimePolicyDefaults implements MergeDefaultsProvider<RuntimeConfig> {
+	public static class RuntimePolicyDefaults implements DefaultsProvider<RuntimeConfig> {
 		@Override
 		public RuntimeConfig supply(RuntimeConfig config) {
 			config.policy = new RuntimePolicy();
@@ -151,6 +164,16 @@ public class MergeDefaultsIntegrationTest {
 		public RuntimePolicy policy;
 	}
 
+	public static class CollectionEntryDefaults {
+		@Defaults(text = "entry-default")
+		public String name;
+	}
+
+	public static class CollectionHolder {
+		public List<CollectionEntryDefaults> entries;
+		public Map<String, CollectionEntryDefaults> mappings;
+	}
+
 	public static class ScenarioPolicy {
 		public String mode;
 	}
@@ -162,7 +185,7 @@ public class MergeDefaultsIntegrationTest {
 		public ScenarioPolicy policy;
 	}
 
-	public static class ScenarioSettingsProvider implements MergeDefaultsProvider<ScenarioConfig> {
+	public static class ScenarioSettingsProvider implements DefaultsProvider<ScenarioConfig> {
 		@Override
 		public ScenarioConfig supply(ScenarioConfig config) {
 			config.scenarios = new LinkedHashMap<>();
@@ -309,7 +332,7 @@ public class MergeDefaultsIntegrationTest {
 		assertNull(authentication.policy);
 	}
 
-	public static class NestedConfigProvider implements MergeDefaultsProvider<ConfigWithNested> {
+	public static class NestedConfigProvider implements DefaultsProvider<ConfigWithNested> {
 		@Override
 		public ConfigWithNested supply(ConfigWithNested config) {
 			config.appName = "MyApp";
@@ -370,6 +393,29 @@ public class MergeDefaultsIntegrationTest {
 		assertEquals("svc", config.name);
 		assertNotNull(config.policy);
 		assertEquals(3, config.policy.retries);
+	}
+
+	@Test
+	void explicitPropertyDefaultsTakePrecedenceOverModelDefaults(@TempDir Path dir) {
+		Path file = dir.resolve("explicit-property.yml");
+		Config.configured().save(file, new ExplicitPropertyConfig());
+
+		ExplicitPropertyConfig config = new DefaultConfigReader().read(file, ExplicitPropertyConfig.class);
+
+		assertNotNull(config.nested);
+		assertEquals("property", config.nested.mode);
+	}
+
+	@Test
+	void collectionFieldsDoNotReceiveObjectShapedModelDefaults(@TempDir Path dir) {
+		Path file = dir.resolve("collections.yml");
+		Configura facade = Config.builder().format(Format.YAML).build();
+		facade.save(file, new CollectionHolder());
+
+		var persisted = facade.readNode(file);
+
+		assertNull(persisted.get("entries"));
+		assertNull(persisted.get("mappings"));
 	}
 
 	@Test

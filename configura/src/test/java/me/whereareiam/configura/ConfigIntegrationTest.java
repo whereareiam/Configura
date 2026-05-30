@@ -1,12 +1,11 @@
 package me.whereareiam.configura;
 
-import me.whereareiam.configura.annotation.PostProcess;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
+import me.whereareiam.configura.annotation.merge.Merge;
+import me.whereareiam.configura.annotation.merge.MergeMap;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.MergeBehavior;
-import me.whereareiam.configura.merge.annotation.Merge;
-import me.whereareiam.configura.merge.annotation.MergeMap;
-import me.whereareiam.configura.merge.defaults.MergeDefaultsProvider;
+import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.configura.merge.strategy.DeepDefaults;
 import me.whereareiam.configura.merge.strategy.StructuralObject;
 import me.whereareiam.configura.type.Format;
@@ -26,20 +25,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Config Integration")
 class ConfigIntegrationTest {
-	@Test
-	@DisplayName("Update applies defaults and runs post-process hooks")
-	void updateAppliesDefaultsAndRunsPostProcess(@TempDir Path tempDir) {
-		Configura configura = Config.builder()
-				.format(Format.YAML)
-				.defaults(BasicDefaults.class)
-				.build();
-
-		BasicConfig config = configura.update(tempDir.resolve("basic"), BasicConfig.class);
-
-		assertEquals("service", config.name);
-		assertTrue(config.processed);
-	}
-
 	@Test
 	@DisplayName("Update drops fields missing from the current model")
 	void updateDropsFieldsMissingFromCurrentModel(@TempDir Path tempDir) throws Exception {
@@ -320,15 +305,9 @@ class ConfigIntegrationTest {
 
 	public static class BasicConfig {
 		public String name;
-		public transient boolean processed;
-
-		@PostProcess
-		public void afterLoad() {
-			processed = true;
-		}
 	}
 
-	public static class BasicDefaults implements MergeDefaultsProvider<BasicConfig> {
+	public static class BasicDefaults implements DefaultsProvider<BasicConfig> {
 		@Override
 		public BasicConfig supply(BasicConfig config) {
 			config.name = "service";
@@ -349,7 +328,7 @@ class ConfigIntegrationTest {
 		}
 	}
 
-	public static class PreservedSectionDefaults implements MergeDefaultsProvider<PreservedSectionConfig> {
+	public static class PreservedSectionDefaults implements DefaultsProvider<PreservedSectionConfig> {
 		@Override
 		public PreservedSectionConfig supply(PreservedSectionConfig config) {
 			config.section = new PreservedSectionConfig.PreservedSection();
@@ -367,7 +346,7 @@ class ConfigIntegrationTest {
 		public String name;
 	}
 
-	public static class ClassPreservedDefaults implements MergeDefaultsProvider<ClassPreservedConfig> {
+	public static class ClassPreservedDefaults implements DefaultsProvider<ClassPreservedConfig> {
 		@Override
 		public ClassPreservedConfig supply(ClassPreservedConfig config) {
 			config.section = new ClassPreservedSection();
@@ -376,7 +355,7 @@ class ConfigIntegrationTest {
 		}
 	}
 
-	public static class NullDefaults implements MergeDefaultsProvider<NullConfig> {
+	public static class NullDefaults implements DefaultsProvider<NullConfig> {
 		@Override
 		public NullConfig supply(NullConfig config) {
 			config.value = "default";
@@ -402,7 +381,7 @@ class ConfigIntegrationTest {
 		}
 	}
 
-	public static class RoutingDefaults implements MergeDefaultsProvider<RoutingConfig> {
+	public static class RoutingDefaults implements DefaultsProvider<RoutingConfig> {
 		@Override
 		public RoutingConfig supply(RoutingConfig config) {
 			config.routing = new RoutingConfig.Routing();
@@ -436,7 +415,7 @@ class ConfigIntegrationTest {
 		public boolean enabled;
 	}
 
-	public static class BooleanDefaults implements MergeDefaultsProvider<BooleanConfig> {
+	public static class BooleanDefaults implements DefaultsProvider<BooleanConfig> {
 		@Override
 		public BooleanConfig supply(BooleanConfig config) {
 			config.enabled = true;
@@ -448,7 +427,7 @@ class ConfigIntegrationTest {
 		public int retries;
 	}
 
-	public static class NumberDefaults implements MergeDefaultsProvider<NumberConfig> {
+	public static class NumberDefaults implements DefaultsProvider<NumberConfig> {
 		@Override
 		public NumberConfig supply(NumberConfig config) {
 			config.retries = 3;
@@ -464,7 +443,7 @@ class ConfigIntegrationTest {
 		}
 	}
 
-	public static class NestedBooleanDefaults implements MergeDefaultsProvider<NestedBooleanConfig> {
+	public static class NestedBooleanDefaults implements DefaultsProvider<NestedBooleanConfig> {
 		@Override
 		public NestedBooleanConfig supply(NestedBooleanConfig config) {
 			config.registration = new NestedBooleanConfig.Registration();
@@ -481,7 +460,7 @@ class ConfigIntegrationTest {
 		}
 	}
 
-	public static class NestedNumberDefaults implements MergeDefaultsProvider<NestedNumberConfig> {
+	public static class NestedNumberDefaults implements DefaultsProvider<NestedNumberConfig> {
 		@Override
 		public NestedNumberConfig supply(NestedNumberConfig config) {
 			config.limits = new NestedNumberConfig.Limits();
@@ -504,7 +483,7 @@ class ConfigIntegrationTest {
 		public String sessionTtl;
 	}
 
-	public static class ProviderDefaults implements MergeDefaultsProvider<ProviderConfig> {
+	public static class ProviderDefaults implements DefaultsProvider<ProviderConfig> {
 		@Override
 		public ProviderConfig supply(ProviderConfig config) {
 			config.provider = new Provider();

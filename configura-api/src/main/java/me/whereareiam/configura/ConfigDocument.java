@@ -3,7 +3,7 @@ package me.whereareiam.configura;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
-import me.whereareiam.configura.annotation.SchemaVersion;
+import me.whereareiam.configura.annotation.DocumentVersion;
 
 /**
  * Convenience base class for root config documents that persist schema version in {@code _version}.
@@ -11,7 +11,7 @@ import me.whereareiam.configura.annotation.SchemaVersion;
 @Setter
 @Getter
 public abstract class ConfigDocument {
-	@SchemaVersion
+	@DocumentVersion
 	@JsonProperty("_version")
 	protected Integer version;
 }

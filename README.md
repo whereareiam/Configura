@@ -1,150 +1,121 @@
 ## Configura
 
-Lightweight, model-driven configuration framework for Java with merge defaults, zero-boilerplate load/save
-helpers, and pluggable formats (YAML/JSON).
+Lightweight, model-driven configuration framework for Java with:
+- core document loading, saving, merging, defaults, and migration
+- optional feature modules such as extensions, polymorphism, and post-processing
+- YAML and JSON support out of the box
+- a public adapter SPI for teaching Configura how custom types merge
 
-### Table of contents
+### Documentation
 
 - [Getting Started](docs/GETTING_STARTED.md)
-- [Versioned Config Migrations](docs/VERSIONING.md)
-- [Merge defaults](docs/MERGE_DEFAULTS.md)
-- [Post-processing](docs/POST_PROCESSING.md)
-- [Polymorphic models](docs/POLYMORPHIC.md)
 
-### Features
+Core:
+- [Merge Overview](docs/MERGE.md)
+- [Strategies](docs/merge/STRATEGIES.md)
+- [Defaults Resolution](docs/merge/DEFAULTS.md)
+- [Type Adapters](docs/merge/TYPE_ADAPTERS.md)
+- [Annotation DSL](docs/merge/ANNOTATIONS.md)
+- [Migration](docs/MIGRATION.md)
 
-- **Model‑driven**: Define plain Java classes as your config model; no frameworks required.
-- **Merge defaults**: Use `@Defaults` to declare defaults for scalars, lists, and object-like maps.
-- **Versioned migrations**: Register class-per-step migrations with `ConfigDocument` or `@SchemaVersion` support.
-- **Post-processing**: Use `@PostProcess` to run validation, compute derived fields, or initialize state after loading.
-- **Multiple formats**: YAML and JSON supported out of the box.
-- **Readable durations**: `java.time.Duration` fields use config-friendly strings such as `10m` or `2h30m`.
-- **Jackson-native & extensible**: Pluggable readers/writers and custom Jackson modules.
+Features:
+- [Feature Overview](docs/FEATURES.md)
+- [Extensions](docs/features/EXTENSIONS.md)
+- [Polymorphic Models](docs/features/POLYMORPHIC.md)
+- [Post-Processing](docs/features/POST_PROCESSING.md)
 
 ### Installation
 
 <a href="https://github.com/whereareiam/Configura/releases">
-    <img src="https://maven.whereareiam.me/api/badge/latest/release/me/whereareiam/configura?color=40c14a&name=Latest dev" />
+    <img src="https://maven.whereareiam.me/api/badge/latest/release/me/whereareiam/configura?color=40c14a&name=Latest release" />
 </a>
 <a href="https://github.com/whereareiam/Configura/actions/workflows/publish-dev.yml">
     <img src="https://maven.whereareiam.me/api/badge/latest/development/me/whereareiam/configura?color=c15340&name=Latest dev" />
 </a>
 
-Artifacts are published to our repository. Use the release realm for stable versions and the development realm for dev
-builds (`dev` or `dev-<HASH>`).
+Artifacts are published to:
+- `https://maven.whereareiam.me/release`
+- `https://maven.whereareiam.me/development`
 
-<details>
-  <summary>Add dependency (Gradle)</summary>
+Base dependency:
 
 ```kotlin
 repositories {
-    // release builds
     maven("https://maven.whereareiam.me/release")
-    // development builds (optional)
     maven("https://maven.whereareiam.me/development")
 }
 
 dependencies {
-    // Release example
+    implementation("me.whereareiam:configura:0.0.1")
+}
+```
+
+Optional features are separate dependencies:
+
+```kotlin
+dependencies {
     implementation("me.whereareiam:configura:0.0.1")
 
-    // Development example (optional)
-    // implementation("me.whereareiam:configura:dev")
-    // implementation("me.whereareiam:configura:dev-<GIT_HASH>")
+    implementation("me.whereareiam.configura.feature:extension:0.0.1")
+    implementation("me.whereareiam.configura.feature:polymorphic:0.0.1")
+    implementation("me.whereareiam.configura.feature:postprocess:0.0.1")
 }
 ```
 
-</details>
+### Quick Start
 
-<details>
-  <summary>Add dependency (Maven)</summary>
-
-```xml
-
-<repositories>
-    <!-- release builds -->
-    <repository>
-        <id>release</id>
-        <url>https://maven.whereareiam.me/release</url>
-    </repository>
-    <!-- development builds (optional) -->
-    <repository>
-        <id>development</id>
-        <url>https://maven.whereareiam.me/development</url>
-    </repository>
-    <!-- If your Maven requires, enable releases/snapshots flags accordingly -->
-</repositories>
-
-<dependencies>
-<!-- Release example -->
-<dependency>
-    <groupId>me.whereareiam</groupId>
-    <artifactId>configura</artifactId>
-    <version>0.0.1</version>
-</dependency>
-
-<!-- Development example (optional) -->
-<!-- <dependency>
-  <groupId>me.whereareiam</groupId>
-  <artifactId>configura</artifactId>
-  <version>dev</version>
-</dependency> -->
-</dependencies>
-```
-
-</details>
-
-### Quick start
-
-1) Define a simple model with inline merge defaults:
+Define a core-only model:
 
 ```java
-import me.whereareiam.configura.annotation.Defaults;
-import me.whereareiam.configura.annotation.PostProcess;
+import me.whereareiam.configura.annotation.merge.MergeValue;
 
 public class HelloConfig {
-	@Defaults(text = "world")
+	@MergeValue(text = "world")
 	public String name;
-	
-	@PostProcess
-	public void afterLoad() {
-		System.out.println("Config loaded!");
-	}
 }
 ```
 
-2) Use the static `Config` facade directly, or build a configured `Configura` instance when you want your own reusable setup:
+Load and persist it:
+
+```java
+import me.whereareiam.configura.Config;
+
+HelloConfig config = Config.update("config/hello", HelloConfig.class);
+```
+
+`update(...)` creates the file when missing, fills missing values from defaults, writes the merged result, and returns the bound model.
+
+If you want your own reusable setup:
 
 ```java
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
+import me.whereareiam.configura.type.Format;
 
-// Uses the active configured helper
-HelloConfig cfg = Config.update("config/hello", HelloConfig.class);
-// afterLoad() has been called automatically
+Configura yaml = Config.builder()
+		.format(Format.YAML)
+		.build();
 
-// Or build your own configured instance
-Configura yaml = Config.builder().build();
-HelloConfig other = yaml.update("config/hello-other", HelloConfig.class);
+HelloConfig config = yaml.update("config/hello", HelloConfig.class);
 ```
 
-`Config.configure(...)` changes the active configured helper used by static `Config.*(...)` methods.
-`Config.defaults()` returns the bootstrap default `Configura` instance.
-
-3) Want object‑like defaults? Use `@Defaults(properties=...)`:
+Optional features are installed explicitly:
 
 ```java
-import me.whereareiam.configura.annotation.Defaults;
+import me.whereareiam.configura.Config;
+import me.whereareiam.configura.Configura;
+import me.whereareiam.configura.feature.postprocess.PostProcessFeature;
 
-import java.util.Map;
-
-public class DbConfig {
-	@Defaults(properties = {
-			@Defaults.Property(name = "host", text = "localhost"),
-			@Defaults.Property(name = "port", number = "5432")
-	})
-	public Map<String, Object> defaults;
-}
+Configura yaml = Config.builder()
+		.feature(PostProcessFeature.defaults())
+		.build();
 ```
 
-See [Getting Started](docs/GETTING_STARTED.md) for more details and examples.
+See [Getting Started](docs/GETTING_STARTED.md) for a full walkthrough.
+
+### Core Model
+
+- Merge behavior is selected through field strategies such as `@Merge(SourceOwnsField.class)`.
+- Shapes such as objects, maps, and lists are core merge concepts.
+- Defaults supply seed data for those shapes through the merge annotation DSL or through registered defaults resolvers/providers.
+- Custom type families are taught through `MergeTypeAdapter`.

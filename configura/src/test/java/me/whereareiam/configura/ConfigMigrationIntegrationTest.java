@@ -3,7 +3,7 @@ package me.whereareiam.configura;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import me.whereareiam.configura.annotation.SchemaVersion;
+import me.whereareiam.configura.annotation.DocumentVersion;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.migration.ConfigMigrationContext;
 import me.whereareiam.configura.migration.ConfigMigrationStep;
@@ -116,7 +116,7 @@ class ConfigMigrationIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("Custom @SchemaVersion field is picked up automatically")
+	@DisplayName("Custom @DocumentVersion field is picked up automatically")
 	void customConfigVersionFieldIsPickedUpAutomatically(@TempDir Path tempDir) {
 		Configura config = versionedCustomVersionConfig();
 		Path file = tempDir.resolve("custom-settings");
@@ -127,10 +127,10 @@ class ConfigMigrationIntegrationTest {
 		config.write(file, settings);
 
 		JsonNode persisted = config.readNode(file);
-		assertEquals(1, persisted.path("schemaVersion").asInt());
+		assertEquals(1, persisted.path("documentVersion").asInt());
 		assertTrue(persisted.path("_version").isMissingNode());
 		assertEquals("ready", persisted.path("label").asText());
-		assertBefore(readWritten(config, file), "schemaVersion:", "label:");
+		assertBefore(readWritten(config, file), "documentVersion:", "label:");
 	}
 
 	@Test
@@ -411,9 +411,9 @@ class ConfigMigrationIntegrationTest {
 	}
 
 	static final class CustomVersionConfig {
-		@SchemaVersion
-		@JsonProperty("schemaVersion")
-		public Integer schemaVersion;
+		@DocumentVersion
+		@JsonProperty("documentVersion")
+		public Integer documentVersion;
 		public String label;
 	}
 

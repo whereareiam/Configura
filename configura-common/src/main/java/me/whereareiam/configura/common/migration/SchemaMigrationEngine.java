@@ -3,7 +3,7 @@ package me.whereareiam.configura.common.migration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import me.whereareiam.configura.annotation.SchemaVersion;
+import me.whereareiam.configura.annotation.DocumentVersion;
 import me.whereareiam.configura.common.util.SerializedFieldResolver;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.migration.ConfigMigrationContext;
@@ -160,8 +160,8 @@ public final class SchemaMigrationEngine {
 		Field match = null;
 		for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
 			for (Field field : current.getDeclaredFields()) {
-				if (field.getAnnotation(SchemaVersion.class) == null) continue;
-				if (match != null) throw new ConfigException("Multiple @SchemaVersion fields found for " + type.getName());
+				if (field.getAnnotation(DocumentVersion.class) == null) continue;
+				if (match != null) throw new ConfigException("Multiple @DocumentVersion fields found for " + type.getName());
 				match = field;
 			}
 		}
