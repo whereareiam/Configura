@@ -113,7 +113,7 @@ class ConfigDocumentExtensionIntegrationTest {
 				.build();
 
 		ProviderListDocument initial = extended.update(path, ProviderListDocument.class);
-		assertInstanceOf(CorporateProviderEntry.class, initial.providers.getFirst());
+		assertInstanceOf(CorporateProviderEntry.class, initial.providers.get(0));
 		assertTrue(Files.readString(path).contains("domainWhitelist:"));
 
 		var baseOnly = Config.builder()
@@ -122,7 +122,7 @@ class ConfigDocumentExtensionIntegrationTest {
 				.build();
 
 		ProviderListDocument preserved = baseOnly.update(path, ProviderListDocument.class);
-		assertEquals("corporate", preserved.providers.getFirst().id);
+		assertEquals("corporate", preserved.providers.get(0).id);
 		assertTrue(baseOnly.readNode(path).path("providers").get(0).has("domainWhitelist"));
 	}
 

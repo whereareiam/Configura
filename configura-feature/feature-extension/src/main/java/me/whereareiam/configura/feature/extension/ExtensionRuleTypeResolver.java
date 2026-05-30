@@ -39,7 +39,7 @@ public final class ExtensionRuleTypeResolver implements DocumentTypeResolver {
 				matches.add(rule);
 		}
 		if (matches.size() > 1) throw new ConfigException("Multiple contextual document rules matched " + declaredType.getName());
-		if (matches.size() == 1) return matches.getFirst().getTargetType();
+		if (matches.size() == 1) return matches.get(0).getTargetType();
 
 		ConfigDocumentRule<?> wholeRule = registry.getWholeRule(declaredType);
 		return wholeRule != null ? wholeRule.getTargetType() : null;
