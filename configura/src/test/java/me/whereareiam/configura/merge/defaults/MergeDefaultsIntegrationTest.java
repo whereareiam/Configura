@@ -16,6 +16,7 @@ import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -212,6 +213,26 @@ public class MergeDefaultsIntegrationTest {
 		public Map<String, ScenarioSettings> scenarios;
 	}
 
+	public static class PlainStringMapDefaults implements DefaultsProvider<PlainStringMapConfig> {
+		@Override
+		public PlainStringMapConfig supply(PlainStringMapConfig config) {
+			config.enrollment = new EnrollmentMessages();
+			config.enrollment.descriptions = new LinkedHashMap<>();
+			config.enrollment.descriptions.put("premium", "Use Minecraft account for registration.");
+			config.enrollment.descriptions.put("credential", "Register using password.");
+			return config;
+		}
+	}
+
+	@Defaults(provider = @Defaults.Provider(PlainStringMapDefaults.class))
+	public static class PlainStringMapConfig {
+		public EnrollmentMessages enrollment;
+	}
+
+	public static class EnrollmentMessages {
+		public Map<String, String> descriptions;
+	}
+
 	@Test
 	void classLevelDefaultsAppliesDefaults(@TempDir Path tempDir) {
 		ServerConfigProvider.wasCalled = false;
@@ -330,6 +351,26 @@ public class MergeDefaultsIntegrationTest {
 		assertTrue(authentication.enabled);
 		assertEquals(30, authentication.timeout);
 		assertNull(authentication.policy);
+	}
+
+	@Test
+	void unannotatedMapsMergeMissingDefaultEntriesWithoutTreatingKeysAsFields(@TempDir Path tempDir) throws Exception {
+		Path configFile = tempDir.resolve("messages.yml");
+		Files.writeString(configFile, """
+				enrollment:
+				  descriptions:
+				    premium: Custom premium message.
+				""");
+
+		PlainStringMapConfig loaded = Config.builder()
+				.format(Format.YAML)
+				.build()
+				.update(configFile, PlainStringMapConfig.class);
+
+		assertNotNull(loaded.enrollment);
+		assertNotNull(loaded.enrollment.descriptions);
+		assertEquals("Custom premium message.", loaded.enrollment.descriptions.get("premium"));
+		assertEquals("Register using password.", loaded.enrollment.descriptions.get("credential"));
 	}
 
 	public static class NestedConfigProvider implements DefaultsProvider<ConfigWithNested> {
