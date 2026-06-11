@@ -87,6 +87,10 @@ public class PolymorphicIntegrationTest {
 		public String command;
 	}
 
+	public static class TriggerListHolder {
+		public List<TriggerBase> triggers;
+	}
+
 	@Test
 	void readsSymbolVariantFromYamlAnnotation() {
 		String yaml = """
@@ -98,6 +102,28 @@ public class PolymorphicIntegrationTest {
 		TriggerBase value = annotationConfigura().read(yaml.getBytes(), TriggerBase.class);
 		assertInstanceOf(SymbolTrigger.class, value);
 		assertEquals("#", ((SymbolTrigger) value).getSymbol());
+	}
+
+	@Test
+	void readsAnnotatedPolymorphicListEntriesFromYaml() {
+		String yaml = """
+				triggers:
+				  - type: SYMBOL
+				    symbol: "#"
+				    strip: true
+				    radius: 10
+				  - type: COMMAND
+				    command: reply
+				    strip: false
+				    radius: 0
+				""";
+		TriggerListHolder value = annotationConfigura().read(yaml.getBytes(), TriggerListHolder.class);
+		assertNotNull(value.triggers);
+		assertEquals(2, value.triggers.size());
+		assertInstanceOf(SymbolTrigger.class, value.triggers.get(0));
+		assertEquals("#", ((SymbolTrigger) value.triggers.get(0)).getSymbol());
+		assertInstanceOf(CommandTrigger.class, value.triggers.get(1));
+		assertEquals("reply", ((CommandTrigger) value.triggers.get(1)).getCommand());
 	}
 
 	@Test

@@ -8,11 +8,14 @@ import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
+import me.whereareiam.configura.document.DocumentTypeContext;
 import me.whereareiam.configura.feature.polymorphic.DefaultPolymorphicRegistry;
 import me.whereareiam.configura.feature.polymorphic.PolymorphicTypeResolver;
+import me.whereareiam.configura.feature.polymorphic.api.annotation.Polymorphic;
 import me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class PolymorphicSerializationModule extends SimpleModule {
@@ -30,13 +33,13 @@ public final class PolymorphicSerializationModule extends SimpleModule {
 			@Override
 			public JsonDeserializer<?> modifyDeserializer(DeserializationConfig config, BeanDescription beanDesc, JsonDeserializer<?> deserializer) {
 				Class<?> raw = beanDesc.getBeanClass();
-				PolymorphicDefinition effective = registry.definition(raw);
+				PolymorphicDefinition effective = effectiveDefinition(raw);
 				if (effective == null) return deserializer;
 				return new JsonDeserializer<>() {
 					@Override
 					public Object deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException {
 						JsonNode node = parser.readValueAsTree();
-						Class<?> target = new PolymorphicTypeResolver(registry).resolve(raw, new me.whereareiam.configura.document.DocumentTypeContext(node, null, null, null, null, null));
+						Class<?> target = new PolymorphicTypeResolver(registry).resolve(raw, new DocumentTypeContext(node, null, null, null, null, null));
 						ObjectMapper mapper = (ObjectMapper) parser.getCodec();
 						Class<?> bindType = target != null ? target : raw;
 						return mapper.treeToValue(node, bindType);
@@ -48,7 +51,7 @@ public final class PolymorphicSerializationModule extends SimpleModule {
 			@Override
 			public JsonSerializer<?> modifySerializer(SerializationConfig config, BeanDescription beanDesc, JsonSerializer<?> serializer) {
 				Class<?> raw = beanDesc.getBeanClass();
-				PolymorphicDefinition effective = registry.definition(raw);
+				PolymorphicDefinition effective = effectiveDefinition(raw);
 				if (effective == null) return serializer;
 				return new JsonSerializer<>() {
 					@Override
@@ -73,5 +76,32 @@ public final class PolymorphicSerializationModule extends SimpleModule {
 				return entry.getKey();
 		}
 		return null;
+	}
+
+	private PolymorphicDefinition effectiveDefinition(Class<?> raw) {
+		PolymorphicDefinition definition = registry.definition(raw);
+		return definition != null
+				? definition
+				: fromAnnotation(raw.getAnnotation(Polymorphic.class));
+	}
+
+	private static PolymorphicDefinition fromAnnotation(Polymorphic annotation) {
+		if (annotation == null) return null;
+
+		Map<String, Class<?>> mappings = new LinkedHashMap<>();
+		for (Polymorphic.Type type : annotation.mappings())
+			mappings.put(type.value(), type.target());
+
+		LinkedHashMap<String, Class<?>> inferFields = new LinkedHashMap<>();
+		for (Polymorphic.Infer infer : annotation.inferBy())
+			inferFields.put(infer.field(), infer.target());
+
+		return new PolymorphicDefinition(
+				annotation.discriminator(),
+				Map.copyOf(mappings),
+				annotation.defaultValue(),
+				inferFields,
+				annotation.defaultTarget()
+		);
 	}
 }
