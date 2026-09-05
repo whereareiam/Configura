@@ -11,10 +11,12 @@ repositories {
 	mavenCentral()
 }
 
-tasks.withType<JavaCompile>().configureEach {
-	sourceCompatibility = JavaVersion.VERSION_17.toString()
-	targetCompatibility = JavaVersion.VERSION_17.toString()
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+    withSourcesJar()
+    withJavadocJar()
 }
+tasks.withType<JavaCompile>().configureEach { options.release.set(17) }
 
 dependencies {
 	"compileOnly"(libs.findLibrary("jetbrains-annotations").get())

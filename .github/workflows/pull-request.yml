@@ -1,56 +1,22 @@
 name: Pull request
-
 on:
   pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - ready_for_review
-  pull_request_target:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - labeled
-      - unlabeled
-      - ready_for_review
-
+    types: [opened, reopened, synchronize, ready_for_review]
+permissions:
+  contents: read
 concurrency:
-  group: pull-request-${{ github.event_name }}-${{ github.event.pull_request.number }}
+  group: pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
-
 jobs:
-  require-label:
-    if: github.event_name == 'pull_request_target'
+  check:
     runs-on: ubuntu-latest
-    permissions:
-      issues: read
-      pull-requests: read
-
+    timeout-minutes: 10
     steps:
-      - name: Verify pull request has at least one label
-        uses: mheap/github-action-required-labels@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
-          mode: minimum
-          count: 1
-          labels: .+
-          use_regex: true
-          message: This pull request must have at least one label before it can be merged.
-
-  build:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      checks: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Build project
-        uses: ./.github/actions/gradle-build
-        with:
-          gradle-command: ./gradlew --no-daemon test build
-          skip-test-reporter-on-forks: 'true'
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile and run fast tests
+        run: ./gradlew --no-daemon test

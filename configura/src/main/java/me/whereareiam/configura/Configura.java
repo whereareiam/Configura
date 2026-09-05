@@ -8,8 +8,6 @@ import me.whereareiam.configura.common.ConfiguraFeatureRegistry;
 import me.whereareiam.configura.common.document.DefaultDocumentProcessor;
 import me.whereareiam.configura.common.merge.MergeEngine;
 import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
-import me.whereareiam.configura.common.migration.MigrationDefinitionRegistry;
-import me.whereareiam.configura.common.migration.SchemaMigrationEngine;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.common.util.FileUtil;
 import me.whereareiam.configura.common.writer.DefaultConfigWriter;
@@ -27,20 +25,18 @@ import me.whereareiam.configura.merge.strategy.MergeStrategyDefinition;
 import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
 import me.whereareiam.configura.merge.type.MergeTypeAdapter;
 import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
-import me.whereareiam.configura.migration.MigrationDefinition;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.writer.ConfigWriter;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 @SuppressWarnings("unused")
@@ -56,16 +52,13 @@ public final class Configura {
 	private final MergeTypeAdapterRegistry adapterRegistry;
 	private final DefaultsResolverRegistry defaultsResolverRegistry;
 	private final MergePolicyResolverRegistry policyResolverRegistry;
-	private final MigrationDefinitionRegistry versionedRegistry;
 
 	private final Class<? extends FieldMergeStrategy> defaultStrategy;
 	private final String defaultStrategyName;
 	private final MergeBehavior mergeBehavior;
-	private final boolean backupOnMigration;
 
 	private final ObjectMapper mapper;
-	private final DocumentProcessor documentRuntime;
-	private final SchemaMigrationEngine migrationRunner;
+	private final DocumentProcessor documentProcessor;
 	private final MergeEngine mergeEngine;
 	private final ConfigReader reader;
 	private final ConfigWriter writer;
@@ -82,12 +75,10 @@ public final class Configura {
 			MergeTypeAdapterRegistry adapterRegistry,
 			DefaultsResolverRegistry defaultsResolverRegistry,
 			MergePolicyResolverRegistry policyResolverRegistry,
-			MigrationDefinitionRegistry versionedRegistry,
 
 			Class<? extends FieldMergeStrategy> defaultStrategy,
 			String defaultStrategyName,
-			MergeBehavior mergeBehavior,
-			boolean backupOnMigration
+			MergeBehavior mergeBehavior
 	) {
 		this.extension = extension;
 
@@ -100,12 +91,10 @@ public final class Configura {
 		this.adapterRegistry = adapterRegistry.copy();
 		this.defaultsResolverRegistry = defaultsResolverRegistry.copy();
 		this.policyResolverRegistry = policyResolverRegistry.copy();
-		this.versionedRegistry = versionedRegistry.copy();
 
 		this.defaultStrategy = defaultStrategy;
 		this.defaultStrategyName = defaultStrategyName;
 		this.mergeBehavior = mergeBehavior != null ? mergeBehavior : MergeBehavior.defaults();
-		this.backupOnMigration = backupOnMigration;
 
 		ConfiguraFeatureRegistry featureRegistry = new ConfiguraFeatureRegistry();
 		for (ConfiguraFeature feature : this.features)
@@ -114,12 +103,11 @@ public final class Configura {
 		List<Module> mapperModules = new ArrayList<>(this.modules);
 		mapperModules.addAll(featureRegistry.modules(plainMapper));
 		this.mapper = mapperFactory.apply(mapperModules);
-		this.documentRuntime = new DefaultDocumentProcessor(featureRegistry.typeResolvers(), featureRegistry.phases());
-		this.migrationRunner = new SchemaMigrationEngine(this.mapper, this.versionedRegistry);
+		this.documentProcessor = new DefaultDocumentProcessor(featureRegistry.typeResolvers(), featureRegistry.phases());
 		this.mergeEngine = new MergeEngine(
 				this.mapper,
 				this.defaultProviderRegistry,
-				this.documentRuntime,
+				this.documentProcessor,
 				this.strategyRegistry,
 				this.adapterRegistry,
 				this.defaultsResolverRegistry,
@@ -129,7 +117,7 @@ public final class Configura {
 				this.mergeBehavior
 		);
 
-		this.reader = new DefaultConfigReader(this.extension, this.mapper, this.documentRuntime);
+		this.reader = new DefaultConfigReader(this.extension, this.mapper, this.documentProcessor);
 		this.writer = new DefaultConfigWriter(this.extension, this.mapper);
 	}
 
@@ -157,9 +145,6 @@ public final class Configura {
 		return policyResolverRegistry.copy();
 	}
 
-	MigrationDefinitionRegistry versionedRegistry() {
-		return versionedRegistry.copy();
-	}
 
 	ConfigReader reader() {
 		return reader;
@@ -177,22 +162,22 @@ public final class Configura {
 		if (path == null) throw new ConfigException("path must not be null");
 		if (type == null) throw new ConfigException("configClass must not be null");
 
-		SchemaMigrationEngine.MigrationResult resolved = readResolvedTreeInternal(resolve(path), type);
-		return bind(resolved.node(), type, "Failed to bind config to " + type.getName());
+		JsonNode resolved = readTree(resolve(path));
+		return bind(resolved, type, "Failed to bind config to " + type.getName());
 	}
 
 	public <T> T read(byte[] bytes, Class<T> type) {
 		if (type == null) throw new ConfigException("configClass must not be null");
 
-		SchemaMigrationEngine.MigrationResult resolved = readResolvedTreeInternal(bytes, type);
-		return bind(resolved.node(), type, "Failed to read config bytes for " + type.getName());
+		JsonNode resolved = readTree(bytes);
+		return bind(resolved, type, "Failed to read config bytes for " + type.getName());
 	}
 
 	public <T> T read(InputStream inputStream, Class<T> type) {
 		if (type == null) throw new ConfigException("configClass must not be null");
 
-		SchemaMigrationEngine.MigrationResult resolved = readResolvedTreeInternal(inputStream, type);
-		return bind(resolved.node(), type, "Failed to read config stream for " + type.getName());
+		JsonNode resolved = readTree(inputStream);
+		return bind(resolved, type, "Failed to read config stream for " + type.getName());
 	}
 
 	public <T> void write(String file, T value) {
@@ -206,7 +191,7 @@ public final class Configura {
 			return;
 		}
 
-		writer.writeNode(path, versionedNode(value));
+		writer.writeNode(path, mapper.valueToTree(value));
 	}
 
 	public <T> void save(String file, T value) {
@@ -219,12 +204,10 @@ public final class Configura {
 		if (value == null) throw new NullPointerException("value");
 
 		Class<T> type = (Class<T>) value.getClass();
-		SchemaMigrationEngine.MigrationResult existing = existingResolvedTree(path, type);
-		backupBeforePersistedMigration(path, existing);
+		JsonNode existing = existingResolvedTree(path, type);
 
 		ObjectNode source = mapper.valueToTree(value);
 		ObjectNode merged = mergeUserModel(source, value, type);
-		stampCurrentVersion(type, merged, existing.node());
 		writer.writeNode(path, merged);
 	}
 
@@ -232,7 +215,7 @@ public final class Configura {
 		if (value == null)
 			return writer.writeBytes(null);
 
-		return writer.writeBytes(versionedNode(value));
+		return writer.writeBytes(mapper.valueToTree(value));
 	}
 
 	public <T> T merge(String file, T value) {
@@ -244,9 +227,8 @@ public final class Configura {
 		if (value == null) throw new ConfigException("config must not be null");
 
 		Class<T> type = (Class<T>) value.getClass();
-		SchemaMigrationEngine.MigrationResult existing = existingResolvedTree(path, type);
-		ObjectNode merged = mergeDefaults(existing.node(), value, type);
-		stampCurrentVersion(type, merged, existing.node());
+		JsonNode existing = existingResolvedTree(path, type);
+		ObjectNode merged = mergeDefaults(existing, value, type);
 		return bind(merged, type, "Failed to bind merged config to " + type.getName());
 	}
 
@@ -256,13 +238,28 @@ public final class Configura {
 
 	public <T> T update(Path path, Class<T> type) {
 		T empty = instantiate(type);
-		SchemaMigrationEngine.MigrationResult existing = existingResolvedTree(path, type);
-		backupBeforePersistedMigration(path, existing);
+		JsonNode existing = existingResolvedTree(path, type);
 
-		ObjectNode merged = mergeDefaults(existing.node(), empty, type);
-		stampCurrentVersion(type, merged, existing.node());
+		ObjectNode merged = mergeDefaults(existing, empty, type);
+		T value = bind(merged, type, "Failed to bind updated config to " + type.getName());
 		writer.writeNode(path, merged);
-		return bind(merged, type, "Failed to bind updated config to " + type.getName());
+		return value;
+	}
+
+	/** Prepares an in-memory document using configured defaults, merge policies and binding hooks.
+	 * No file is read or written. This allows callers such as Strata to validate staged documents.
+	 * @param source source document tree
+	 * @param type target document model
+	 * @param <T> target model type
+	 * @return merged document that successfully binds to the target model
+	 */
+	public <T> @NotNull ObjectNode prepareNode(
+			@NotNull JsonNode source,
+			@NotNull Class<T> type
+	) {
+		ObjectNode merged = mergeDefaults(source, instantiate(type), type);
+		bind(merged, type, "Failed to validate prepared config for " + type.getName());
+		return merged;
 	}
 
 	public JsonNode readNode(String file) {
@@ -287,15 +284,15 @@ public final class Configura {
 	}
 
 	public <T> JsonNode readResolvedNode(Path path, Class<T> type) {
-		return readResolvedTreeInternal(resolve(path), type).node();
+		return readTree(resolve(path));
 	}
 
 	public <T> JsonNode readResolvedNode(byte[] bytes, Class<T> type) {
-		return readResolvedTreeInternal(bytes, type).node();
+		return readTree(bytes);
 	}
 
 	public <T> JsonNode readResolvedNode(InputStream inputStream, Class<T> type) {
-		return readResolvedTreeInternal(inputStream, type).node();
+		return readTree(inputStream);
 	}
 
 	public void writeNode(String file, JsonNode node) {
@@ -314,75 +311,64 @@ public final class Configura {
 	public Configura withModule(Module module) {
 		List<Module> next = new ArrayList<>(modules);
 		if (module != null) next.add(module);
-		return new Configura(extension, mapperFactory, next, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, next, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
 	public <T, P extends DefaultsProvider<T>> Configura withDefaults(Class<P> providerClass) {
 		DefaultsProviderRegistry registry = defaultProviderRegistry.copy();
 		registry.registerProvider(providerClass);
-		return new Configura(extension, mapperFactory, modules, features, registry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, registry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
 	public Configura withFeature(ConfiguraFeature feature) {
 		List<ConfiguraFeature> next = new ArrayList<>(features);
 		if (feature != null) next.add(feature);
-		return new Configura(extension(), mapperFactory, modules, next, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension(), mapperFactory, modules, next, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
 	public Configura withStrategy(String name, Class<? extends FieldMergeStrategy> strategy) {
 		MergeStrategyRegistry next = strategyRegistry.copy();
 		next.registerAlias(name, strategy);
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, next, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, next, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
 	public Configura withStrategy(MergeStrategyDefinition definition) {
 		MergeStrategyRegistry next = strategyRegistry.copy();
 		next.register(definition);
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, next, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, next, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
 	public Configura withTypeAdapter(MergeTypeAdapter adapter) {
 		MergeTypeAdapterRegistry next = adapterRegistry.copy();
 		next.register(adapter);
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, next, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, next, defaultsResolverRegistry, policyResolverRegistry, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
 	public Configura withDefaultsResolver(DefaultsResolver resolver) {
 		DefaultsResolverRegistry next = defaultsResolverRegistry.copy();
 		next.register(resolver);
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, next, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, next, policyResolverRegistry, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
 	public Configura withPolicyResolver(MergePolicyResolver resolver) {
 		MergePolicyResolverRegistry next = policyResolverRegistry.copy();
 		next.register(resolver);
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, next, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, next, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
 	public Configura withDefaultStrategy(Class<? extends FieldMergeStrategy> strategy) {
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, strategy, null, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, strategy, null, mergeBehavior);
 	}
 
 	public Configura withDefaultStrategy(String strategyName) {
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, null, strategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, null, strategyName, mergeBehavior);
 	}
 
 	public Configura withMergeBehavior(MergeBehavior mergeBehavior) {
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
+		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, defaultStrategy, defaultStrategyName, mergeBehavior);
 	}
 
-	public Configura withBackupOnMigration(boolean backupOnMigration) {
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, versionedRegistry, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
-	}
 
-	public <T> Configura withVersioned(Class<T> type, Consumer<MigrationDefinition<T>> customizer) {
-		MigrationDefinition<T> definition = new MigrationDefinition<>(type);
-		if (customizer != null)
-			customizer.accept(definition);
-		MigrationDefinitionRegistry next = versionedRegistry.copy();
-		next.register(definition);
-		return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, strategyRegistry, adapterRegistry, defaultsResolverRegistry, policyResolverRegistry, next, defaultStrategy, defaultStrategyName, mergeBehavior, backupOnMigration);
-	}
 
 	public String extension() {
 		return extension;
@@ -412,9 +398,6 @@ public final class Configura {
 		return policyResolverRegistry.asList();
 	}
 
-	public boolean isVersioned(Class<?> type) {
-		return versionedRegistry.contains(type);
-	}
 
 	public Class<? extends FieldMergeStrategy> defaultStrategy() {
 		return defaultStrategy;
@@ -428,9 +411,6 @@ public final class Configura {
 		return mergeBehavior;
 	}
 
-	public boolean backupOnMigration() {
-		return backupOnMigration;
-	}
 
 	private Path resolve(String file) {
 		return FileUtil.resolvePathWithExtension(file, extension);
@@ -480,32 +460,20 @@ public final class Configura {
 		}
 	}
 
-	private <T> SchemaMigrationEngine.MigrationResult readResolvedTreeInternal(Path path, Class<T> type) {
-		return migrationRunner.migrate(type, readTree(path), path, false);
-	}
 
-	private <T> SchemaMigrationEngine.MigrationResult readResolvedTreeInternal(byte[] bytes, Class<T> type) {
-		return migrationRunner.migrate(type, readTree(bytes), null, bytes == null || bytes.length == 0);
-	}
 
-	private <T> SchemaMigrationEngine.MigrationResult readResolvedTreeInternal(
-			InputStream inputStream,
-			Class<T> type
-	) {
-		return migrationRunner.migrate(type, readTree(inputStream), null, inputStream == null);
-	}
 
-	private <T> SchemaMigrationEngine.MigrationResult existingResolvedTree(Path path, Class<T> type) {
+	private <T> JsonNode existingResolvedTree(Path path, Class<T> type) {
 		Path target = resolve(path);
 		if (!Files.exists(target))
-			return migrationRunner.migrate(type, mapper.createObjectNode(), target, true);
+			return mapper.createObjectNode();
 
-		return readResolvedTreeInternal(target, type);
+		return readTree(target);
 	}
 
 	private <T> T instantiate(Class<T> type) {
 		try {
-			Class<?> effectiveType = documentRuntime.resolveType(type, null);
+			Class<?> effectiveType = documentProcessor.resolveType(type, null);
 			return (T) mapper.treeToValue(mapper.createObjectNode(), effectiveType);
 		} catch (Exception e) {
 			throw new ConfigException("Failed to instantiate config type " + type.getName(), e);
@@ -514,45 +482,21 @@ public final class Configura {
 
 	private <T> T bind(JsonNode node, Class<T> type, String failureMessage) {
 		try {
-			Class<?> effectiveType = documentRuntime.resolveType(
+			Class<?> effectiveType = documentProcessor.resolveType(
 					type,
 					new DocumentTypeContext(node != null ? node : mapper.createObjectNode(), null, null, null, null, null)
 			);
 			T value = (T) mapper.treeToValue(node != null ? node : mapper.createObjectNode(), effectiveType);
-			documentRuntime.afterBind(value);
+			documentProcessor.afterBind(value);
 			return value;
 		} catch (Exception e) {
 			throw new ConfigException(failureMessage, e);
 		}
 	}
 
-	private <T> ObjectNode stampCurrentVersion(Class<T> type, ObjectNode node) {
-		return migrationRunner.stampCurrentVersion(type, node);
-	}
 
-	private <T> ObjectNode stampCurrentVersion(Class<T> type, ObjectNode node, JsonNode source) {
-		return migrationRunner.stampCurrentVersion(type, node, source);
-	}
 
-	@SuppressWarnings("unchecked")
-	private <T> ObjectNode versionedNode(T value) {
-		ObjectNode node = mapper.valueToTree(value);
-		return stampCurrentVersion((Class<T>) value.getClass(), node);
-	}
 
-	private void backupBeforePersistedMigration(Path path, SchemaMigrationEngine.MigrationResult existing) {
-		Path target = resolve(path);
-		if (!backupOnMigration || existing == null || !existing.migrated() || !Files.exists(target))
-			return;
-
-		Path backup = target.resolveSibling(target.getFileName().toString() + ".bak");
-		try {
-			Files.createDirectories(backup.getParent() != null ? backup.getParent() : Path.of("."));
-			Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
-		} catch (IOException e) {
-			throw new ConfigException("Failed to back up config file before migration: " + target, e);
-		}
-	}
 
 	private <T> ObjectNode mergeDefaults(JsonNode source, T model, Class<T> type) {
 		return mergeEngine.mergeDefaults(source, model, type);

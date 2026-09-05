@@ -1,23 +1,24 @@
 plugins {
-	id("java-conventions")
-	id("testing")
-	`maven-publish`
+    `maven-publish`
+    id("java-conventions")
+    id("testing")
 }
 
-extensions.configure<PublishingExtension> {
-	repositories {
-		maven {
-			val buildVersion = providers.environmentVariable("VERSION").orElse("dev").get()
-			val realm = providers.environmentVariable("PUBLISH_REALM")
-				.orElse(if (buildVersion.contains("dev", ignoreCase = true)) "development" else "release")
-				.get()
-				.lowercase()
-
-			url = uri("https://maven.whereareiam.me/$realm")
-			credentials {
-				username = providers.environmentVariable("PUBLISH_USER").orNull.orEmpty()
-				password = providers.environmentVariable("PUBLISH_TOKEN").orNull.orEmpty()
-			}
-		}
-	}
+publishing {
+    repositories {
+        maven {
+            val base = providers.environmentVariable("PUBLISH_MAVEN_BASE_URL").orElse("https://registry.whereareiam.me/maven").get()
+            val repository = providers.environmentVariable("PUBLISH_MAVEN_REPOSITORY").orElse("packages").get()
+            url = uri("$base/$repository")
+            credentials {
+                username = providers.environmentVariable("PUBLISH_USER").orNull
+                password = providers.environmentVariable("PUBLISH_TOKEN").orNull
+            }
+        }
+    }
+}
+tasks.withType<Jar>().configureEach {
+    archiveBaseName.set(provider {
+        project.extensions.getByType<PublishingExtension>().publications.withType<MavenPublication>().single().artifactId
+    })
 }
