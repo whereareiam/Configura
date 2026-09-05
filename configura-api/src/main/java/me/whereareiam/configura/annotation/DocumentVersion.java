@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks the field that stores the document version for migration purposes.
+ * Marks portable document-version metadata. Configura preserves the value; Strata owns migration execution.
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)

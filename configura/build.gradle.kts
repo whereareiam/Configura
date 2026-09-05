@@ -14,7 +14,7 @@ publishing {
             artifactId = "configura"
             pom {
                 name.set("configura")
-                description.set("Configura bootstrap: API facade with runtime wiring")
+                description.set("Convenient configuration loading, merging and defaults")
             }
         }
     }

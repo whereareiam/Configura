@@ -9,7 +9,6 @@ import me.whereareiam.configura.common.merge.type.list.ListTypeAdapter;
 import me.whereareiam.configura.common.merge.type.map.MapTypeAdapter;
 import me.whereareiam.configura.common.merge.type.object.ObjectTypeAdapter;
 import me.whereareiam.configura.common.merge.type.value.ValueTypeAdapter;
-import me.whereareiam.configura.common.migration.MigrationDefinitionRegistry;
 import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.configura.merge.defaults.DefaultsResolver;
@@ -21,7 +20,6 @@ import me.whereareiam.configura.merge.strategy.*;
 import me.whereareiam.configura.merge.type.BuiltinStrategyCapabilities;
 import me.whereareiam.configura.merge.type.MergeTypeAdapter;
 import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
-import me.whereareiam.configura.migration.MigrationDefinition;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.writer.ConfigWriter;
@@ -206,12 +204,10 @@ public final class Config {
 		private final MergeTypeAdapterRegistry adapterRegistry;
 		private final DefaultsResolverRegistry defaultsResolverRegistry;
 		private final MergePolicyResolverRegistry policyResolverRegistry;
-		private final MigrationDefinitionRegistry versionedRegistry;
 
 		private Class<? extends FieldMergeStrategy> defaultStrategy;
 		private String defaultStrategyName;
 		private MergeBehavior mergeBehavior;
-		private boolean backupOnMigration;
 
 		private Builder() {
 			Configura configured = configuredConfig;
@@ -252,12 +248,10 @@ public final class Config {
 						.register(new me.whereareiam.configura.merge.defaults.AnnotationMergeDefaultsResolver());
 				this.policyResolverRegistry = new MergePolicyResolverRegistry()
 						.register(new AnnotationMergePolicyResolver());
-				this.versionedRegistry = new MigrationDefinitionRegistry();
 
 				this.defaultStrategy = DeepDefaults.class;
 				this.defaultStrategyName = null;
 				this.mergeBehavior = MergeBehavior.defaults();
-				this.backupOnMigration = true;
 				return;
 			}
 
@@ -272,12 +266,10 @@ public final class Config {
 			this.adapterRegistry = configured.typeAdapterRegistry();
 			this.defaultsResolverRegistry = configured.defaultsResolverRegistry();
 			this.policyResolverRegistry = configured.policyResolverRegistry();
-			this.versionedRegistry = configured.versionedRegistry();
 
 			this.defaultStrategy = configured.defaultStrategy();
 			this.defaultStrategyName = configured.defaultStrategyName();
 			this.mergeBehavior = configured.mergeBehavior();
-			this.backupOnMigration = configured.backupOnMigration();
 		}
 
 		private Builder(Configura source) {
@@ -292,12 +284,10 @@ public final class Config {
 			this.adapterRegistry = source.typeAdapterRegistry();
 			this.defaultsResolverRegistry = source.defaultsResolverRegistry();
 			this.policyResolverRegistry = source.policyResolverRegistry();
-			this.versionedRegistry = source.versionedRegistry();
 
 			this.defaultStrategy = source.defaultStrategy();
 			this.defaultStrategyName = source.defaultStrategyName();
 			this.mergeBehavior = source.mergeBehavior();
-			this.backupOnMigration = source.backupOnMigration();
 		}
 
 		public Builder format(Format format) {
@@ -392,17 +382,6 @@ public final class Config {
 			return this;
 		}
 
-		public Builder backupOnMigration(boolean backupOnMigration) {
-			this.backupOnMigration = backupOnMigration;
-			return this;
-		}
-
-		public <T> Builder versioned(Class<T> type, Consumer<MigrationDefinition<T>> customizer) {
-			MigrationDefinition<T> definition = new MigrationDefinition<>(type);
-			if (customizer != null) customizer.accept(definition);
-			this.versionedRegistry.register(definition);
-			return this;
-		}
 
 		public Configura build() {
 			return new Configura(
@@ -415,11 +394,9 @@ public final class Config {
 					adapterRegistry,
 					defaultsResolverRegistry,
 					policyResolverRegistry,
-					versionedRegistry,
 					defaultStrategy,
 					defaultStrategyName,
-					mergeBehavior,
-					backupOnMigration
+					mergeBehavior
 			);
 		}
 	}

@@ -1,58 +1,30 @@
-name: Publish Development Build
-
+name: Publish development build
 on:
-  push:
-    branches:
-      - dev
   workflow_dispatch:
-
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: publish-dev-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  validate-ref:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Reject release refs for manual development publish
-        run: |
-          case "${GITHUB_REF_NAME}" in
-            release|release/*)
-              echo "Manual development publish is not allowed from ${GITHUB_REF_NAME}."
-              exit 1
-              ;;
-          esac
-
-  prepare:
-    needs: validate-ref
-    if: always() && (github.event_name != 'workflow_dispatch' || needs.validate-ref.result == 'success')
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.details.outputs.version }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Extract build details
-        id: details
-        run: |
-          branch_name="${GITHUB_REF_NAME//\//-}"
-          echo "version=${branch_name}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-
   publish:
-    needs: prepare
-    if: always() && needs.prepare.result == 'success'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      checks: write
+    timeout-minutes: 20
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Build and publish project
-        uses: ./.github/actions/gradle-build
-        env:
-          PUBLISH_USER: ${{ secrets.PUBLISH_USER }}
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-          PUBLISH_REALM: development
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
-          gradle-command: ./gradlew --no-daemon test publish
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Resolve development version
+        run: echo "VERSION=dev-${GITHUB_SHA::12}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+      - name: Build and verify
+        run: ./gradlew --no-daemon clean test build
+      - name: Publish packages
+        uses: whereareiam/devops/actions/registry/maven-publish@v2
+        with:
+          visibility: public
+          repository: packages
+          command: ./gradlew --no-daemon publish
