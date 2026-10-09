@@ -1,7 +1,8 @@
 package me.whereareiam.configura.merge.defaults.tree;
 
+import me.whereareiam.configura.annotation.merge.MergeObject;
+import me.whereareiam.configura.annotation.merge.MergeValue;
 import me.whereareiam.configura.Config;
-import me.whereareiam.configura.annotation.Defaults;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -16,11 +17,11 @@ class TreeDefaultsIntegrationTest {
 		public DatabaseConfig database;
 
 		public static class ServiceConfig {
-			@Defaults(text = "svc")
+			@MergeValue(text = "svc")
 			public String name;
 
-			@Defaults(properties = {
-					@Defaults.Property(name = "retries", number = "3")
+			@MergeObject(properties = {
+					@MergeObject.Property(name = "retries", number = "3")
 			})
 			public RetryPolicy retry;
 
@@ -32,15 +33,15 @@ class TreeDefaultsIntegrationTest {
 		public static class DatabaseConfig {
 			public String url;
 
-			@Defaults(object = @Defaults.Object(properties = {
-					@Defaults.Property(name = "size", number = "10")
-			}))
+			@MergeObject(properties = {
+					@MergeObject.Property(name = "size", number = "10")
+			})
 			public PoolConfig pool;
 
 			public Boolean ssl;
 
 			public static class PoolConfig {
-				@Defaults(number = "10")
+				@MergeValue(number = "10")
 				public int size;
 			}
 		}

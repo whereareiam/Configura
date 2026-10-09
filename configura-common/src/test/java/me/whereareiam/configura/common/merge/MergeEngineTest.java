@@ -1,7 +1,9 @@
 package me.whereareiam.configura.common.merge;
 
+import me.whereareiam.configura.annotation.merge.MergeList;
+import me.whereareiam.configura.annotation.merge.MergeObject;
+import me.whereareiam.configura.annotation.merge.MergeValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
 import me.whereareiam.configura.common.document.DefaultDocumentProcessor;
 import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
@@ -35,7 +37,7 @@ class MergeEngineTest {
 	}
 
 	static class SimpleHolder {
-		@Defaults(text = "x")
+		@MergeValue(text = "x")
 		public String value;
 	}
 
@@ -49,11 +51,11 @@ class MergeEngineTest {
 	}
 
 	static class SeedHolder {
-		@Defaults(stringItems = {"a", "b"})
+		@MergeList(items = {@MergeList.Item(text = "a"), @MergeList.Item(text = "b")})
 		public List<String> names;
 
-		@Defaults(properties = {
-				@Defaults.Property(name = "retries", number = "3")
+		@MergeObject(properties = {
+				@MergeObject.Property(name = "retries", number = "3")
 		})
 		public Retry policy;
 	}

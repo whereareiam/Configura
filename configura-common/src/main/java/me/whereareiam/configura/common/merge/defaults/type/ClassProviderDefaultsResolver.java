@@ -3,7 +3,6 @@ package me.whereareiam.configura.common.merge.defaults.type;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import org.jetbrains.annotations.Nullable;
@@ -52,24 +51,15 @@ public final class ClassProviderDefaultsResolver {
 		return false;
 	}
 
-	private static DefaultsProvider<?> annotationProvider(Class<?> targetType) {
-		Defaults defaults = targetType.getAnnotation(Defaults.class);
-		if (defaults == null || defaults.provider().value() == Defaults.Provider.None.class)
-			return annotationProviderModern(targetType);
-		return instantiateProvider(defaults.provider().value());
-	}
-
-	private static DefaultsProvider<?> annotationProviderModern(Class<?> targetType) {
+	private static @Nullable DefaultsProvider<?> annotationProvider(Class<?> targetType) {
 		me.whereareiam.configura.annotation.merge.DefaultsProvider defaults =
 				targetType.getAnnotation(me.whereareiam.configura.annotation.merge.DefaultsProvider.class);
-		if (defaults == null) return null;
-		return instantiateProvider(defaults.value());
+
+		return defaults == null ? null : instantiateProvider(defaults.value());
 	}
 
 	private static boolean hasAnnotationProvider(Class<?> targetType) {
-		Defaults defaults = targetType.getAnnotation(Defaults.class);
-		return (defaults != null && defaults.provider().value() != Defaults.Provider.None.class)
-				|| targetType.isAnnotationPresent(me.whereareiam.configura.annotation.merge.DefaultsProvider.class);
+		return targetType.isAnnotationPresent(me.whereareiam.configura.annotation.merge.DefaultsProvider.class);
 	}
 
 	private static DefaultsProvider<?> instantiateProvider(Class<? extends DefaultsProvider<?>> providerClass) {

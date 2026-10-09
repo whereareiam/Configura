@@ -1,4 +1,4 @@
-package me.whereareiam.configura.merge.policy;
+package me.whereareiam.configura.common.merge.policy;
 
 import me.whereareiam.configura.annotation.merge.Merge;
 import me.whereareiam.configura.annotation.merge.MergeList;
@@ -9,6 +9,8 @@ import me.whereareiam.configura.common.merge.type.map.MapMergeConfig;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
 import me.whereareiam.configura.merge.type.descriptor.MergeTypeDescriptor;
 import me.whereareiam.configura.type.merge.tree.list.ListMode;
+import me.whereareiam.configura.merge.policy.MergePolicy;
+import me.whereareiam.configura.merge.policy.MergePolicyResolver;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

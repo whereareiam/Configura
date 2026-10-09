@@ -1,11 +1,11 @@
 package me.whereareiam.configura.merge;
 
+import me.whereareiam.configura.annotation.merge.MergeValue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
-import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.annotation.merge.Merge;
 import me.whereareiam.configura.annotation.merge.MergeList;
 import me.whereareiam.configura.merge.policy.MergePolicy;
@@ -178,21 +178,20 @@ class MergeCustomizationIntegrationTest {
 	}
 
 	private static final class EnvelopeValue {
-		@Defaults(text = "default-name")
+		@MergeValue(text = "default-name")
 		public String name;
 
-		@Defaults(bool = true)
+		@MergeValue(bool = true)
 		public boolean enabled;
 	}
 
 	private static final class OverrideListConfig {
-		@Defaults(stringItems = {"base"})
-		@MergeList(mode = ListMode.PLAIN)
+		@MergeList(mode = ListMode.PLAIN, items = {@MergeList.Item(text = "base")})
 		public List<String> items;
 	}
 
 	private static final class StrategyOverrideConfig {
-		@Defaults(text = "default-mode")
+		@MergeValue(text = "default-mode")
 		@Merge(SourceOwnsField.class)
 		public String mode;
 	}

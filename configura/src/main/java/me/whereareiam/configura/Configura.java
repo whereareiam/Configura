@@ -10,8 +10,8 @@ import me.whereareiam.configura.common.merge.type.list.ListTypeAdapter;
 import me.whereareiam.configura.common.merge.type.map.MapTypeAdapter;
 import me.whereareiam.configura.common.merge.type.object.ObjectTypeAdapter;
 import me.whereareiam.configura.common.merge.type.value.ValueTypeAdapter;
-import me.whereareiam.configura.merge.defaults.AnnotationMergeDefaultsResolver;
-import me.whereareiam.configura.merge.policy.AnnotationMergePolicyResolver;
+import me.whereareiam.configura.common.merge.defaults.AnnotationDefaultsResolver;
+import me.whereareiam.configura.common.merge.policy.AnnotationMergePolicyResolver;
 import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
 import me.whereareiam.configura.merge.strategy.DeepDefaults;
 import me.whereareiam.configura.merge.strategy.NeverDefaults;
@@ -503,7 +503,7 @@ public final class Configura {
 					.register(new MapTypeAdapter())
 					.register(new ListTypeAdapter());
 			this.defaultsResolverRegistry = new DefaultsResolverRegistry()
-					.register(new AnnotationMergeDefaultsResolver());
+					.register(new AnnotationDefaultsResolver());
 			this.policyResolverRegistry = new MergePolicyResolverRegistry()
 					.register(new AnnotationMergePolicyResolver());
 
