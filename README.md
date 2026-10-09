@@ -1,8 +1,10 @@
 # Configura
 
-Configura provides convenient Java configuration on top of Jackson, with
-model defaults, merge policies, hooks, and optional features. Java 17 or newer
-is required. YAML and JSON are supported out of the box.
+Configura is a set of helpers on top of Jackson for the configuration files of an application:
+it loads a file into your model, fills in what the file is missing from your defaults without
+touching what the user wrote, and writes the result back. Jackson stays visible: you register your
+own modules and can reach the `ObjectMapper`. YAML and JSON are built in. Java 17 or newer is
+required.
 
 ## Installation
 
@@ -12,86 +14,46 @@ repositories {
 }
 
 dependencies {
-    implementation("me.whereareiam:configura:1.0.0")
+    implementation("me.whereareiam:configura:<version>")
 }
 ```
 
-Optional features are separate artifacts under `me.whereareiam.configura.feature`:
-`extension`, `polymorphic`, and `postprocess`. Use the same version as Configura.
-
-## Usage
+## Load a configuration file
 
 ```java
 import me.whereareiam.configura.Config;
-import me.whereareiam.configura.annotation.merge.MergeValue;
 
 public class Settings {
-    @MergeValue(text = "world")
-    public String name;
+    public String name = "lobby";
+    public int timeout = 30;
 }
+
+Settings settings = Config.yaml().update("config/settings", Settings.class);
 ```
 
-```java
-var yaml = Config.yaml();
-Settings settings = yaml.update("config/settings", Settings.class);
-```
+`update` reads `config/settings.yml`, adds every setting the file does not have yet, binds the
+result to `Settings` and writes the file back. A missing file is created with the defaults. A user
+who sets `timeout: 60` keeps it; a setting you add in a later release appears in their file with
+its default on the next start.
 
-`update` creates a missing file, merges defaults, validates binding, and atomically
-replaces the destination. If binding or serialization fails, the existing file is
-preserved. The filesystem must support atomic replacement.
+The file is replaced atomically. If the content cannot be bound to the model, `update` throws a
+`ConfigException` and leaves the file as it was.
 
-Use `read` without rewriting, `write` for an exact model write, and `save` when
-applying the configured model merge behavior. For JSON, use `Config.json()`.
+## Where to go next
 
-Configura sits on top of Jackson and does not hide it: you register your own Jackson
-modules, and `mapper()` hands you the configured `ObjectMapper`.
+- [Getting started](docs/GETTING_STARTED.md): your own `Configura` instance, defaults providers,
+  Jackson modules, the other read and write methods.
+- [Defaults and merging](docs/MERGE.md): where defaults come from and how `@Merge` decides what is
+  added to a user's file.
+- [Features](docs/FEATURES.md): polymorphic models, extendable documents, post-processing, and
+  writing your own.
+- [Upgrading from 1.0](docs/UPGRADING.md): what changed in the API and what to replace it with.
 
-```java
-Configura configura = Configura.builder()
-        .format(Format.YAML)
-        .module(new MyJacksonModule())
-        .defaults(SettingsDefaults.class)
-        .feature(PostProcessFeature.defaults())
-        .build();
+To rename or move settings between releases, use
+[Strata](https://github.com/whereareiam/strata) and run it before `update`.
 
-Configura json = configura.toBuilder().format(Format.JSON).build();   // a variant; the original is unchanged
-```
-
-`Config.setConfigured(configura)` shares one instance with code that cannot have it
-handed in; `Config.configured()` returns it.
-
-`DefaultsProvider`, merge annotations and custom `MergeTypeAdapter` implementations
-let applications supply defaults and extend merging. Features add document type
-resolution, extensions and post-binding processing without changing basic loading.
-
-`readNode` and `writeNodeBytes` expose raw document trees and serialization without
-forcing a document into a Java model.
-
-## Keys that belong to another tool
-
-A feature can reserve top-level keys through `ConfiguraFeature.reservedKeys()`. A reserved key
-is not part of your model: Configura does not bind it, and `update`, `save` and `write` carry its
-value over from the existing file, at the top of the new content. Tools that keep their own marker
-in a config file use this.
-
-## Migrations
-
-Configura does not change existing files beyond merging defaults. To rename or move settings
-between releases, or to split and merge files, use
-[Strata](https://github.com/whereareiam/strata) with its `strata-adapter-configura`, and run it
-before `update`. Strata keeps the version of a configuration in the file, in a key its feature
-reserves.
-
-## Building and publishing
+## Building
 
 ```sh
 ./gradlew test build
 ```
-
-Development publishing runs only through the manual workflow. Releases run tests,
-publish to `registry.whereareiam.me/maven/packages` through the shared DevOps OIDC
-action, and attach binary, source and Javadoc JARs. Registry credentials are not
-needed for normal local builds.
-
-Release Drafter follows `dev`. Use `feature`, `change`, `bug`, or `dependencies`
-labels; add `major` for breaking changes and `skip-changelog` to omit an entry.

@@ -6,18 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.common.ConfiguraFeatureRegistry;
 import me.whereareiam.configura.common.MapperFactory;
-import me.whereareiam.configura.common.merge.type.list.ListTypeAdapter;
-import me.whereareiam.configura.common.merge.type.map.MapTypeAdapter;
-import me.whereareiam.configura.common.merge.type.object.ObjectTypeAdapter;
-import me.whereareiam.configura.common.merge.type.value.ValueTypeAdapter;
-import me.whereareiam.configura.common.merge.defaults.AnnotationDefaultsResolver;
-import me.whereareiam.configura.common.merge.policy.AnnotationMergePolicyResolver;
-import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
-import me.whereareiam.configura.merge.strategy.NeverDefaults;
-import me.whereareiam.configura.merge.strategy.SourceOwnsField;
-import me.whereareiam.configura.merge.strategy.StructuralObject;
-import me.whereareiam.configura.merge.type.BuiltinStrategyCapabilities;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.common.document.DefaultDocumentProcessor;
 import me.whereareiam.configura.common.merge.MergeEngine;
@@ -30,15 +18,6 @@ import me.whereareiam.configura.document.DocumentTypeContext;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
-import me.whereareiam.configura.merge.defaults.DefaultsResolver;
-import me.whereareiam.configura.merge.defaults.DefaultsResolverRegistry;
-import me.whereareiam.configura.merge.policy.MergePolicyResolver;
-import me.whereareiam.configura.merge.policy.MergePolicyResolverRegistry;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.MergeStrategyDefinition;
-import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.type.MergeTypeAdapter;
-import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.writer.ConfigWriter;
 import org.jetbrains.annotations.NotNull;
@@ -52,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 @SuppressWarnings("unused")
@@ -64,13 +42,7 @@ public final class Configura {
 	private final List<ConfiguraFeature> features;
 
 	private final DefaultsProviderRegistry defaultProviderRegistry;
-	private final MergeStrategyRegistry strategyRegistry;
-	private final MergeTypeAdapterRegistry adapterRegistry;
-	private final DefaultsResolverRegistry defaultsResolverRegistry;
-	private final MergePolicyResolverRegistry policyResolverRegistry;
 
-	private final Class<? extends FieldMergeStrategy> defaultStrategy;
-	private final String defaultStrategyName;
 	private final MergeBehavior mergeBehavior;
 
 	private final Set<String> reservedKeys;
@@ -88,13 +60,6 @@ public final class Configura {
 			List<ConfiguraFeature> features,
 
 			DefaultsProviderRegistry defaultProviderRegistry,
-			MergeStrategyRegistry strategyRegistry,
-			MergeTypeAdapterRegistry adapterRegistry,
-			DefaultsResolverRegistry defaultsResolverRegistry,
-			MergePolicyResolverRegistry policyResolverRegistry,
-
-			Class<? extends FieldMergeStrategy> defaultStrategy,
-			String defaultStrategyName,
 			MergeBehavior mergeBehavior
 	) {
 		this.extension = extension;
@@ -104,13 +69,7 @@ public final class Configura {
 		this.features = List.copyOf(features);
 
 		this.defaultProviderRegistry = defaultProviderRegistry.copy();
-		this.strategyRegistry = strategyRegistry.copy();
-		this.adapterRegistry = adapterRegistry.copy();
-		this.defaultsResolverRegistry = defaultsResolverRegistry.copy();
-		this.policyResolverRegistry = policyResolverRegistry.copy();
 
-		this.defaultStrategy = defaultStrategy;
-		this.defaultStrategyName = defaultStrategyName;
 		this.mergeBehavior = mergeBehavior != null ? mergeBehavior : MergeBehavior.defaults();
 
 		ConfiguraFeatureRegistry featureRegistry = new ConfiguraFeatureRegistry();
@@ -122,18 +81,7 @@ public final class Configura {
 		mapperModules.addAll(featureRegistry.modules(plainMapper));
 		this.mapper = mapperFactory.apply(mapperModules);
 		this.documentProcessor = new DefaultDocumentProcessor(featureRegistry.typeResolvers(), featureRegistry.phases());
-		this.mergeEngine = new MergeEngine(
-				this.mapper,
-				this.defaultProviderRegistry,
-				this.documentProcessor,
-				this.strategyRegistry,
-				this.adapterRegistry,
-				this.defaultsResolverRegistry,
-				this.policyResolverRegistry,
-				this.defaultStrategy,
-				this.defaultStrategyName,
-				this.mergeBehavior
-		);
+		this.mergeEngine = new MergeEngine(this.mapper, this.defaultProviderRegistry, this.documentProcessor, this.mergeBehavior);
 
 		this.reader = new DefaultConfigReader(this.extension, this.mapper, this.documentProcessor);
 		this.writer = new DefaultConfigWriter(this.extension, this.mapper);
@@ -341,13 +289,7 @@ public final class Configura {
 		return List.copyOf(features);
 	}
 
-	Class<? extends FieldMergeStrategy> defaultStrategy() {
-		return defaultStrategy;
-	}
 
-	String defaultStrategyName() {
-		return defaultStrategyName;
-	}
 
 	public MergeBehavior mergeBehavior() {
 		return mergeBehavior;
@@ -480,34 +422,15 @@ public final class Configura {
 		private final List<ConfiguraFeature> features = new ArrayList<>();
 
 		private final DefaultsProviderRegistry defaultProviderRegistry;
-		private final MergeStrategyRegistry strategyRegistry;
-		private final MergeTypeAdapterRegistry adapterRegistry;
-		private final DefaultsResolverRegistry defaultsResolverRegistry;
-		private final MergePolicyResolverRegistry policyResolverRegistry;
 
 		private String extension;
 		private Function<List<Module>, ObjectMapper> mapperFactory;
-		private Class<? extends FieldMergeStrategy> defaultStrategy;
-		private String defaultStrategyName;
 		private MergeBehavior mergeBehavior;
 
 		private Builder() {
 			this.extension = Format.YAML.getExtension();
 			this.mapperFactory = MapperFactory::createYamlMapper;
-
 			this.defaultProviderRegistry = new DefaultsProviderRegistry();
-			this.strategyRegistry = builtInStrategies();
-			this.adapterRegistry = new MergeTypeAdapterRegistry()
-					.register(new ValueTypeAdapter())
-					.register(new ObjectTypeAdapter())
-					.register(new MapTypeAdapter())
-					.register(new ListTypeAdapter());
-			this.defaultsResolverRegistry = new DefaultsResolverRegistry()
-					.register(new AnnotationDefaultsResolver());
-			this.policyResolverRegistry = new MergePolicyResolverRegistry()
-					.register(new AnnotationMergePolicyResolver());
-
-			this.defaultStrategy = DeepDefaults.class;
 			this.mergeBehavior = MergeBehavior.defaults();
 		}
 
@@ -516,15 +439,7 @@ public final class Configura {
 			this.mapperFactory = source.mapperFactory;
 			this.modules.addAll(source.modules);
 			this.features.addAll(source.features);
-
 			this.defaultProviderRegistry = source.defaultProviderRegistry.copy();
-			this.strategyRegistry = source.strategyRegistry.copy();
-			this.adapterRegistry = source.adapterRegistry.copy();
-			this.defaultsResolverRegistry = source.defaultsResolverRegistry.copy();
-			this.policyResolverRegistry = source.policyResolverRegistry.copy();
-
-			this.defaultStrategy = source.defaultStrategy;
-			this.defaultStrategyName = source.defaultStrategyName;
 			this.mergeBehavior = source.mergeBehavior;
 		}
 
@@ -605,104 +520,6 @@ public final class Configura {
 		}
 
 		/**
-		 * Registers a merge strategy under a name usable in {@code @Merge(named = ...)}.
-		 *
-		 * @param name     name of the strategy
-		 * @param strategy strategy class
-		 * @return this builder
-		 */
-		public Builder mergeStrategy(String name, Class<? extends FieldMergeStrategy> strategy) {
-			this.strategyRegistry.registerAlias(name, strategy);
-			return this;
-		}
-
-		/**
-		 * Registers a merge strategy with its names and capabilities.
-		 *
-		 * @param definition strategy definition
-		 * @return this builder
-		 */
-		public Builder mergeStrategy(MergeStrategyDefinition definition) {
-			this.strategyRegistry.register(definition);
-			return this;
-		}
-
-		/**
-		 * Registers a merge strategy, described in place.
-		 *
-		 * @param strategy   strategy class
-		 * @param customizer adds names and capabilities to the definition
-		 * @return this builder
-		 */
-		public Builder mergeStrategy(
-				Class<? extends FieldMergeStrategy> strategy,
-				Consumer<MergeStrategyDefinition.Builder> customizer
-		) {
-			MergeStrategyDefinition.Builder builder = MergeStrategyDefinition.builder(strategy);
-			if (customizer != null) customizer.accept(builder);
-
-			this.strategyRegistry.register(builder.build());
-			return this;
-		}
-
-		/**
-		 * Registers a type adapter, which decides how fields of some Java type are merged.
-		 *
-		 * @param adapter type adapter
-		 * @return this builder
-		 */
-		public Builder mergeTypeAdapter(MergeTypeAdapter adapter) {
-			this.adapterRegistry.register(adapter);
-			return this;
-		}
-
-		/**
-		 * Registers a source of field defaults besides field initializers and providers.
-		 *
-		 * @param resolver defaults resolver
-		 * @return this builder
-		 */
-		public Builder defaultsResolver(DefaultsResolver resolver) {
-			this.defaultsResolverRegistry.register(resolver);
-			return this;
-		}
-
-		/**
-		 * Registers a source of merge policies besides the merge annotations.
-		 *
-		 * @param resolver policy resolver
-		 * @return this builder
-		 */
-		public Builder policyResolver(MergePolicyResolver resolver) {
-			this.policyResolverRegistry.register(resolver);
-			return this;
-		}
-
-		/**
-		 * Sets the strategy of fields that name none.
-		 *
-		 * @param strategy strategy class
-		 * @return this builder
-		 */
-		public Builder defaultStrategy(Class<? extends FieldMergeStrategy> strategy) {
-			this.defaultStrategy = strategy;
-			this.defaultStrategyName = null;
-			return this;
-		}
-
-		/**
-		 * Sets the strategy of fields that name none, by its registered name.
-		 *
-		 * @param strategyName name of a registered strategy
-		 * @return this builder
-		 */
-		public Builder defaultStrategy(String strategyName) {
-			this.defaultStrategyName = strategyName;
-			this.defaultStrategy = null;
-			return this;
-		}
-
-		/**
 		 * Sets how unknown keys and primitive defaults are treated.
 		 *
 		 * @param mergeBehavior merge behavior
@@ -719,42 +536,7 @@ public final class Configura {
 		 * @return immutable Configura
 		 */
 		public Configura build() {
-			return new Configura(
-					extension,
-					mapperFactory,
-					modules,
-					features,
-					defaultProviderRegistry,
-					strategyRegistry,
-					adapterRegistry,
-					defaultsResolverRegistry,
-					policyResolverRegistry,
-					defaultStrategy,
-					defaultStrategyName,
-					mergeBehavior
-			);
-		}
-
-		private static MergeStrategyRegistry builtInStrategies() {
-			return new MergeStrategyRegistry()
-					.register(MergeStrategyDefinition.builder(DeepDefaults.class)
-							.alias("deepDefaults")
-							.capability(BuiltinStrategyCapabilities.CONTAINER, BuiltinStrategyCapabilities.ContainerMode.DEEP_DEFAULTS)
-							.build())
-					.register(MergeStrategyDefinition.builder(SourceOwnsField.class)
-							.alias("sourceOwnsField")
-							.capability(BuiltinStrategyCapabilities.CONTAINER, BuiltinStrategyCapabilities.ContainerMode.SOURCE_OWNS)
-							.build())
-					.register(MergeStrategyDefinition.builder(NeverDefaults.class)
-							.alias("neverDefaults")
-							.capability(BuiltinStrategyCapabilities.CONTAINER, BuiltinStrategyCapabilities.ContainerMode.NEVER_DEFAULTS)
-							.build())
-					.register(MergeStrategyDefinition.builder(StructuralObject.class)
-							.alias("structuralObject")
-							.build())
-					.register(MergeStrategyDefinition.builder(DeclaredObjectDefaults.class)
-							.alias("declaredObjectDefaults")
-							.build());
+			return new Configura(extension, mapperFactory, modules, features, defaultProviderRegistry, mergeBehavior);
 		}
 	}
 }

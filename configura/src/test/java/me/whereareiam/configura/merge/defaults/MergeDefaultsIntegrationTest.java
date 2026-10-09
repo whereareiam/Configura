@@ -1,18 +1,14 @@
 package me.whereareiam.configura.merge.defaults;
 
-import me.whereareiam.configura.annotation.merge.MergeObject;
-import me.whereareiam.configura.annotation.merge.MergeValue;
+import me.whereareiam.configura.type.merge.UnknownEntries;
+import me.whereareiam.configura.type.merge.WhenAbsent;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.annotation.merge.Merge;
-import me.whereareiam.configura.annotation.merge.MergeMap;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
 import me.whereareiam.configura.exception.ConfigException;
-import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
 import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
-import me.whereareiam.configura.type.merge.tree.map.MapPresence;
-import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -40,7 +36,6 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@me.whereareiam.configura.annotation.merge.DefaultsProvider(ServerConfigProvider.class)
 	public static class ServerConfig {
 		public String host;
 		public int port;
@@ -58,7 +53,6 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@me.whereareiam.configura.annotation.merge.DefaultsProvider(DatabaseConfigProvider.class)
 	public static class DatabaseConfig {
 		public String url;
 		public String username;
@@ -77,13 +71,13 @@ public class MergeDefaultsIntegrationTest {
 	}
 
 	static class SaveConfig {
-		@MergeValue(text = "svc")
-		public String name;
+		public String name = "svc";
 
-		@MergeObject(properties = {
-				@MergeObject.Property(name = "retries", number = "3")
-		})
-		public Retry policy;
+		public Retry policy = new Retry();
+		
+		{
+			policy.retries = 3;
+		}
 	}
 
 	public static class Cors {
@@ -99,20 +93,19 @@ public class MergeDefaultsIntegrationTest {
 	}
 
 	static class ProviderConfig {
-		@me.whereareiam.configura.annotation.merge.DefaultsProvider(CorsProvider.class)
 		public Cors cors;
 	}
 
 	static class ExplicitModelDefaults {
-		@MergeValue(text = "model")
-		public String mode;
+		public String mode = "model";
 	}
 
 	static class ExplicitPropertyConfig {
-		@MergeObject(properties = {
-				@MergeObject.Property(name = "mode", text = "property")
-		})
-		public ExplicitModelDefaults nested;
+		public ExplicitModelDefaults nested = new ExplicitModelDefaults();
+		
+		{
+			nested.mode = "property";
+		}
 	}
 
 	public static class ListenerRegistration {
@@ -137,12 +130,8 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@me.whereareiam.configura.annotation.merge.DefaultsProvider(ListenerSettingsProvider.class)
 	public static class ListenerSettings {
-		@MergeMap(
-				presence = MapPresence.DEFAULT_DOMAIN_ONLY,
-				unknownEntries = MapUnknownEntries.REJECT
-		)
+		@Merge(unknownEntries = UnknownEntries.REJECT)
 		public Map<String, ListenerRegistration> events;
 	}
 
@@ -160,14 +149,12 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@me.whereareiam.configura.annotation.merge.DefaultsProvider(RuntimePolicyDefaults.class)
 	public static class RuntimeConfig {
 		public RuntimePolicy policy;
 	}
 
 	public static class CollectionEntryDefaults {
-		@MergeValue(text = "entry-default")
-		public String name;
+		public String name = "entry-default";
 	}
 
 	public static class CollectionHolder {
@@ -182,7 +169,7 @@ public class MergeDefaultsIntegrationTest {
 	public static class ScenarioSettings {
 		public boolean enabled;
 		public int timeout;
-		@Merge(DeclaredObjectDefaults.class)
+		@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 		public ScenarioPolicy policy;
 	}
 
@@ -204,12 +191,7 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@me.whereareiam.configura.annotation.merge.DefaultsProvider(ScenarioSettingsProvider.class)
 	public static class ScenarioConfig {
-		@MergeMap(
-				presence = MapPresence.SEED_DEFAULTS,
-				unknownEntries = MapUnknownEntries.ALLOW
-		)
 		public Map<String, ScenarioSettings> scenarios;
 	}
 
@@ -224,7 +206,6 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@me.whereareiam.configura.annotation.merge.DefaultsProvider(PlainStringMapDefaults.class)
 	public static class PlainStringMapConfig {
 		public EnrollmentMessages enrollment;
 	}
@@ -238,7 +219,7 @@ public class MergeDefaultsIntegrationTest {
 		ServerConfigProvider.wasCalled = false;
 		Path configFile = tempDir.resolve("server.yml");
 
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		ConfigReader reader = new DefaultConfigReader(Format.YAML);
 
 		// Simulate Config.update() pattern: load empty, merge, write, read back
@@ -263,7 +244,7 @@ public class MergeDefaultsIntegrationTest {
 		// ssl not set, should get default
 
 		Path configFile = tempDir.resolve("server.yml");
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		facade.save(configFile, config);
 
 		ConfigReader reader = new DefaultConfigReader(Format.YAML);
@@ -280,7 +261,7 @@ public class MergeDefaultsIntegrationTest {
 	void classLevelDefaultsWorksWithDatabaseConfig(@TempDir Path tempDir) {
 		Path configFile = tempDir.resolve("database.yml");
 
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		ConfigReader reader = new DefaultConfigReader(Format.YAML);
 
 		DatabaseConfig defaultInstance = reader.read(new byte[0], DatabaseConfig.class);
@@ -300,7 +281,7 @@ public class MergeDefaultsIntegrationTest {
 		NoDefaultsConfig config = new NoDefaultsConfig();
 
 		Path configFile = tempDir.resolve("no-defaults.yml");
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		facade.save(configFile, config);
 
 		ConfigReader reader = new DefaultConfigReader(Format.YAML);
@@ -315,7 +296,7 @@ public class MergeDefaultsIntegrationTest {
 	void classLevelDefaultsWorksWithUpdatePattern(@TempDir Path tempDir) {
 		Path configFile = tempDir.resolve("server-update.yml");
 
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		ServerConfig loaded = facade.update(configFile, ServerConfig.class);
 
 		assertEquals("localhost", loaded.host);
@@ -327,7 +308,7 @@ public class MergeDefaultsIntegrationTest {
 	void classLevelDefaultsSkipTransientFieldsAndNonInstantiableLeafTypes(@TempDir Path tempDir) {
 		Path configFile = tempDir.resolve("runtime.yml");
 
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		RuntimeConfig loaded = facade.update(configFile, RuntimeConfig.class);
 
 		assertNotNull(loaded.policy);
@@ -340,7 +321,7 @@ public class MergeDefaultsIntegrationTest {
 		Path configFile = tempDir.resolve("scenarios.yml");
 
 		ScenarioConfig loaded = Config.builder()
-				.format(Format.YAML)
+				.format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class)
 				.build()
 				.update(configFile, ScenarioConfig.class);
 
@@ -363,7 +344,7 @@ public class MergeDefaultsIntegrationTest {
 				""");
 
 		PlainStringMapConfig loaded = Config.builder()
-				.format(Format.YAML)
+				.format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class)
 				.build()
 				.update(configFile, PlainStringMapConfig.class);
 
@@ -387,7 +368,6 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@me.whereareiam.configura.annotation.merge.DefaultsProvider(NestedConfigProvider.class)
 	public static class ConfigWithNested {
 		public String appName;
 		public ServerConfig server;
@@ -397,7 +377,7 @@ public class MergeDefaultsIntegrationTest {
 	void classLevelDefaultsWorksWithNestedObjects(@TempDir Path tempDir) {
 		Path configFile = tempDir.resolve("nested.yml");
 
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		ConfigReader reader = new DefaultConfigReader(Format.YAML);
 
 		ConfigWithNested defaultInstance = reader.read(new byte[0], ConfigWithNested.class);
@@ -416,7 +396,7 @@ public class MergeDefaultsIntegrationTest {
 	@Test
 	void providerDefaultsPopulateMissingFieldOnSave(@TempDir Path dir) {
 		Path file = dir.resolve("provider.yml");
-		Config.configured().save(file, new ProviderConfig());
+		Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build().save(file, new ProviderConfig());
 
 		ProviderConfig config = new DefaultConfigReader().read(file, ProviderConfig.class);
 
@@ -427,7 +407,7 @@ public class MergeDefaultsIntegrationTest {
 	@Test
 	void inlineDefaultsFillMissingValuesOnSave(@TempDir Path dir) {
 		Path file = dir.resolve("save.yml");
-		Config.configured().save(file, new SaveConfig());
+		Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build().save(file, new SaveConfig());
 
 		SaveConfig config = new DefaultConfigReader().read(file, SaveConfig.class);
 
@@ -439,7 +419,7 @@ public class MergeDefaultsIntegrationTest {
 	@Test
 	void explicitPropertyDefaultsTakePrecedenceOverModelDefaults(@TempDir Path dir) {
 		Path file = dir.resolve("explicit-property.yml");
-		Config.configured().save(file, new ExplicitPropertyConfig());
+		Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build().save(file, new ExplicitPropertyConfig());
 
 		ExplicitPropertyConfig config = new DefaultConfigReader().read(file, ExplicitPropertyConfig.class);
 
@@ -450,7 +430,7 @@ public class MergeDefaultsIntegrationTest {
 	@Test
 	void collectionFieldsDoNotReceiveObjectShapedModelDefaults(@TempDir Path dir) {
 		Path file = dir.resolve("collections.yml");
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		facade.save(file, new CollectionHolder());
 
 		var persisted = facade.readNode(file);
@@ -472,10 +452,10 @@ public class MergeDefaultsIntegrationTest {
 		ListenerRegistration stale = new ListenerRegistration();
 		stale.priority = "LOW";
 		existing.events.put("bungeecord.PostLoginEvent", stale);
-		Config.yaml().write(file, existing);
+		Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build().write(file, existing);
 
 		ListenerSettings defaultInstance = reader.read(new byte[0], ListenerSettings.class);
-		Configura facade = Config.builder().format(Format.YAML).build();
+		Configura facade = Config.builder().format(Format.YAML).defaults(ServerConfigProvider.class).defaults(DatabaseConfigProvider.class).defaults(CorsProvider.class).defaults(ListenerSettingsProvider.class).defaults(RuntimePolicyDefaults.class).defaults(ScenarioSettingsProvider.class).defaults(PlainStringMapDefaults.class).defaults(NestedConfigProvider.class).build();
 		assertThrows(ConfigException.class, () -> facade.merge(file, defaultInstance));
 	}
 }

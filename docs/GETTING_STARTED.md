@@ -1,185 +1,116 @@
-## Getting Started
+# Getting started
 
-This guide introduces the current Configura model:
-- core dependency for loading, saving, defaults, merging, and custom type adapters
-- optional feature dependencies for extensions, polymorphism, and post-processing
+This guide takes you from the dependency to a configured instance. It assumes Java 17 and a model
+class Jackson can bind: public fields, or getters and setters, and a no-argument constructor.
 
-### Prerequisites
-
-- Java 17
-- Gradle or Maven
-
-### Base dependency
+## Dependencies
 
 ```kotlin
 repositories {
-    maven("https://maven.whereareiam.me/release")
-    maven("https://maven.whereareiam.me/development")
+    maven("https://registry.whereareiam.me/maven/packages")
 }
 
 dependencies {
-    implementation("me.whereareiam:configura:0.0.1")
+    implementation("me.whereareiam:configura:<version>")
+
+    // Optional, each only when you use it; same version as Configura:
+    implementation("me.whereareiam.configura.feature:polymorphic:<version>")
+    implementation("me.whereareiam.configura.feature:extension:<version>")
+    implementation("me.whereareiam.configura.feature:postprocess:<version>")
 }
 ```
 
-### Optional feature dependencies
+## Build an instance
 
-Add these only when you use the feature:
-
-```kotlin
-dependencies {
-    implementation("me.whereareiam.configura.feature:extension:0.0.1")
-    implementation("me.whereareiam.configura.feature:polymorphic:0.0.1")
-    implementation("me.whereareiam.configura.feature:postprocess:0.0.1")
-}
-```
-
-### Define a core model
+`Config.yaml()` and `Config.json()` give you a plain instance. Build your own when you need
+Jackson modules, defaults providers or features:
 
 ```java
-import me.whereareiam.configura.annotation.merge.MergeValue;
-
-public class AppConfig {
-	@MergeValue(text = "world")
-	public String name;
-}
-```
-
-### Read and write
-
-Using a plain instance:
-
-```java
-import me.whereareiam.configura.Config;
-
-AppConfig config = Config.yaml().update("config/app", AppConfig.class);
-```
-
-Using your own configured instance:
-
-```java
-import me.whereareiam.configura.Config;
-import me.whereareiam.configura.Configura;
-import me.whereareiam.configura.type.Format;
-
-Configura yaml = Config.builder()
-		.format(Format.YAML)
-		.build();
-
-AppConfig config = yaml.update("config/app", AppConfig.class);
-```
-
-### Add defaults providers
-
-```java
-import me.whereareiam.configura.Config;
-import me.whereareiam.configura.Configura;
-import me.whereareiam.configura.merge.defaults.DefaultsProvider;
-
-public final class AppDefaults implements DefaultsProvider<AppConfig> {
-	@Override
-	public AppConfig supply(AppConfig config) {
-		config.name = "service";
-		return config;
-	}
-}
-
-Configura yaml = Config.builder()
-		.defaults(AppDefaults.class)
-		.build();
-```
-
-### Teach a custom type
-
-Use a type adapter when a declared type needs custom merge behavior:
-
-```java
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import me.whereareiam.configura.Config;
-import me.whereareiam.configura.Configura;
-import me.whereareiam.configura.merge.policy.MergePolicy;
-import me.whereareiam.configura.merge.type.MergeTypeAdapter;
-import me.whereareiam.configura.merge.type.context.MergeTypeAdapterContext;
-import me.whereareiam.configura.merge.type.descriptor.MergeTypeDescriptor;
-
-public final class Envelope<T> {
-	public T value;
-}
-
-public final class EnvelopeTypeAdapter implements MergeTypeAdapter {
-	@Override
-	public boolean supports(MergeTypeDescriptor descriptor, MergePolicy policy) {
-		return descriptor.getDeclaredType() == Envelope.class;
-	}
-
-	@Override
-	public Class<?> resolveChildType(MergeTypeDescriptor descriptor, MergePolicy policy) {
-		Class<?> generic = descriptor.resolveGenericArgument(0);
-		return generic != null ? generic : descriptor.getDeclaredType();
-	}
-
-	@Override
-	public JsonNode merge(MergeTypeAdapterContext context) {
-		JsonNode source = context.objectMember(context.getSourceNode(), "value");
-		JsonNode defaults = context.objectMember(context.getDefaultNode(), "value");
-
-		ObjectNode result = context.getMapper().createObjectNode();
-		result.set("value", context.mergeChildren(source, defaults));
-		return result;
-	}
-}
-
-Configura yaml = Config.builder()
-		.mergeTypeAdapter(new EnvelopeTypeAdapter())
-		.build();
-```
-
-### Use the merge/defaults DSL
-
-Configura’s built-in annotations are grouped under `me.whereareiam.configura.annotation.merge`.
-
-```java
-import me.whereareiam.configura.annotation.merge.Merge;
-import me.whereareiam.configura.annotation.merge.MergeList;
-import me.whereareiam.configura.annotation.merge.MergeObject;
-import me.whereareiam.configura.annotation.merge.MergeValue;
-import me.whereareiam.configura.merge.strategy.SourceOwnsField;
-import me.whereareiam.configura.type.merge.tree.list.ListMode;
-
-import java.util.List;
-
-public class ProvidersConfig {
-	@Merge(SourceOwnsField.class)
-	@MergeValue(text = "localhost")
-	public String host;
-
-	@MergeObject(properties = {
-			@MergeObject.Property(name = "attempts", number = "3")
-	})
-	public RetryConfig retry;
-
-	@MergeList(mode = ListMode.KEYED, key = "id")
-	public List<ProviderEntry> providers;
-}
-```
-
-### Install optional features
-
-```java
-import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.feature.postprocess.PostProcessFeature;
+import me.whereareiam.configura.type.Format;
 
-Configura yaml = Config.builder()
+Configura configura = Configura.builder()
+		.format(Format.YAML)
+		.module(new MyJacksonModule())
+		.defaults(SettingsDefaults.class)
 		.feature(PostProcessFeature.defaults())
 		.build();
 ```
 
-### Continue reading
+An instance is immutable. To get a variant, derive one; the original is unchanged:
 
-- [Merge Overview](MERGE.md)
-- [Strategies](merge/STRATEGIES.md)
-- [Defaults Resolution](merge/DEFAULTS.md)
-- [Type Adapters](merge/TYPE_ADAPTERS.md)
-- [Annotation DSL](merge/ANNOTATIONS.md)
+```java
+Configura messages = configura.withDefaults(MessagesDefaults.class);
+Configura json = configura.toBuilder().format(Format.JSON).build();
+```
+
+`configura.mapper()` returns the `ObjectMapper` files are read and written with, including your
+modules and those of the features.
+
+### Another format
+
+```java
+Configura toml = Configura.builder()
+		.format("toml", modules -> new TomlMapper().registerModules(modules))
+		.build();
+```
+
+The function receives the modules to register and returns the mapper for the format. The
+format's Jackson dependency, here `jackson-dataformat-toml`, is yours to add.
+
+## Load, read and write
+
+Paths may be given with or without the extension; without one, the instance's extension is added.
+
+| Call | What it does |
+| --- | --- |
+| `update(path, Settings.class)` | Reads the file, fills in missing defaults, binds, writes the file back. Use this at startup. |
+| `read(path, Settings.class)` | Binds the file as it is. No defaults, nothing written. Also takes `byte[]` or an `InputStream`. |
+| `merge(path, settings)` | Reads the file and fills in what it lacks from the given object; returns the bound result, writes nothing. |
+| `save(path, settings)` | Writes the given object, completed by the model's defaults. |
+| `write(path, settings)` | Writes the given object exactly. |
+| `writeBytes(settings)` | Serializes the object without touching a file. |
+| `readNode(...)`, `writeNode(...)`, `writeNodeBytes(node)` | The same on Jackson trees, for documents you do not want to bind to a model. |
+
+Failures are reported as `ConfigException`. Writes replace the file atomically, so a failed write
+leaves the previous content.
+
+## Supply defaults
+
+Field initializers are the simplest defaults. When defaults need code, or should live apart from
+the model, register a provider:
+
+```java
+import me.whereareiam.configura.merge.defaults.DefaultsProvider;
+
+public final class SettingsDefaults implements DefaultsProvider<Settings> {
+	@Override
+	public Settings supply(Settings settings) {
+		settings.servers = List.of(server("hub"), server("arena"));
+		return settings;
+	}
+}
+```
+
+How defaults and a user's file are combined, and how to change that per field with `@Merge`, is
+covered in [Defaults and merging](MERGE.md).
+
+## Share one instance
+
+Code that cannot have the instance handed in can use a shared one:
+
+```java
+Config.setConfigured(configura);   // once, during startup
+
+Configura shared = Config.configured();
+```
+
+Before `setConfigured` is called, `Config.configured()` is a plain YAML instance.
+`Config.builder()`, `Config.yaml()` and `Config.json()` always start fresh; the shared instance has
+no influence on them.
+
+## Next
+
+- [Defaults and merging](MERGE.md)
+- [Features](FEATURES.md)

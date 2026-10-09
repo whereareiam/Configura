@@ -1,19 +1,13 @@
 package me.whereareiam.configura.feature.extension;
 
+import me.whereareiam.configura.type.merge.MissingEntries;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
 import me.whereareiam.configura.annotation.merge.Merge;
-import me.whereareiam.configura.annotation.merge.MergeList;
-import me.whereareiam.configura.annotation.merge.MergeMap;
 import me.whereareiam.configura.feature.extension.api.ConfigDocumentRule;
 import me.whereareiam.configura.feature.extension.api.annotation.ExtendableDocument;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.configura.type.Format;
-import me.whereareiam.configura.type.merge.tree.list.ListMode;
-import me.whereareiam.configura.type.merge.tree.list.ListPresence;
-import me.whereareiam.configura.type.merge.tree.list.ListUnknownEntries;
-import me.whereareiam.configura.type.merge.tree.map.MapPresence;
-import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -160,19 +154,12 @@ class ConfigDocumentExtensionIntegrationTest {
 	}
 
 	static final class CommandMapDocument {
-		@Merge
-		@MergeMap(presence = MapPresence.DECLARED_ONLY, unknownEntries = MapUnknownEntries.ALLOW)
+		@Merge(missingEntries = MissingEntries.OMIT)
 		public Map<String, CommandDefinition> commands = new LinkedHashMap<>();
 	}
 
 	static final class ProviderListDocument {
-		@Merge
-		@MergeList(
-				mode = ListMode.KEYED,
-				key = "id",
-				presence = ListPresence.DECLARED_ONLY,
-				unknownEntries = ListUnknownEntries.ALLOW
-		)
+		@Merge(key = "id", missingEntries = MissingEntries.OMIT)
 		public List<ProviderEntry> providers = new ArrayList<>();
 	}
 
