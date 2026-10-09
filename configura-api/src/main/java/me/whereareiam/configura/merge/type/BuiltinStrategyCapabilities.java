@@ -3,25 +3,26 @@ package me.whereareiam.configura.merge.type;
 import me.whereareiam.configura.merge.strategy.capability.StrategyCapabilityKey;
 
 /**
- * Built-in typed capabilities consumed by Configura's own type adapters.
+ * Capabilities the built-in type adapters look for on a merge strategy.
  */
 public final class BuiltinStrategyCapabilities {
-	public static final StrategyCapabilityKey<ListCapability> LIST = StrategyCapabilityKey.of("configura:list");
-	public static final StrategyCapabilityKey<MapCapability> MAP = StrategyCapabilityKey.of("configura:map");
+	/** How a strategy treats a list or map field as a whole; a strategy without it cannot be used on one. */
+	public static final StrategyCapabilityKey<ContainerMode> CONTAINER = StrategyCapabilityKey.of("configura:container");
 
-	public record ListCapability(Mode mode) {
-		public enum Mode {
-			DEEP_DEFAULTS,
-			SOURCE_OWNS,
-			NEVER_DEFAULTS
-		}
+	private BuiltinStrategyCapabilities() {
 	}
 
-	public record MapCapability(Mode mode) {
-		public enum Mode {
-			DEEP_DEFAULTS,
-			SOURCE_OWNS,
-			NEVER_DEFAULTS
-		}
+	/**
+	 * What happens to a list or map field when file and defaults both have something to say.
+	 */
+	public enum ContainerMode {
+		/** Entries are merged one by one, following the field's list or map policy. */
+		DEEP_DEFAULTS,
+
+		/** The file's value is taken as it is; the default is used only when the file has none. */
+		SOURCE_OWNS,
+
+		/** The file's value is taken as it is and the default is never used. */
+		NEVER_DEFAULTS
 	}
 }

@@ -2,8 +2,8 @@ package me.whereareiam.configura.common.merge.type.list;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import me.whereareiam.configura.merge.MergeContext;
-import me.whereareiam.configura.merge.plugin.list.ListMergeConfig;
-import me.whereareiam.configura.merge.plugin.list.ListMergeCoordinator;
+import me.whereareiam.configura.common.merge.type.list.ListMergeConfig;
+import me.whereareiam.configura.common.merge.type.list.ListMergeCoordinator;
 import me.whereareiam.configura.merge.policy.MergePolicy;
 import me.whereareiam.configura.merge.type.BuiltinStrategyCapabilities;
 import me.whereareiam.configura.merge.type.MergeTypeAdapter;
@@ -55,7 +55,7 @@ public final class ListTypeAdapter implements MergeTypeAdapter {
 				context.getSourceNode(),
 				context.getDefaultNode(),
 				context.getChildType(),
-				context.capability(BuiltinStrategyCapabilities.LIST),
+				context.capability(BuiltinStrategyCapabilities.CONTAINER),
 				context.getBehavior(),
 				config,
 				context

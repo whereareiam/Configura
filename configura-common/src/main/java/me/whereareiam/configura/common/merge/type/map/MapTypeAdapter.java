@@ -1,8 +1,8 @@
 package me.whereareiam.configura.common.merge.type.map;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import me.whereareiam.configura.merge.plugin.map.MapMergeConfig;
-import me.whereareiam.configura.merge.plugin.map.MapMergeCoordinator;
+import me.whereareiam.configura.common.merge.type.map.MapMergeConfig;
+import me.whereareiam.configura.common.merge.type.map.MapMergeCoordinator;
 import me.whereareiam.configura.merge.policy.MergePolicy;
 import me.whereareiam.configura.merge.type.BuiltinStrategyCapabilities;
 import me.whereareiam.configura.merge.type.MergeTypeAdapter;
@@ -46,7 +46,7 @@ public final class MapTypeAdapter implements MergeTypeAdapter {
 				context.getSourceNode(),
 				context.getDefaultNode(),
 				context.getChildType(),
-				context.capability(BuiltinStrategyCapabilities.MAP),
+				context.capability(BuiltinStrategyCapabilities.CONTAINER),
 				context.getBehavior(),
 				config != null ? config : DEFAULT_CONFIG,
 				context

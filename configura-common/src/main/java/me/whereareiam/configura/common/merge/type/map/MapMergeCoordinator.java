@@ -1,4 +1,4 @@
-package me.whereareiam.configura.merge.plugin.map;
+package me.whereareiam.configura.common.merge.type.map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,17 +27,14 @@ public final class MapMergeCoordinator {
 			JsonNode source,
 			JsonNode defaults,
 			Class<?> valueType,
-			BuiltinStrategyCapabilities.MapCapability strategyCapability,
+			BuiltinStrategyCapabilities.ContainerMode strategyMode,
 			MergeBehavior propertyBehavior,
 			MapMergeConfig config,
 			MergeTypeAdapterContext context
 	) {
-		BuiltinStrategyCapabilities.MapCapability.Mode strategyMode = strategyCapability == null
-				? null
-				: strategyCapability.mode();
-		if (strategyMode == BuiltinStrategyCapabilities.MapCapability.Mode.SOURCE_OWNS) return sourceOwnsMap(source, defaults);
-		if (strategyMode == BuiltinStrategyCapabilities.MapCapability.Mode.NEVER_DEFAULTS) return source == null ? mapper.nullNode() : source.deepCopy();
-		if (strategyMode != BuiltinStrategyCapabilities.MapCapability.Mode.DEEP_DEFAULTS)
+		if (strategyMode == BuiltinStrategyCapabilities.ContainerMode.SOURCE_OWNS) return sourceOwnsMap(source, defaults);
+		if (strategyMode == BuiltinStrategyCapabilities.ContainerMode.NEVER_DEFAULTS) return source == null ? mapper.nullNode() : source.deepCopy();
+		if (strategyMode != BuiltinStrategyCapabilities.ContainerMode.DEEP_DEFAULTS)
 			throw unsupportedStrategy(property, context);
 
 		if (source != null && !source.isNull() && !source.isObject()) throw wrongNodeType(property, source);

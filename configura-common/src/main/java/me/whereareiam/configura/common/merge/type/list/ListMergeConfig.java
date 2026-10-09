@@ -1,4 +1,4 @@
-package me.whereareiam.configura.merge.plugin.list;
+package me.whereareiam.configura.common.merge.type.list;
 
 import me.whereareiam.configura.type.merge.tree.list.ListMode;
 import me.whereareiam.configura.type.merge.tree.list.ListPresence;

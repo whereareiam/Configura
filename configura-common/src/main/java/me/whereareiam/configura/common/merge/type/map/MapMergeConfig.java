@@ -1,4 +1,4 @@
-package me.whereareiam.configura.merge.plugin.map;
+package me.whereareiam.configura.common.merge.type.map;
 
 import me.whereareiam.configura.type.merge.tree.map.MapPresence;
 import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;

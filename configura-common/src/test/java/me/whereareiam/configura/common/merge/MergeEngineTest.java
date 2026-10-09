@@ -1,14 +1,15 @@
 package me.whereareiam.configura.common.merge;
 
+import me.whereareiam.configura.annotation.merge.MergeList;
+import me.whereareiam.configura.annotation.merge.MergeObject;
+import me.whereareiam.configura.annotation.merge.MergeValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
 import me.whereareiam.configura.common.document.DefaultDocumentProcessor;
 import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
 import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.MergeContext;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategyRegistry;
 import me.whereareiam.configura.type.UnknownFieldPolicy;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,7 @@ class MergeEngineTest {
 	}
 
 	static class SimpleHolder {
-		@Defaults(text = "x")
+		@MergeValue(text = "x")
 		public String value;
 	}
 
@@ -50,11 +51,11 @@ class MergeEngineTest {
 	}
 
 	static class SeedHolder {
-		@Defaults(stringItems = {"a", "b"})
+		@MergeList(items = {@MergeList.Item(text = "a"), @MergeList.Item(text = "b")})
 		public List<String> names;
 
-		@Defaults(properties = {
-				@Defaults.Property(name = "retries", number = "3")
+		@MergeObject(properties = {
+				@MergeObject.Property(name = "retries", number = "3")
 		})
 		public Retry policy;
 	}
@@ -179,7 +180,6 @@ class MergeEngineTest {
 	private static me.whereareiam.configura.merge.strategy.MergeStrategyRegistry asDefinitions() {
 		me.whereareiam.configura.merge.strategy.MergeStrategyRegistry registry =
 				new me.whereareiam.configura.merge.strategy.MergeStrategyRegistry();
-		FieldMergeStrategyRegistry.standard().asMap().forEach(registry::registerAlias);
 		return registry;
 	}
 

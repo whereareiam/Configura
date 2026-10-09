@@ -1,8 +1,9 @@
 package me.whereareiam.configura.common.merge.defaults;
 
+import me.whereareiam.configura.annotation.merge.MergeDefaultsSource;
+import me.whereareiam.configura.annotation.merge.MergeValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.common.document.DefaultDocumentProcessor;
 import me.whereareiam.configura.common.merge.MergeEngine;
 import me.whereareiam.configura.common.merge.TestMergeProperties;
@@ -11,7 +12,6 @@ import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.MergeContext;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategyRegistry;
 import me.whereareiam.configura.type.PrimitiveDefaultPolicy;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -41,13 +41,13 @@ class MergeDefaultsResolverTest {
 	}
 
 	static class Holder {
-		@Defaults(text = "hello")
+		@MergeValue(text = "hello")
 		public String s;
 
-		@Defaults(source = @Defaults.Source("classpath:/nonexistent.json"))
+		@MergeDefaultsSource("classpath:/nonexistent.json")
 		public String src;
 
-		@Defaults(provider = @Defaults.Provider(FooProvider.class))
+		@me.whereareiam.configura.annotation.merge.DefaultsProvider(FooProvider.class)
 		public Foo foo;
 	}
 
@@ -55,7 +55,7 @@ class MergeDefaultsResolverTest {
 	}
 
 	static class ServiceDefaults implements ServiceContract {
-		@Defaults(text = "https")
+		@MergeValue(text = "https")
 		public String scheme;
 	}
 
@@ -64,7 +64,7 @@ class MergeDefaultsResolverTest {
 	}
 
 	static class ChildWithoutNoArgs {
-		@Defaults(text = "fallback")
+		@MergeValue(text = "fallback")
 		public String value;
 
 		ChildWithoutNoArgs(String value) {
@@ -77,7 +77,7 @@ class MergeDefaultsResolverTest {
 	}
 
 	static class ListEntry {
-		@Defaults(text = "list-default")
+		@MergeValue(text = "list-default")
 		public String name;
 	}
 
@@ -192,7 +192,6 @@ class MergeDefaultsResolverTest {
 	private static me.whereareiam.configura.merge.strategy.MergeStrategyRegistry asDefinitions() {
 		me.whereareiam.configura.merge.strategy.MergeStrategyRegistry registry =
 				new me.whereareiam.configura.merge.strategy.MergeStrategyRegistry();
-		FieldMergeStrategyRegistry.standard().asMap().forEach(registry::registerAlias);
 		return registry;
 	}
 }

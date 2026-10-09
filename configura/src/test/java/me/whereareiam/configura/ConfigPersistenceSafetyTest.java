@@ -19,12 +19,6 @@ class ConfigPersistenceSafetyTest {
 		assertThrows(RuntimeException.class, () -> Config.yaml().write(path, new FailingModel()));
 		assertEquals("original: true\n", Files.readString(path));
 	}
-	@Test void preparesDefaultsAndValidatesWithoutWriting() {
-		var configura = Config.yaml();
-		var tree = configura.mapper().createObjectNode().put("count", 7);
-		assertEquals(7, configura.prepareNode(tree, Settings.class).get("count").intValue());
-		assertFalse(Files.exists(directory.resolve("settings.yml")));
-	}
 	public static class Settings {
 		public int count;
 	}

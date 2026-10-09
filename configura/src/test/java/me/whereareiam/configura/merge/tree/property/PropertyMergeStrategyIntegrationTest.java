@@ -1,9 +1,10 @@
 package me.whereareiam.configura.merge.tree.property;
 
+import me.whereareiam.configura.annotation.merge.MergeObject;
+import me.whereareiam.configura.annotation.merge.MergeValue;
 import com.fasterxml.jackson.databind.JsonNode;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
-import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.annotation.merge.Merge;
 import me.whereareiam.configura.merge.MergeContext;
 import me.whereareiam.configura.merge.strategy.*;
@@ -106,34 +107,34 @@ class PropertyFieldMergeStrategyIntegrationTest {
 
 	static class StrategyConfig {
 		@Merge
-		@Defaults(properties = {
-				@Defaults.Property(name = "host", text = "localhost"),
-				@Defaults.Property(name = "port", number = "8080")
+		@MergeObject(properties = {
+				@MergeObject.Property(name = "host", text = "localhost"),
+				@MergeObject.Property(name = "port", number = "8080")
 		})
 		public Nested nested;
 
 		@Merge(SourceOwnsField.class)
-		@Defaults(properties = {
-				@Defaults.Property(name = "host", text = "localhost"),
-				@Defaults.Property(name = "port", number = "8080")
+		@MergeObject(properties = {
+				@MergeObject.Property(name = "host", text = "localhost"),
+				@MergeObject.Property(name = "port", number = "8080")
 		})
 		public Nested sourceOwned;
 
 		@Merge(NeverDefaults.class)
-		@Defaults(text = "hidden")
+		@MergeValue(text = "hidden")
 		public String never;
 
 		@Merge(StructuralObject.class)
-		@Defaults(properties = {
-				@Defaults.Property(name = "host", text = "localhost"),
-				@Defaults.Property(name = "port", number = "8080")
+		@MergeObject(properties = {
+				@MergeObject.Property(name = "host", text = "localhost"),
+				@MergeObject.Property(name = "port", number = "8080")
 		})
 		public Nested structural;
 
 		@Merge(DeclaredObjectDefaults.class)
-		@Defaults(properties = {
-				@Defaults.Property(name = "host", text = "localhost"),
-				@Defaults.Property(name = "port", number = "8080")
+		@MergeObject(properties = {
+				@MergeObject.Property(name = "host", text = "localhost"),
+				@MergeObject.Property(name = "port", number = "8080")
 		})
 		public Nested declared;
 	}
@@ -145,7 +146,7 @@ class PropertyFieldMergeStrategyIntegrationTest {
 
 	static class NamedConfig {
 		@Merge(named = "alwaysDefault")
-		@Defaults(text = "from-default")
+		@MergeValue(text = "from-default")
 		public String value;
 	}
 

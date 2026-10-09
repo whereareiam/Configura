@@ -14,7 +14,6 @@ Defaults are applied by:
 Defaults are not applied by:
 - `read(...)`
 - `readNode(...)`
-- `readResolvedNode(...)`
 
 ### Built-in Defaults DSL
 

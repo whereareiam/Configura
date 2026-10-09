@@ -1,7 +1,7 @@
 ## Getting Started
 
 This guide introduces the current Configura model:
-- core dependency for loading, saving, defaults, merging, migration, and custom type adapters
+- core dependency for loading, saving, defaults, merging, and custom type adapters
 - optional feature dependencies for extensions, polymorphism, and post-processing
 
 ### Prerequisites
@@ -47,12 +47,12 @@ public class AppConfig {
 
 ### Read and write
 
-Using the static facade:
+Using a plain instance:
 
 ```java
 import me.whereareiam.configura.Config;
 
-AppConfig config = Config.update("config/app", AppConfig.class);
+AppConfig config = Config.yaml().update("config/app", AppConfig.class);
 ```
 
 Using your own configured instance:
@@ -162,14 +162,6 @@ public class ProvidersConfig {
 	@MergeList(mode = ListMode.KEYED, key = "id")
 	public List<ProviderEntry> providers;
 }
-```
-
-### Register migrations
-
-```java
-Configura yaml = Config.builder()
-		.versioned(AppConfig.class, spec -> spec.currentVersion(1))
-		.build();
 ```
 
 ### Install optional features

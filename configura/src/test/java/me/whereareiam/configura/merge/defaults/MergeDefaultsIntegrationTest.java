@@ -1,8 +1,9 @@
 package me.whereareiam.configura.merge.defaults;
 
+import me.whereareiam.configura.annotation.merge.MergeObject;
+import me.whereareiam.configura.annotation.merge.MergeValue;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
-import me.whereareiam.configura.annotation.Defaults;
 import me.whereareiam.configura.annotation.merge.Merge;
 import me.whereareiam.configura.annotation.merge.MergeMap;
 import me.whereareiam.configura.common.reader.DefaultConfigReader;
@@ -12,7 +13,6 @@ import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.type.merge.tree.map.MapPresence;
 import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
-import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -40,7 +40,7 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@Defaults(provider = @Defaults.Provider(ServerConfigProvider.class))
+	@me.whereareiam.configura.annotation.merge.DefaultsProvider(ServerConfigProvider.class)
 	public static class ServerConfig {
 		public String host;
 		public int port;
@@ -58,7 +58,7 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@Defaults(provider = @Defaults.Provider(DatabaseConfigProvider.class))
+	@me.whereareiam.configura.annotation.merge.DefaultsProvider(DatabaseConfigProvider.class)
 	public static class DatabaseConfig {
 		public String url;
 		public String username;
@@ -77,11 +77,11 @@ public class MergeDefaultsIntegrationTest {
 	}
 
 	static class SaveConfig {
-		@Defaults(text = "svc")
+		@MergeValue(text = "svc")
 		public String name;
 
-		@Defaults(properties = {
-				@Defaults.Property(name = "retries", number = "3")
+		@MergeObject(properties = {
+				@MergeObject.Property(name = "retries", number = "3")
 		})
 		public Retry policy;
 	}
@@ -99,18 +99,18 @@ public class MergeDefaultsIntegrationTest {
 	}
 
 	static class ProviderConfig {
-		@Defaults(provider = @Defaults.Provider(CorsProvider.class))
+		@me.whereareiam.configura.annotation.merge.DefaultsProvider(CorsProvider.class)
 		public Cors cors;
 	}
 
 	static class ExplicitModelDefaults {
-		@Defaults(text = "model")
+		@MergeValue(text = "model")
 		public String mode;
 	}
 
 	static class ExplicitPropertyConfig {
-		@Defaults(properties = {
-				@Defaults.Property(name = "mode", text = "property")
+		@MergeObject(properties = {
+				@MergeObject.Property(name = "mode", text = "property")
 		})
 		public ExplicitModelDefaults nested;
 	}
@@ -137,7 +137,7 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@Defaults(provider = @Defaults.Provider(ListenerSettingsProvider.class))
+	@me.whereareiam.configura.annotation.merge.DefaultsProvider(ListenerSettingsProvider.class)
 	public static class ListenerSettings {
 		@MergeMap(
 				presence = MapPresence.DEFAULT_DOMAIN_ONLY,
@@ -160,13 +160,13 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@Defaults(provider = @Defaults.Provider(RuntimePolicyDefaults.class))
+	@me.whereareiam.configura.annotation.merge.DefaultsProvider(RuntimePolicyDefaults.class)
 	public static class RuntimeConfig {
 		public RuntimePolicy policy;
 	}
 
 	public static class CollectionEntryDefaults {
-		@Defaults(text = "entry-default")
+		@MergeValue(text = "entry-default")
 		public String name;
 	}
 
@@ -204,7 +204,7 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@Defaults(provider = @Defaults.Provider(ScenarioSettingsProvider.class))
+	@me.whereareiam.configura.annotation.merge.DefaultsProvider(ScenarioSettingsProvider.class)
 	public static class ScenarioConfig {
 		@MergeMap(
 				presence = MapPresence.SEED_DEFAULTS,
@@ -224,7 +224,7 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@Defaults(provider = @Defaults.Provider(PlainStringMapDefaults.class))
+	@me.whereareiam.configura.annotation.merge.DefaultsProvider(PlainStringMapDefaults.class)
 	public static class PlainStringMapConfig {
 		public EnrollmentMessages enrollment;
 	}
@@ -387,7 +387,7 @@ public class MergeDefaultsIntegrationTest {
 		}
 	}
 
-	@Defaults(provider = @Defaults.Provider(NestedConfigProvider.class))
+	@me.whereareiam.configura.annotation.merge.DefaultsProvider(NestedConfigProvider.class)
 	public static class ConfigWithNested {
 		public String appName;
 		public ServerConfig server;
@@ -462,7 +462,6 @@ public class MergeDefaultsIntegrationTest {
 	@Test
 	void defaultDomainOnlyMapRejectsStaleKeys(@TempDir Path dir) {
 		Path file = dir.resolve("listeners.yml");
-		ConfigWriter writer = Config.writer(Format.YAML);
 		ConfigReader reader = new DefaultConfigReader(Format.YAML);
 
 		ListenerSettings existing = new ListenerSettings();
@@ -473,7 +472,7 @@ public class MergeDefaultsIntegrationTest {
 		ListenerRegistration stale = new ListenerRegistration();
 		stale.priority = "LOW";
 		existing.events.put("bungeecord.PostLoginEvent", stale);
-		writer.write(file, existing);
+		Config.yaml().write(file, existing);
 
 		ListenerSettings defaultInstance = reader.read(new byte[0], ListenerSettings.class);
 		Configura facade = Config.builder().format(Format.YAML).build();

@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
  * Supplies model defaults that are consumed by merge strategies.
  *
  * <p>Providers are registered with {@code Config.builder().defaults(...)} or referenced by
- * {@code @Defaults(provider = @Defaults.Provider(...))}. Configura creates an empty model instance,
+ * the {@code @DefaultsProvider} annotation. Configura creates an empty model instance,
  * passes it to the provider, and treats the returned model as the default node for merge.</p>
  *
  * <pre>{@code
