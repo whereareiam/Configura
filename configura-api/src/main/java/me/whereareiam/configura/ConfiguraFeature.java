@@ -7,6 +7,7 @@ import me.whereareiam.configura.document.DocumentTypeResolver;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Contributes optional Configura behavior such as type resolution, document phases, or mapper
@@ -39,5 +40,16 @@ public interface ConfiguraFeature {
 	 */
 	default @NotNull List<DocumentPhase> phases() {
 		return List.of();
+	}
+
+	/**
+	 * Returns the top-level document keys this feature owns. Such a key is not part of any model:
+	 * Configura never binds it, and when it writes a model over an existing file it carries the
+	 * key's value over from that file, ahead of the model's own values.
+	 *
+	 * @return reserved top-level keys
+	 */
+	default @NotNull Set<String> reservedKeys() {
+		return Set.of();
 	}
 }

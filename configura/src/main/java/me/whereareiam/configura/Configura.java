@@ -37,6 +37,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 @SuppressWarnings("unused")
@@ -57,6 +58,7 @@ public final class Configura {
 	private final String defaultStrategyName;
 	private final MergeBehavior mergeBehavior;
 
+	private final Set<String> reservedKeys;
 	private final ObjectMapper mapper;
 	private final DocumentProcessor documentProcessor;
 	private final MergeEngine mergeEngine;
@@ -99,6 +101,7 @@ public final class Configura {
 		ConfiguraFeatureRegistry featureRegistry = new ConfiguraFeatureRegistry();
 		for (ConfiguraFeature feature : this.features)
 			featureRegistry.add(feature);
+		this.reservedKeys = featureRegistry.reservedKeys();
 		ObjectMapper plainMapper = mapperFactory.apply(this.modules);
 		List<Module> mapperModules = new ArrayList<>(this.modules);
 		mapperModules.addAll(featureRegistry.modules(plainMapper));
@@ -191,7 +194,7 @@ public final class Configura {
 			return;
 		}
 
-		writer.writeNode(path, mapper.valueToTree(value));
+		writer.writeNode(path, carryReservedKeys(existingResolvedTree(path, value.getClass()), mapper.valueToTree(value)));
 	}
 
 	public <T> void save(String file, T value) {
@@ -208,7 +211,7 @@ public final class Configura {
 
 		ObjectNode source = mapper.valueToTree(value);
 		ObjectNode merged = mergeUserModel(source, value, type);
-		writer.writeNode(path, merged);
+		writer.writeNode(path, carryReservedKeys(existing, merged));
 	}
 
 	public <T> byte[] writeBytes(T value) {
@@ -242,7 +245,7 @@ public final class Configura {
 
 		ObjectNode merged = mergeDefaults(existing, empty, type);
 		T value = bind(merged, type, "Failed to bind updated config to " + type.getName());
-		writer.writeNode(path, merged);
+		writer.writeNode(path, carryReservedKeys(existing, merged));
 		return value;
 	}
 
@@ -411,6 +414,15 @@ public final class Configura {
 		return mergeBehavior;
 	}
 
+	/**
+	 * Returns the top-level document keys owned by the registered features.
+	 *
+	 * @return reserved keys, which survive every write of a model over an existing file
+	 */
+	public @NotNull Set<String> reservedKeys() {
+		return reservedKeys;
+	}
+
 
 	private Path resolve(String file) {
 		return FileUtil.resolvePathWithExtension(file, extension);
@@ -497,6 +509,21 @@ public final class Configura {
 
 
 
+
+	/**
+	 * Puts the values of reserved keys found in the file being replaced at the top of its new content.
+	 */
+	private ObjectNode carryReservedKeys(JsonNode existing, ObjectNode document) {
+		ObjectNode carried = mapper.createObjectNode();
+		for (String key : reservedKeys)
+			if (existing.has(key)) carried.set(key, existing.get(key));
+
+		if (carried.isEmpty()) return document;
+
+		document.remove(reservedKeys);
+		carried.setAll(document);
+		return carried;
+	}
 
 	private <T> ObjectNode mergeDefaults(JsonNode source, T model, Class<T> type) {
 		return mergeEngine.mergeDefaults(source, model, type);

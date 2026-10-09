@@ -58,21 +58,20 @@ For staged work, `prepareNode(tree, Settings.class)` applies defaults and bindin
 hooks entirely in memory. `readNode` and `writeNodeBytes` expose raw document trees
 and serialization without forcing old documents into current Java models.
 
+## Keys that belong to another tool
+
+A feature can reserve top-level keys through `ConfiguraFeature.reservedKeys()`. A reserved key
+is not part of your model: Configura does not bind it, and `update`, `save` and `write` carry its
+value over from the existing file, at the top of the new content. Tools that keep their own marker
+in a config file use this.
+
 ## Migrations
 
-Installation upgrades belong to [Strata](https://github.com/whereareiam/strata).
-Use `strata-integration-configura` to move values between files, split or merge
-documents, validate prepared output, and recover interrupted multi-file commits.
-Run Strata before normal configuration updates.
-
-This is a breaking migration-API change: `versioned`, `withVersioned`, migration
-steps, and automatic migration backups have been removed. Port transformations to
-Strata actions and register explicit legacy detectors. Configura no longer executes
-version chains during reads or updates.
-
-`ConfigDocument` and `@DocumentVersion` remain as portable metadata. Configura
-preserves the supplied version; it does not infer, advance, or validate migration
-versions. Strata owns upgrade history and coordinated backups.
+Configura does not change existing files beyond merging defaults. To rename or move settings
+between releases, or to split and merge files, use
+[Strata](https://github.com/whereareiam/strata) with its `strata-adapter-configura`, and run it
+before `update`. Strata keeps the version of a configuration in the file, in a key its feature
+reserves.
 
 ## Building and publishing
 

@@ -8,7 +8,10 @@ import me.whereareiam.configura.document.DocumentTypeResolver;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class ConfiguraFeatureRegistry {
 	private final List<ConfiguraFeature> features = new ArrayList<>();
@@ -34,6 +37,13 @@ public final class ConfiguraFeatureRegistry {
 		for (ConfiguraFeature feature : features)
 			resolvers.addAll(feature.typeResolvers());
 		return List.copyOf(resolvers);
+	}
+
+	public @NotNull Set<String> reservedKeys() {
+		Set<String> keys = new LinkedHashSet<>();
+		for (ConfiguraFeature feature : features)
+			keys.addAll(feature.reservedKeys());
+		return Collections.unmodifiableSet(keys);
 	}
 
 	public @NotNull List<DocumentPhase> phases() {

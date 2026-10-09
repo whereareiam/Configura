@@ -1,6 +1,5 @@
 # Migrations
 
-Installation migration execution has moved to [Strata](https://github.com/whereareiam/strata).
-Use its Configura integration for versioned transformations, cross-document operations,
-backups, and recovery. See the [Configura README](../README.md#migrations) for the
-breaking API transition and portable document-version metadata.
+Configura merges defaults into existing files; it does not rename, move or convert settings between
+releases. Use [Strata](https://github.com/whereareiam/strata) with `strata-adapter-configura` for
+that, and run it before `update`. See the [README](../README.md#migrations).

@@ -164,14 +164,6 @@ public class ProvidersConfig {
 }
 ```
 
-### Register migrations
-
-```java
-Configura yaml = Config.builder()
-		.versioned(AppConfig.class, spec -> spec.currentVersion(1))
-		.build();
-```
-
 ### Install optional features
 
 ```java
