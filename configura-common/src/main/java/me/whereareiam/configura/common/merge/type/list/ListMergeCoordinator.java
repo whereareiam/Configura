@@ -1,4 +1,4 @@
-package me.whereareiam.configura.merge.plugin.list;
+package me.whereareiam.configura.common.merge.type.list;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

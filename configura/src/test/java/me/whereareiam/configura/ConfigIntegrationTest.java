@@ -72,9 +72,11 @@ class ConfigIntegrationTest {
 		Configura base = Config.builder()
 				.format(Format.YAML)
 				.build();
-		Configura configura = base.withMergeBehavior(MergeBehavior.builder()
-				.unknownFields(UnknownFieldPolicy.PRESERVE)
-				.build());
+		Configura configura = base.toBuilder()
+				.mergeBehavior(MergeBehavior.builder()
+						.unknownFields(UnknownFieldPolicy.PRESERVE)
+						.build())
+				.build();
 
 		Path file = tempDir.resolve("preserve-copy.yml");
 		Files.writeString(file, """

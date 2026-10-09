@@ -8,7 +8,6 @@ import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
 import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.MergeContext;
 import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategyRegistry;
 import me.whereareiam.configura.type.UnknownFieldPolicy;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -179,7 +178,6 @@ class MergeEngineTest {
 	private static me.whereareiam.configura.merge.strategy.MergeStrategyRegistry asDefinitions() {
 		me.whereareiam.configura.merge.strategy.MergeStrategyRegistry registry =
 				new me.whereareiam.configura.merge.strategy.MergeStrategyRegistry();
-		FieldMergeStrategyRegistry.standard().asMap().forEach(registry::registerAlias);
 		return registry;
 	}
 

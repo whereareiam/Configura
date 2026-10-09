@@ -12,7 +12,6 @@ import me.whereareiam.configura.reader.ConfigReader;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.type.merge.tree.map.MapPresence;
 import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
-import me.whereareiam.configura.writer.ConfigWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -462,7 +461,6 @@ public class MergeDefaultsIntegrationTest {
 	@Test
 	void defaultDomainOnlyMapRejectsStaleKeys(@TempDir Path dir) {
 		Path file = dir.resolve("listeners.yml");
-		ConfigWriter writer = Config.writer(Format.YAML);
 		ConfigReader reader = new DefaultConfigReader(Format.YAML);
 
 		ListenerSettings existing = new ListenerSettings();
@@ -473,7 +471,7 @@ public class MergeDefaultsIntegrationTest {
 		ListenerRegistration stale = new ListenerRegistration();
 		stale.priority = "LOW";
 		existing.events.put("bungeecord.PostLoginEvent", stale);
-		writer.write(file, existing);
+		Config.yaml().write(file, existing);
 
 		ListenerSettings defaultInstance = reader.read(new byte[0], ListenerSettings.class);
 		Configura facade = Config.builder().format(Format.YAML).build();

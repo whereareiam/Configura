@@ -1,4 +1,4 @@
-package me.whereareiam.configura.merge.plugin;
+package me.whereareiam.configura.merge;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -33,7 +33,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Merge Type Adapter Integration")
-class MergePluginIntegrationTest {
+class MergeCustomizationIntegrationTest {
 	@Test
 	@DisplayName("Custom field plugin participates in defaults expansion and recursive merge")
 	void customFieldPluginParticipatesInDefaultsExpansionAndRecursiveMerge(@TempDir Path tempDir) throws Exception {

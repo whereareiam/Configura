@@ -1,5 +1,9 @@
 package me.whereareiam.configura;
 
+import com.fasterxml.jackson.databind.Module;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import me.whereareiam.configura.merge.defaults.DefaultsProvider;
+import me.whereareiam.configura.type.Format;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +15,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConfiguraTest {
@@ -76,9 +81,59 @@ class ConfiguraTest {
 		assertFalse(Config.yaml().readNode(file).has("_marker"));
 	}
 
+	@Test
+	void derivesVariantsWithoutChangingItself() {
+		Module module = new SimpleModule("test");
+		Configura base = Config.yaml();
+
+		Configura variant = base.toBuilder()
+				.format(Format.JSON)
+				.module(module)
+				.feature(new MarkerFeature())
+				.build();
+
+		assertEquals(".json", variant.extension());
+		assertTrue(variant.modules().contains(module));
+		assertEquals(Set.of("_marker"), variant.reservedKeys());
+		assertEquals(".yml", base.extension());
+		assertTrue(base.modules().isEmpty());
+		assertTrue(base.reservedKeys().isEmpty());
+	}
+
+	@Test
+	void takesDefaultsFromAProviderAddedLater() {
+		Configura withDefaults = Config.yaml().withDefaults(SettingsDefaults.class);
+
+		assertEquals("from-provider", withDefaults.update(directory.resolve("provided.yml"), Settings.class).motd);
+		assertNull(Config.yaml().update(directory.resolve("plain.yml"), Settings.class).motd);
+	}
+
+	@Test
+	void keepsTheFeaturesOfTheInstanceAFeatureIsAddedTo() {
+		Configura both = Config.yaml().withFeature(new MarkerFeature()).withFeature(new OtherFeature());
+
+		assertEquals(Set.of("_marker", "_other"), both.reservedKeys());
+	}
+
 	public static class Settings {
 		public String name = "lobby";
 		public int timeout = 30;
+		public String motd;
+	}
+
+	public static class SettingsDefaults implements DefaultsProvider<Settings> {
+		@Override
+		public Settings supply(Settings settings) {
+			settings.motd = "from-provider";
+			return settings;
+		}
+	}
+
+	private static final class OtherFeature implements ConfiguraFeature {
+		@Override
+		public @NotNull Set<String> reservedKeys() {
+			return Set.of("_other");
+		}
 	}
 
 	private static final class MarkerFeature implements ConfiguraFeature {
