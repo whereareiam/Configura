@@ -1,5 +1,5 @@
 plugins {
-    id("facade")
+    id("publish")
 }
 
 dependencies {

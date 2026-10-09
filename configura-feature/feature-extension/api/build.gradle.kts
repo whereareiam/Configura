@@ -1,5 +1,5 @@
 plugins {
-    id("feature-api")
+    id("publish")
 }
 
 group = "me.whereareiam.configura.feature"

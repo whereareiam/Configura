@@ -46,7 +46,7 @@ public final class MapTypeAdapter implements MergeTypeAdapter {
 				context.getSourceNode(),
 				context.getDefaultNode(),
 				context.getChildType(),
-				context.capability(BuiltinStrategyCapabilities.MAP),
+				context.capability(BuiltinStrategyCapabilities.CONTAINER),
 				context.getBehavior(),
 				config != null ? config : DEFAULT_CONFIG,
 				context

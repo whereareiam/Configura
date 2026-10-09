@@ -29,17 +29,14 @@ public final class ListMergeCoordinator {
 			JsonNode source,
 			JsonNode defaults,
 			Class<?> entryType,
-			BuiltinStrategyCapabilities.ListCapability strategyCapability,
+			BuiltinStrategyCapabilities.ContainerMode strategyMode,
 			MergeBehavior propertyBehavior,
 			ListMergeConfig config,
 			MergeTypeAdapterContext context
 	) {
-		BuiltinStrategyCapabilities.ListCapability.Mode strategyMode = strategyCapability == null
-				? null
-				: strategyCapability.mode();
-		if (strategyMode == BuiltinStrategyCapabilities.ListCapability.Mode.SOURCE_OWNS) return sourceOwnsList(source, defaults);
-		if (strategyMode == BuiltinStrategyCapabilities.ListCapability.Mode.NEVER_DEFAULTS) return source == null ? mapper.nullNode() : source.deepCopy();
-		if (strategyMode != BuiltinStrategyCapabilities.ListCapability.Mode.DEEP_DEFAULTS)
+		if (strategyMode == BuiltinStrategyCapabilities.ContainerMode.SOURCE_OWNS) return sourceOwnsList(source, defaults);
+		if (strategyMode == BuiltinStrategyCapabilities.ContainerMode.NEVER_DEFAULTS) return source == null ? mapper.nullNode() : source.deepCopy();
+		if (strategyMode != BuiltinStrategyCapabilities.ContainerMode.DEEP_DEFAULTS)
 			throw unsupportedStrategy(property, context);
 
 		if (config.getMode() == ListMode.PLAIN) return mergePlainList(source, defaults, property);

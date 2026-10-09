@@ -1,5 +1,5 @@
 plugins {
-    id("common")
+    id("publish")
 }
 
 dependencies {

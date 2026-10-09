@@ -55,7 +55,7 @@ public final class ListTypeAdapter implements MergeTypeAdapter {
 				context.getSourceNode(),
 				context.getDefaultNode(),
 				context.getChildType(),
-				context.capability(BuiltinStrategyCapabilities.LIST),
+				context.capability(BuiltinStrategyCapabilities.CONTAINER),
 				context.getBehavior(),
 				config,
 				context
