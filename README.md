@@ -43,20 +43,29 @@ preserved. The filesystem must support atomic replacement.
 Use `read` without rewriting, `write` for an exact model write, and `save` when
 applying the configured model merge behavior. For JSON, use `Config.json()`.
 
+Configura sits on top of Jackson and does not hide it: you register your own Jackson
+modules, and `mapper()` hands you the configured `ObjectMapper`.
+
 ```java
-var yaml = Config.builder()
+Configura configura = Configura.builder()
         .format(Format.YAML)
+        .module(new MyJacksonModule())
+        .defaults(SettingsDefaults.class)
         .feature(PostProcessFeature.defaults())
         .build();
+
+Configura json = configura.toBuilder().format(Format.JSON).build();   // a variant; the original is unchanged
 ```
+
+`Config.setConfigured(configura)` shares one instance with code that cannot have it
+handed in; `Config.configured()` returns it.
 
 `DefaultsProvider`, merge annotations and custom `MergeTypeAdapter` implementations
 let applications supply defaults and extend merging. Features add document type
 resolution, extensions and post-binding processing without changing basic loading.
 
-For staged work, `prepareNode(tree, Settings.class)` applies defaults and binding
-hooks entirely in memory. `readNode` and `writeNodeBytes` expose raw document trees
-and serialization without forcing old documents into current Java models.
+`readNode` and `writeNodeBytes` expose raw document trees and serialization without
+forcing a document into a Java model.
 
 ## Keys that belong to another tool
 
