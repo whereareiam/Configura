@@ -2,6 +2,7 @@ package me.whereareiam.configura;
 
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import me.whereareiam.configura.annotation.merge.MergeValue;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.configura.type.Format;
 import org.jetbrains.annotations.NotNull;
@@ -113,6 +114,30 @@ class ConfiguraTest {
 		Configura both = Config.yaml().withFeature(new MarkerFeature()).withFeature(new OtherFeature());
 
 		assertEquals(Set.of("_marker", "_other"), both.reservedKeys());
+	}
+
+	@Test
+	void treatsInheritedFieldsLikeDeclaredOnes() throws Exception {
+		Path inherited = directory.resolve("inherited.yml");
+		Files.writeString(inherited, "note: kept\n");
+
+		Extended extended = Config.yaml().update(inherited, Extended.class);
+
+		assertEquals("kept", extended.note);
+		assertEquals("inherited-default", extended.greeting);
+		assertEquals("kept", Config.yaml().readNode(inherited).path("note").asText());
+		assertEquals("inherited-default", Config.yaml().readNode(inherited).path("greeting").asText());
+	}
+
+	public static class Base {
+		public String note;
+
+		@MergeValue(text = "inherited-default")
+		public String greeting;
+	}
+
+	public static class Extended extends Base {
+		public String name = "lobby";
 	}
 
 	public static class Settings {

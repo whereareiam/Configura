@@ -135,18 +135,7 @@ public final class MergeDefaultsResolver {
 	private boolean hasModelDefaults(Class<?> type) {
 		if (classProviderDefaultsResolver.hasDefaults(type)) return true;
 
-		for (Field property : type.getDeclaredFields()) {
-			if (isDefaultEligible(property)) return true;
-		}
-
-		return false;
-	}
-
-	private boolean isDefaultEligible(Field property) {
-		int modifiers = property.getModifiers();
-		return !property.isSynthetic()
-				&& !Modifier.isStatic(modifiers)
-				&& !Modifier.isTransient(modifiers);
+		return !SerializedFieldResolver.fields(type).isEmpty();
 	}
 
 	private static boolean canResolveModelDefaults(Class<?> type) {

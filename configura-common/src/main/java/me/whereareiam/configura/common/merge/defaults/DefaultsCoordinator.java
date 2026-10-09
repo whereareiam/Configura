@@ -46,8 +46,7 @@ public final class DefaultsCoordinator {
 			Class<?> type,
 			PrimitiveDefaultPolicy policy
 	) {
-		for (Field property : type.getDeclaredFields()) {
-			if (!isDefaultEligible(property)) continue;
+		for (Field property : SerializedFieldResolver.fields(type)) {
 
 			String key = SerializedFieldResolver.resolveSerializedName(property);
 			MergeTypeAdapterResolver.ResolvedField resolvedField = fieldAdapterResolver.resolve(type, property);
@@ -102,13 +101,6 @@ public final class DefaultsCoordinator {
 				}
             }
 		}
-	}
-
-	private boolean isDefaultEligible(Field property) {
-		int modifiers = property.getModifiers();
-		return !property.isSynthetic()
-				&& !Modifier.isStatic(modifiers)
-				&& !Modifier.isTransient(modifiers);
 	}
 
 	private void deepFill(
