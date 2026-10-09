@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-    implementation("me.whereareiam:configura:<version>")
+    implementation("me.whereareiam:configura:2.0.0")
 }
 ```
 

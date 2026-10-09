@@ -11,12 +11,12 @@ repositories {
 }
 
 dependencies {
-    implementation("me.whereareiam:configura:<version>")
+    implementation("me.whereareiam:configura:2.0.0")
 
     // Optional, each only when you use it; same version as Configura:
-    implementation("me.whereareiam.configura.feature:polymorphic:<version>")
-    implementation("me.whereareiam.configura.feature:extension:<version>")
-    implementation("me.whereareiam.configura.feature:postprocess:<version>")
+    implementation("me.whereareiam.configura.feature:polymorphic:2.0.0")
+    implementation("me.whereareiam.configura.feature:extension:2.0.0")
+    implementation("me.whereareiam.configura.feature:postprocess:2.0.0")
 }
 ```
 
