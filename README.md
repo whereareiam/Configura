@@ -23,11 +23,9 @@ Optional features are separate artifacts under `me.whereareiam.configura.feature
 
 ```java
 import me.whereareiam.configura.Config;
-import me.whereareiam.configura.annotation.merge.MergeValue;
 
 public class Settings {
-    @MergeValue(text = "world")
-    public String name;
+    public String name = "world";
 }
 ```
 
@@ -60,9 +58,10 @@ Configura json = configura.toBuilder().format(Format.JSON).build();   // a varia
 `Config.setConfigured(configura)` shares one instance with code that cannot have it
 handed in; `Config.configured()` returns it.
 
-`DefaultsProvider`, merge annotations and custom `MergeTypeAdapter` implementations
-let applications supply defaults and extend merging. Features add document type
-resolution, extensions and post-binding processing without changing basic loading.
+Defaults come from field initializers or a `DefaultsProvider`; `@Merge` on a field decides
+whether a default is written when the file lacks it, whether a section the user wrote is filled
+in, and how lists and maps are matched. See [Defaults and merging](docs/MERGE.md). Features add
+document type resolution, extensions and post-binding processing without changing basic loading.
 
 `readNode` and `writeNodeBytes` expose raw document trees and serialization without
 forcing a document into a Java model.

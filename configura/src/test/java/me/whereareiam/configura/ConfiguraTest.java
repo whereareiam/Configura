@@ -2,7 +2,6 @@ package me.whereareiam.configura;
 
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import me.whereareiam.configura.annotation.merge.MergeValue;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
 import me.whereareiam.configura.type.Format;
 import org.jetbrains.annotations.NotNull;
@@ -132,8 +131,7 @@ class ConfiguraTest {
 	public static class Base {
 		public String note;
 
-		@MergeValue(text = "inherited-default")
-		public String greeting;
+		public String greeting = "inherited-default";
 	}
 
 	public static class Extended extends Base {

@@ -5,10 +5,19 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * Relates the keys of a document to the fields of the model it is bound to.
+ */
 public final class SerializedFieldResolver {
+	private SerializedFieldResolver() {
+	}
+
 	/**
 	 * Lists the fields a model serializes: those of the class and of its superclasses, the class's
 	 * own first.
@@ -42,8 +51,28 @@ public final class SerializedFieldResolver {
 		return field.getName();
 	}
 
-	public static Class<?> resolveDeclaredType(@Nullable Field field, Class<?> fallback) {
-		if (field == null) return fallback;
+	/**
+	 * Returns the type of the values a key holds: the element type of a list, the value type of a
+	 * map, the type of any other field. A key without a field is taken to hold its owner's type.
+	 */
+	public static Class<?> valueType(Class<?> ownerType, @Nullable Field field) {
+		if (field == null) return ownerType;
+		if (List.class.isAssignableFrom(field.getType())) return typeArgument(field, 0);
+		if (Map.class.isAssignableFrom(field.getType())) return typeArgument(field, 1);
+
+		return field.getType();
+	}
+
+	private static Class<?> typeArgument(Field field, int index) {
+		if (!(field.getGenericType() instanceof ParameterizedType parameterized)) return field.getType();
+
+		Type[] arguments = parameterized.getActualTypeArguments();
+		if (index >= arguments.length) return field.getType();
+
+		Type argument = arguments[index];
+		if (argument instanceof Class<?> type) return type;
+		if (argument instanceof ParameterizedType nested && nested.getRawType() instanceof Class<?> raw) return raw;
+
 		return field.getType();
 	}
 }

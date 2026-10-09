@@ -1,17 +1,15 @@
 package me.whereareiam.configura.merge.tree.list;
 
+import me.whereareiam.configura.type.merge.UnknownEntries;
+import me.whereareiam.configura.type.merge.MissingEntries;
+import me.whereareiam.configura.type.merge.WhenPresent;
+import me.whereareiam.configura.type.merge.WhenAbsent;
 import me.whereareiam.configura.Config;
 import me.whereareiam.configura.Configura;
 import me.whereareiam.configura.annotation.merge.Merge;
-import me.whereareiam.configura.annotation.merge.MergeList;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
-import me.whereareiam.configura.merge.strategy.DeclaredObjectDefaults;
-import me.whereareiam.configura.merge.strategy.SourceOwnsField;
 import me.whereareiam.configura.type.Format;
-import me.whereareiam.configura.type.merge.tree.list.ListMode;
-import me.whereareiam.configura.type.merge.tree.list.ListPresence;
-import me.whereareiam.configura.type.merge.tree.list.ListUnknownEntries;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -213,7 +211,7 @@ class ListMergeIntegrationTest {
 				ConfigException.class,
 				() -> yaml(ProviderListDefaults.class).update(file, ProviderListConfig.class)
 		);
-		assertTrue(exception.getMessage().contains("duplicate"));
+		assertTrue(exception.getMessage().contains("twice"));
 		assertTrue(exception.getMessage().contains("premium"));
 	}
 
@@ -230,7 +228,7 @@ class ListMergeIntegrationTest {
 				ConfigException.class,
 				() -> yaml(ProviderListDefaults.class).update(file, ProviderListConfig.class)
 		);
-		assertTrue(exception.getMessage().contains("key field 'id'"));
+		assertTrue(exception.getMessage().contains("no 'id'"));
 	}
 
 	@Test
@@ -242,7 +240,7 @@ class ListMergeIntegrationTest {
 				ConfigException.class,
 				() -> yaml(DuplicateProviderListDefaults.class).update(file, ProviderListConfig.class)
 		);
-		assertTrue(exception.getMessage().contains("duplicate"));
+		assertTrue(exception.getMessage().contains("twice"));
 		assertTrue(exception.getMessage().contains("premium"));
 	}
 
@@ -255,57 +253,27 @@ class ListMergeIntegrationTest {
 	}
 
 	public static class ProviderListConfig {
-		@Merge
-		@MergeList(
-				mode = ListMode.KEYED,
-				key = "id",
-				presence = ListPresence.DECLARED_ONLY,
-				unknownEntries = ListUnknownEntries.ALLOW
-		)
+		@Merge(key = "id", missingEntries = MissingEntries.OMIT)
 		public List<ProviderEntry> providers = new ArrayList<>();
 	}
 
 	public static class SeededProviderListConfig {
-		@Merge
-		@MergeList(
-				mode = ListMode.KEYED,
-				key = "id",
-				presence = ListPresence.SEED_DEFAULTS,
-				unknownEntries = ListUnknownEntries.ALLOW
-		)
+		@Merge(key = "id")
 		public List<ProviderEntry> providers = new ArrayList<>();
 	}
 
 	public static class LockedProviderListConfig {
-		@Merge
-		@MergeList(
-				mode = ListMode.KEYED,
-				key = "id",
-				presence = ListPresence.DEFAULT_DOMAIN_ONLY,
-				unknownEntries = ListUnknownEntries.REJECT
-		)
+		@Merge(key = "id", unknownEntries = UnknownEntries.REJECT)
 		public List<ProviderEntry> providers = new ArrayList<>();
 	}
 
 	public static class SourceOwnedProviderListConfig {
-		@Merge(SourceOwnsField.class)
-		@MergeList(
-				mode = ListMode.KEYED,
-				key = "id",
-				presence = ListPresence.SEED_DEFAULTS,
-				unknownEntries = ListUnknownEntries.ALLOW
-		)
+		@Merge(present = WhenPresent.KEEP_AS_WRITTEN, key = "id")
 		public List<ProviderEntry> providers = new ArrayList<>();
 	}
 
 	public static class DeclaredProviderListConfig {
-		@Merge
-		@MergeList(
-				mode = ListMode.KEYED,
-				key = "id",
-				presence = ListPresence.SEED_DEFAULTS,
-				unknownEntries = ListUnknownEntries.ALLOW
-		)
+		@Merge(key = "id")
 		public List<DeclaredProviderEntry> providers = new ArrayList<>();
 	}
 
@@ -326,13 +294,7 @@ class ListMergeIntegrationTest {
 	public static class Verification {
 		public boolean enabled;
 		public boolean required;
-		@Merge
-		@MergeList(
-				mode = ListMode.KEYED,
-				key = "id",
-				presence = ListPresence.DECLARED_ONLY,
-				unknownEntries = ListUnknownEntries.ALLOW
-		)
+		@Merge(key = "id", missingEntries = MissingEntries.OMIT)
 		public List<MethodEntry> methods = new ArrayList<>();
 	}
 
@@ -357,11 +319,11 @@ class ListMergeIntegrationTest {
 		public boolean enabled;
 		public int priority;
 		public List<String> entrypoints = new ArrayList<>();
-		@Merge(DeclaredObjectDefaults.class)
+		@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 		public Session session;
-		@Merge(DeclaredObjectDefaults.class)
+		@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 		public Verification verification;
-		@Merge(DeclaredObjectDefaults.class)
+		@Merge(absent = WhenAbsent.LEAVE_ABSENT)
 		public JoinRestriction joinRestriction;
 	}
 

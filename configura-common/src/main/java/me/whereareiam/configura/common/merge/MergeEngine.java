@@ -4,83 +4,65 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.whereareiam.configura.common.merge.defaults.DefaultsProviderRegistry;
-import me.whereareiam.configura.common.merge.defaults.MergeDefaultsResolver;
-import me.whereareiam.configura.common.merge.resolver.MergeBehaviorResolver;
+import me.whereareiam.configura.common.merge.defaults.ModelDefaults;
 import me.whereareiam.configura.document.DocumentProcessor;
 import me.whereareiam.configura.merge.MergeBehavior;
-import me.whereareiam.configura.merge.defaults.DefaultsResolverRegistry;
-import me.whereareiam.configura.merge.policy.MergePolicyResolverRegistry;
-import me.whereareiam.configura.merge.strategy.FieldMergeStrategy;
-import me.whereareiam.configura.merge.strategy.MergeStrategyRegistry;
-import me.whereareiam.configura.merge.type.MergeTypeAdapterRegistry;
+import me.whereareiam.configura.type.PrimitiveDefaultPolicy;
+import me.whereareiam.configura.type.UnknownFieldPolicy;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+/**
+ * Produces the document that is bound and written: what the user wrote, completed by the defaults
+ * of the model.
+ */
 public final class MergeEngine {
 	private final ObjectMapper mapper;
-	private final MergeDefaultsResolver defaultsResolver;
-	private final MergeBehaviorResolver behaviorResolver = new MergeBehaviorResolver();
-	private final MergeCoordinator mergeCoordinator;
+	private final DocumentProcessor documents;
+	private final ModelDefaults modelDefaults;
 	private final MergeBehavior behavior;
 
 	public MergeEngine(
-			ObjectMapper mapper,
-			DefaultsProviderRegistry defaultsRegistry,
-			DocumentProcessor documentRuntime,
-			MergeStrategyRegistry strategyRegistry,
-			MergeTypeAdapterRegistry adapterRegistry,
-			DefaultsResolverRegistry defaultsResolverRegistry,
-			MergePolicyResolverRegistry policyResolverRegistry,
-			Class<? extends FieldMergeStrategy> defaultStrategy,
-			String defaultStrategyName,
-			MergeBehavior behavior
+			@NotNull ObjectMapper mapper,
+			@NotNull DefaultsProviderRegistry providers,
+			@NotNull DocumentProcessor documents,
+			@NotNull MergeBehavior behavior
 	) {
 		this.mapper = mapper;
-		this.defaultsResolver = new MergeDefaultsResolver(
-				mapper,
-				defaultsRegistry,
-				documentRuntime,
-				defaultsResolverRegistry,
-				adapterRegistry,
-				policyResolverRegistry
-		);
-		this.mergeCoordinator = new MergeCoordinator(
-				mapper,
-				strategyRegistry,
-				defaultStrategy,
-				defaultStrategyName,
-				defaultsResolver,
-				documentRuntime,
-				adapterRegistry,
-				policyResolverRegistry
-		);
-		this.behavior = behavior != null ? behavior : MergeBehavior.defaults();
+		this.documents = documents;
+		this.modelDefaults = new ModelDefaults(mapper, providers, documents);
+		this.behavior = behavior;
 	}
 
-	public <T> ObjectNode defaultsNode(T model, Class<T> type) {
-		return defaultsNodeInternal(model, type, MergeOperation.userModel());
+	/**
+	 * Completes a document with the defaults of a freshly constructed model, as {@code update} does.
+	 *
+	 * @param source what the file has, if anything
+	 * @param model  freshly constructed model
+	 * @param type   model type
+	 * @return merged document
+	 */
+	public <T> @NotNull ObjectNode mergeDefaults(@Nullable JsonNode source, @NotNull T model, @NotNull Class<T> type) {
+		return merge(source, model, type, behavior.getPrimitiveDefaultPolicy());
 	}
 
-	public <T> ObjectNode mergeUserModel(JsonNode source, T model, Class<T> type) {
-		return mergeInternal(source, model, type, MergeOperation.userModel());
+	/**
+	 * Completes a document with a model the caller filled in, whose zeros and falses are therefore
+	 * meant, as {@code save} and {@code merge} do.
+	 *
+	 * @param source what the file or the model has
+	 * @param model  model whose values serve as defaults
+	 * @param type   model type
+	 * @return merged document
+	 */
+	public <T> @NotNull ObjectNode mergeUserModel(@Nullable JsonNode source, @NotNull T model, @NotNull Class<T> type) {
+		return merge(source, model, type, PrimitiveDefaultPolicy.PRESERVE);
 	}
 
-	public <T> ObjectNode mergeDefaults(JsonNode source, T model, Class<T> type) {
-		return mergeInternal(source, model, type, MergeOperation.syntheticDefaults(behavior));
-	}
+	private ObjectNode merge(@Nullable JsonNode source, Object model, Class<?> type, PrimitiveDefaultPolicy policy) {
+		boolean keepsUnknown = behavior.getUnknownFieldPolicy() == UnknownFieldPolicy.PRESERVE || TreeMerge.keepsUnknown(type);
 
-	private <T> ObjectNode defaultsNodeInternal(T model, Class<T> type, MergeOperation operation) {
-		return defaultsResolver.resolve(model, type, operation.defaultsPolicy());
-	}
-
-	private <T> ObjectNode mergeInternal(JsonNode source, T model, Class<T> type, MergeOperation operation) {
-		ObjectNode defaults = defaultsNodeInternal(model, type, operation);
-		JsonNode merged = mergeCoordinator.mergeObject(
-				source,
-				defaults,
-				type,
-				false,
-				behaviorResolver.resolve(behavior, type),
-				operation
-		);
-		return merged instanceof ObjectNode objectNode ? objectNode : mapper.createObjectNode();
+		return new TreeMerge(mapper, documents, modelDefaults, policy)
+				.object(source, modelDefaults.of(model, type, policy), type, keepsUnknown);
 	}
 }

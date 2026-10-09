@@ -1,17 +1,14 @@
 package me.whereareiam.configura;
 
+import me.whereareiam.configura.type.merge.MissingEntries;
+import me.whereareiam.configura.type.merge.WhenPresent;
 import me.whereareiam.configura.annotation.PreserveUnknownFields;
 import me.whereareiam.configura.annotation.merge.Merge;
-import me.whereareiam.configura.annotation.merge.MergeMap;
 import me.whereareiam.configura.exception.ConfigException;
 import me.whereareiam.configura.merge.MergeBehavior;
 import me.whereareiam.configura.merge.defaults.DefaultsProvider;
-import me.whereareiam.configura.merge.strategy.DeepDefaults;
-import me.whereareiam.configura.merge.strategy.StructuralObject;
 import me.whereareiam.configura.type.Format;
 import me.whereareiam.configura.type.UnknownFieldPolicy;
-import me.whereareiam.configura.type.merge.tree.map.MapPresence;
-import me.whereareiam.configura.type.merge.tree.map.MapUnknownEntries;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -369,11 +366,7 @@ class ConfigIntegrationTest {
 		public Routing routing;
 
 		public static class Routing {
-			@Merge(DeepDefaults.class)
-			@MergeMap(
-					presence = MapPresence.DECLARED_ONLY,
-					unknownEntries = MapUnknownEntries.ALLOW
-			)
+			@Merge(missingEntries = MissingEntries.OMIT)
 			public Map<String, Scenario> scenarios = new LinkedHashMap<>();
 		}
 
@@ -477,7 +470,7 @@ class ConfigIntegrationTest {
 
 	public static class Provider {
 		public String id;
-		@Merge(StructuralObject.class)
+		@Merge(present = WhenPresent.KEEP_AS_WRITTEN)
 		public Overrides overrides = new Overrides();
 	}
 
