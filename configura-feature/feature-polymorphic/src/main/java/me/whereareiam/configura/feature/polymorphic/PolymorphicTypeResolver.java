@@ -5,9 +5,11 @@ import lombok.RequiredArgsConstructor;
 import me.whereareiam.configura.document.DocumentTypeContext;
 import me.whereareiam.configura.document.DocumentTypeResolver;
 import me.whereareiam.configura.feature.polymorphic.api.annotation.Polymorphic;
+import me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -17,28 +19,42 @@ public final class PolymorphicTypeResolver implements DocumentTypeResolver {
 
 	@Override
 	public @Nullable Class<?> resolve(@NotNull Class<?> declaredType, @NotNull DocumentTypeContext context) {
-		me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition definition = effectiveInfoFor(declaredType);
+		PolymorphicDefinition definition = definition(declaredType);
 		if (definition == null) return null;
 
-		return resolveTarget(context.getCurrentNode(), declaredType, definition);
+		Class<?> target = target(definition, context.getCurrentNode());
+		return target != null && target != declaredType ? target : null;
 	}
 
-	private @Nullable me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition effectiveInfoFor(Class<?> raw) {
-		me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition definition = registry.definition(raw);
+	/**
+	 * Returns how a base type is resolved: its registration, or else its {@link Polymorphic}
+	 * annotation.
+	 *
+	 * @param declaredType base type
+	 * @return definition, or null when the type is not polymorphic
+	 */
+	public @Nullable PolymorphicDefinition definition(@NotNull Class<?> declaredType) {
+		PolymorphicDefinition definition = registry.definition(declaredType);
 		if (definition != null) return definition;
 
-		Polymorphic annotation = raw.getAnnotation(Polymorphic.class);
-		return fromAnnotation(annotation);
+		return fromAnnotation(declaredType.getAnnotation(Polymorphic.class));
 	}
 
-	private static @Nullable Class<?> resolveTarget(JsonNode node, Class<?> raw, me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition definition) {
+	/**
+	 * Picks the type a document node stands for: the mapping of its discriminator value (or of the
+	 * default value when the node has none), else the first inference field it has, else the default
+	 * target.
+	 *
+	 * @param definition definition of the base type
+	 * @param node       document node, if any
+	 * @return chosen type, which may be the base type itself, or null when nothing applies
+	 */
+	public @Nullable Class<?> target(@NotNull PolymorphicDefinition definition, @Nullable JsonNode node) {
 		Class<?> target = null;
 
-		if (node != null && definition.getDiscriminator() != null && !definition.getDiscriminator().isEmpty()) {
-			JsonNode discriminatorValue = node.get(definition.getDiscriminator());
-			String key = discriminatorValue != null && discriminatorValue.isTextual()
-					? discriminatorValue.asText()
-					: definition.getDefaultValue();
+		if (node != null && hasDiscriminator(definition)) {
+			String written = discriminatorValue(definition, node);
+			String key = written != null ? written : definition.getDefaultValue();
 			if (key != null && !key.isEmpty())
 				target = definition.getMappings().get(key);
 		}
@@ -55,10 +71,28 @@ public final class PolymorphicTypeResolver implements DocumentTypeResolver {
 		if (target == null && definition.getDefaultTarget() != null && definition.getDefaultTarget() != Void.class)
 			target = definition.getDefaultTarget();
 
-		return target != null && target != raw ? target : null;
+		return target;
 	}
 
-	private static @Nullable me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition fromAnnotation(@Nullable Polymorphic annotation) {
+	/**
+	 * Reads the discriminator a node carries.
+	 *
+	 * @param definition definition of the base type
+	 * @param node       document node
+	 * @return the text of the discriminator, or null when the node has none or it is not text
+	 */
+	public static @Nullable String discriminatorValue(@NotNull PolymorphicDefinition definition, @NotNull JsonNode node) {
+		if (!hasDiscriminator(definition)) return null;
+
+		JsonNode value = node.get(definition.getDiscriminator());
+		return value != null && value.isTextual() ? value.asText() : null;
+	}
+
+	private static boolean hasDiscriminator(PolymorphicDefinition definition) {
+		return definition.getDiscriminator() != null && !definition.getDiscriminator().isEmpty();
+	}
+
+	private static @Nullable PolymorphicDefinition fromAnnotation(@Nullable Polymorphic annotation) {
 		if (annotation == null) return null;
 
 		Map<String, Class<?>> mappings = new LinkedHashMap<>();
@@ -69,9 +103,9 @@ public final class PolymorphicTypeResolver implements DocumentTypeResolver {
 		for (Polymorphic.Infer infer : annotation.inferBy())
 			inferFields.put(infer.field(), infer.target());
 
-		return new me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition(
+		return new PolymorphicDefinition(
 				annotation.discriminator(),
-				Map.copyOf(mappings),
+				Collections.unmodifiableMap(mappings),
 				annotation.defaultValue(),
 				inferFields,
 				annotation.defaultTarget()

@@ -5,6 +5,7 @@ import me.whereareiam.configura.feature.polymorphic.api.PolymorphicRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,7 +69,7 @@ public final class DefaultPolymorphicRegistry implements PolymorphicRegistry {
 		public void build() {
 			registry.put(
 					baseType,
-					new me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition(discriminator, Map.copyOf(mappings), defaultValue, new LinkedHashMap<>(inferFields), defaultTarget)
+					new me.whereareiam.configura.feature.polymorphic.api.model.PolymorphicDefinition(discriminator, Collections.unmodifiableMap(new LinkedHashMap<>(mappings)), defaultValue, new LinkedHashMap<>(inferFields), defaultTarget)
 			);
 		}
 	}
