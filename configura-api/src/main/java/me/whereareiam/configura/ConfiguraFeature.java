@@ -4,14 +4,15 @@ import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.document.DocumentPhase;
 import me.whereareiam.configura.document.DocumentTypeResolver;
+import me.whereareiam.configura.document.DocumentWriteHook;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Set;
 
 /**
- * Contributes optional Configura behavior such as type resolution, document phases, or mapper
- * modules.
+ * Contributes optional Configura behavior such as type resolution, document phases, mapper
+ * modules, or hooks into writing documents.
  */
 public interface ConfiguraFeature {
 	/**
@@ -51,5 +52,14 @@ public interface ConfiguraFeature {
 	 */
 	default @NotNull Set<String> reservedKeys() {
 		return Set.of();
+	}
+
+	/**
+	 * Returns hooks that take part in writing documents, for example to add to what is written.
+	 *
+	 * @return contributed write hooks
+	 */
+	default @NotNull List<DocumentWriteHook> writeHooks() {
+		return List.of();
 	}
 }

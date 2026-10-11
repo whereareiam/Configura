@@ -45,8 +45,8 @@ The file is replaced atomically. If the content cannot be bound to the model, `u
   Jackson modules, the other read and write methods.
 - [Defaults and merging](docs/MERGE.md): where defaults come from and how `@Merge` decides what is
   added to a user's file.
-- [Features](docs/FEATURES.md): polymorphic models, extendable documents, post-processing, and
-  writing your own.
+- [Features](docs/FEATURES.md): polymorphic models, extendable documents, post-processing,
+  comments in the written files, and writing your own.
 - [Upgrading from 1.0](docs/UPGRADING.md): what changed in the API and what to replace it with.
 
 To rename or move settings between releases, use
