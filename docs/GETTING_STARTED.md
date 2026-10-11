@@ -17,6 +17,7 @@ dependencies {
     implementation("me.whereareiam.configura.feature:polymorphic:<version>")
     implementation("me.whereareiam.configura.feature:extension:<version>")
     implementation("me.whereareiam.configura.feature:postprocess:<version>")
+    implementation("me.whereareiam.configura.feature:comment:<version>")
 }
 ```
 

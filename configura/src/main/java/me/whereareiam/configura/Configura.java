@@ -50,7 +50,7 @@ public final class Configura {
 	private final DocumentProcessor documentProcessor;
 	private final MergeEngine mergeEngine;
 	private final ConfigReader reader;
-	private final ConfigWriter writer;
+	private final DefaultConfigWriter writer;
 
 	Configura(
 			String extension,
@@ -84,7 +84,7 @@ public final class Configura {
 		this.mergeEngine = new MergeEngine(this.mapper, this.defaultProviderRegistry, this.documentProcessor, this.mergeBehavior);
 
 		this.reader = new DefaultConfigReader(this.extension, this.mapper, this.documentProcessor);
-		this.writer = new DefaultConfigWriter(this.extension, this.mapper);
+		this.writer = new DefaultConfigWriter(this.extension, this.mapper, featureRegistry.writeHooks(), this.documentProcessor);
 	}
 
 	/**
@@ -157,7 +157,7 @@ public final class Configura {
 			return;
 		}
 
-		writer.writeNode(path, carryReservedKeys(existingResolvedTree(path, value.getClass()), mapper.valueToTree(value)));
+		writer.writeNode(path, carryReservedKeys(existingResolvedTree(path, value.getClass()), mapper.valueToTree(value)), value.getClass());
 	}
 
 	public <T> void save(String file, T value) {
@@ -174,14 +174,14 @@ public final class Configura {
 
 		ObjectNode source = mapper.valueToTree(value);
 		ObjectNode merged = mergeUserModel(source, value, type);
-		writer.writeNode(path, carryReservedKeys(existing, merged));
+		writer.writeNode(path, carryReservedKeys(existing, merged), type);
 	}
 
 	public <T> byte[] writeBytes(T value) {
 		if (value == null)
 			return writer.writeBytes(null);
 
-		return writer.writeBytes(mapper.valueToTree(value));
+		return writer.writeNodeBytes(mapper.valueToTree(value), value.getClass());
 	}
 
 	public <T> T merge(String file, T value) {
@@ -208,7 +208,7 @@ public final class Configura {
 
 		ObjectNode merged = mergeDefaults(existing, empty, type);
 		T value = bind(merged, type, "Failed to bind updated config to " + type.getName());
-		writer.writeNode(path, carryReservedKeys(existing, merged));
+		writer.writeNode(path, carryReservedKeys(existing, merged), type);
 		return value;
 	}
 

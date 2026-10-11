@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import me.whereareiam.configura.ConfiguraFeature;
 import me.whereareiam.configura.document.DocumentPhase;
 import me.whereareiam.configura.document.DocumentTypeResolver;
+import me.whereareiam.configura.document.DocumentWriteHook;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -51,5 +52,12 @@ public final class ConfiguraFeatureRegistry {
 		for (ConfiguraFeature feature : features)
 			phases.addAll(feature.phases());
 		return List.copyOf(phases);
+	}
+
+	public @NotNull List<DocumentWriteHook> writeHooks() {
+		List<DocumentWriteHook> hooks = new ArrayList<>();
+		for (ConfiguraFeature feature : features)
+			hooks.addAll(feature.writeHooks());
+		return List.copyOf(hooks);
 	}
 }
