@@ -19,10 +19,6 @@ template: |
 
   **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...$RESOLVED_TAG
 
-  # Installation
-
-  Java 17 or newer is required. Add `me.whereareiam:configura:$RESOLVED_VERSION` from `https://registry.whereareiam.me/maven/packages`; see the [README](https://github.com/whereareiam/Configura#readme) and [Getting started](https://github.com/whereareiam/Configura/blob/$RESOLVED_VERSION/docs/GETTING_STARTED.md).
-
 categories:
   - type: pre-exclude
     when:
